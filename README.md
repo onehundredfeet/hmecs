@@ -8,7 +8,7 @@ Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fpon
 Extended to HECHO - For performance improvements with struct only types
 
 #### Acknowledgement
-The original vision that deepcake had was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had two flaws I wanted to fix. 
+The original vision that [deepcake](https://github.com/deepcake/echo) had was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had two flaws I wanted to fix. 
 
 - The first was that it had a single world.  This is fine for most applications, but world partitions are sometimes necessary.
 - The second is that struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  Passing it off to SIMD processing is also difficult as each element needs to be brought in separately. 
