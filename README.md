@@ -1,12 +1,19 @@
-# Echo
+# HEcho
 [![TravisCI Build Status](https://travis-ci.org/deepcake/echo.svg?branch=master)](https://travis-ci.org/deepcake/echo)
 
 Super lightweight Entity Component System framework for Haxe. 
 Initially created to learn the power of macros. 
 Focused to be simple and fast. 
 Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fponticelli/edge), [ECX](https://github.com/eliasku/ecx), [ESKIMO](https://github.com/PDeveloper/eskimo) and [Ash-Haxe](https://github.com/nadako/Ash-Haxe)
+Extended to HECHO - For performance improvements with struct only types
 
-#### Wip
+#### Acknowledgement
+The original vision that deepcake had was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had two flaws I wanted to fix. 
+
+- The first was that it had a single world.  This is fine for most applications, but world partitions are sometimes necessary.
+- The second is that struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  Passing it off to SIMD processing is also difficult as each element needs to be brought in separately. 
+
+The first version of this will primarily target HashLink, but may be extended to others.
 
 ### Overview
  * Component is an instance of `T:Any` class. For each class `T` will be generated a global component container, where instance of `T` is a value and `Entity` is a key. 
@@ -17,9 +24,9 @@ Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fpon
 
 #### Example
 ```haxe
-import echoes.SystemList;
-import echoes.Workflow;
-import echoes.Entity;
+import hecho.SystemList;
+import hecho.Workflow;
+import hecho.Entity;
 
 class Example {
   static function main() {
