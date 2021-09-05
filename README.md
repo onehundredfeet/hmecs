@@ -7,7 +7,7 @@ Focused to be simple and fast.
 Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fponticelli/edge), [ECX](https://github.com/eliasku/ecx), [ESKIMO](https://github.com/PDeveloper/eskimo) and [Ash-Haxe](https://github.com/nadako/Ash-Haxe)
 Extended to HECHO - For performance improvements with struct only types
 
-#### Acknowledgement
+#### Acknowledgement by onehundredfeet
 The original vision that [deepcake](https://github.com/deepcake/echo) had was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had two flaws I wanted to fix. 
 
 - The first was that it had a single world.  This is fine for most applications, but world partitions are sometimes necessary.
