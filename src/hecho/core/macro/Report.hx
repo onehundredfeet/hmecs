@@ -1,9 +1,9 @@
-package echoes.core.macro;
+package hecho.core.macro;
 
 #if macro
-import echoes.core.macro.MacroTools.*;
-import echoes.core.macro.ViewBuilder.*;
-import echoes.core.macro.ComponentBuilder.*;
+import hecho.core.macro.MacroTools.*;
+import hecho.core.macro.ViewBuilder.*;
+import hecho.core.macro.ComponentBuilder.*;
 import haxe.macro.Context;
 
 using Lambda;

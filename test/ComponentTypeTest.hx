@@ -1,4 +1,4 @@
-import echoes.*;
+import hecho.*;
 
 using buddy.Should;
 

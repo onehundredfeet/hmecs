@@ -1,4 +1,4 @@
-import echoes.*;
+import hecho.*;
 
 using buddy.Should;
 using Lambda;
@@ -530,7 +530,7 @@ class ViewTest extends buddy.BuddySuite {
     }
 }
 
-class MatchingViewSystem extends echoes.System {
+class MatchingViewSystem extends hecho.System {
 
     public var a:View<A>;
     public var b:View<B>;
@@ -544,7 +544,7 @@ class MatchingViewSystem extends echoes.System {
 
 }
 
-class IteratingViewSystem extends echoes.System {
+class IteratingViewSystem extends hecho.System {
 
     public var av:View<A, V>;
 

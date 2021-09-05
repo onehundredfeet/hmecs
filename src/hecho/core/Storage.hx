@@ -1,4 +1,4 @@
-package echoes.core;
+package hecho.core;
 
 #if echoes_vector_container
 
@@ -113,7 +113,7 @@ abstract Storage<T>(haxe.ds.IntMap<T>) {
 
     public function reset() {
         // for (k in this.keys()) this.remove(k); // python "dictionary changed size during iteration"
-        var i = @:privateAccess echoes.Workflow.nextId;
+        var i = @:privateAccess hecho.Workflow.nextId;
         while (--i > -1) this.remove(i); 
     }
 

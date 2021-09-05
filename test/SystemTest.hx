@@ -1,4 +1,4 @@
-import echoes.*;
+import hecho.*;
 
 using buddy.Should;
 
@@ -365,12 +365,12 @@ class Y {
     public function new() { };
 }
 
-class SystemX extends echoes.System {
+class SystemX extends hecho.System {
     var x:View<X>;
     var xy:View<X, Y>;
 }
 
-class SystemY extends echoes.System {
+class SystemY extends hecho.System {
     @u inline function update(y:Y) { }
     @u inline function updatexy(x:X, y:Y, dt:Float) { }
 }

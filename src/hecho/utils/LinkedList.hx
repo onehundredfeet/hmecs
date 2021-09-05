@@ -1,4 +1,4 @@
-package echoes.utils;
+package hecho.utils;
 
 /**
  * ...
@@ -136,7 +136,7 @@ class LinkedList<T> {
 
 }
 
-@:allow(echoes.utils.LinkedList)
+@:allow(hecho.utils.LinkedList)
 @:generic
 class LinkedNode<T> {
 
@@ -150,7 +150,7 @@ class LinkedNode<T> {
 
 }
 
-@:allow(echoes.utils.LinkedList)
+@:allow(hecho.utils.LinkedList)
 @:generic
 class LinkedListIterator<T> {
 

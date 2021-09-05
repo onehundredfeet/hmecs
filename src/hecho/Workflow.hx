@@ -1,10 +1,10 @@
-package echoes;
+package hecho;
 
-import echoes.Entity.Status;
-import echoes.core.AbstractView;
-import echoes.core.ICleanableComponentContainer;
-import echoes.core.ISystem;
-import echoes.core.RestrictedLinkedList;
+import hecho.Entity.Status;
+import hecho.core.AbstractView;
+import hecho.core.ICleanableComponentContainer;
+import hecho.core.ISystem;
+import hecho.core.RestrictedLinkedList;
 
 /**
  *  Workflow  
@@ -14,7 +14,7 @@ import echoes.core.RestrictedLinkedList;
 class Workflow {
 
 
-    @:allow(echoes.Entity) static inline var INVALID_ID = -1;
+    @:allow(hecho.Entity) static inline var INVALID_ID = -1;
 
 
     static var nextId = INVALID_ID + 1;
@@ -154,7 +154,7 @@ class Workflow {
 
     // Entity
 
-    @:allow(echoes.Entity) static function id(immediate:Bool):Int {
+    @:allow(hecho.Entity) static function id(immediate:Bool):Int {
         var id = idPool.pop();
 
         if (id == null) {
@@ -170,7 +170,7 @@ class Workflow {
         return id;
     }
 
-    @:allow(echoes.Entity) static function cache(id:Int) {
+    @:allow(hecho.Entity) static function cache(id:Int) {
         // Active or Inactive
         if (status(id) < Cached) {
             removeAllComponentsOf(id);
@@ -180,7 +180,7 @@ class Workflow {
         }
     }
 
-    @:allow(echoes.Entity) static function add(id:Int) {
+    @:allow(hecho.Entity) static function add(id:Int) {
         if (status(id) == Inactive) {
             statuses[id] = Active;
             entities.add(id);
@@ -188,7 +188,7 @@ class Workflow {
         }
     }
 
-    @:allow(echoes.Entity) static function remove(id:Int) {
+    @:allow(hecho.Entity) static function remove(id:Int) {
         if (status(id) == Active) {
             for (v in views) v.removeIfExists(id);
             entities.remove(id);
@@ -196,11 +196,11 @@ class Workflow {
         }
     }
 
-    @:allow(echoes.Entity) static inline function status(id:Int):Status {
+    @:allow(hecho.Entity) static inline function status(id:Int):Status {
         return statuses[id];
     }
 
-    @:allow(echoes.Entity) static inline function removeAllComponentsOf(id:Int) {
+    @:allow(hecho.Entity) static inline function removeAllComponentsOf(id:Int) {
         if (status(id) == Active) {
             for (v in views) {
                 v.removeIfExists(id);
@@ -211,7 +211,7 @@ class Workflow {
         }
     }
 
-    @:allow(echoes.Entity) static inline function printAllComponentsOf(id:Int):String {
+    @:allow(hecho.Entity) static inline function printAllComponentsOf(id:Int):String {
         var ret = '#$id:';
         for (c in definedContainers) {
             if (c.exists(id)) {

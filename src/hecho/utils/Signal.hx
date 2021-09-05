@@ -1,5 +1,5 @@
-package echoes.utils;
-import echoes.utils.LinkedList.LinkedListIterator;
+package hecho.utils;
+import hecho.utils.LinkedList.LinkedListIterator;
 #if macro
 import haxe.macro.Expr;
 #end

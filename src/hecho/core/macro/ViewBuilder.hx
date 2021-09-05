@@ -1,13 +1,13 @@
-package echoes.core.macro;
+package hecho.core.macro;
 
 #if macro
-import echoes.core.macro.MacroTools.*;
-import echoes.core.macro.ComponentBuilder.*;
-import echoes.core.macro.ViewsOfComponentBuilder.*;
+import hecho.core.macro.MacroTools.*;
+import hecho.core.macro.ComponentBuilder.*;
+import hecho.core.macro.ViewsOfComponentBuilder.*;
 import haxe.macro.Expr;
 import haxe.macro.Type.ClassField;
 
-using echoes.core.macro.MacroTools;
+using hecho.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using Lambda;
@@ -89,8 +89,8 @@ class ViewBuilder {
                 var viewComplexType = TPath(viewTypePath);
 
                 // signals
-                var signalTypeParamComplexType = TFunction([ macro:echoes.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
-                var signalTypePath = tpath(['echoes', 'utils'], 'Signal', [ TPType(signalTypeParamComplexType) ]);
+                var signalTypeParamComplexType = TFunction([ macro:hecho.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
+                var signalTypePath = tpath(['hecho', 'utils'], 'Signal', [ TPType(signalTypeParamComplexType) ]);
 
                 // signal args for dispatch() call
                 var signalArgs = [ macro id ].concat(components.map(function(c) return macro $i{ getComponentContainer(c.cls).followName() }.inst().get(id)));
@@ -102,7 +102,7 @@ class ViewBuilder {
                 });
 
                 // type def
-                var def:TypeDefinition = macro class $viewClsName extends echoes.core.AbstractView {
+                var def:TypeDefinition = macro class $viewClsName extends hecho.core.AbstractView {
 
                     static var instance = new $viewTypePath();
 
@@ -116,7 +116,7 @@ class ViewBuilder {
                     public var onRemoved(default, null) = new $signalTypePath();
 
                     function new() {
-                        @:privateAccess echoes.Workflow.definedViews.push(this);
+                        @:privateAccess hecho.Workflow.definedViews.push(this);
                         $b{ addViewToViewsOfComponent }
                     }
 
@@ -141,7 +141,7 @@ class ViewBuilder {
 
                 // iter
                 {
-                    var funcComplexType = TFunction([ macro:echoes.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
+                    var funcComplexType = TFunction([ macro:hecho.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
                     var funcCallArgs = [ macro __entity__ ].concat(components.map(function(c) return macro $i{ getComponentContainer(c.cls).followName() }.inst().get(__entity__)));
                     var body = macro {
                         for (__entity__ in entities) {

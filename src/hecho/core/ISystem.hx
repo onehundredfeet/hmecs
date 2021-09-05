@@ -1,4 +1,4 @@
-package echoes.core;
+package hecho.core;
 
 interface ISystem {
 

@@ -1,4 +1,4 @@
-package echoes.core;
+package hecho.core;
 
 interface ICleanableComponentContainer {
     function exists(id:Int):Bool;

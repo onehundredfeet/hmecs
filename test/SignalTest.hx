@@ -1,4 +1,4 @@
-import echoes.utils.Signal;
+import hecho.utils.Signal;
 
 using buddy.Should;
 

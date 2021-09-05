@@ -1,8 +1,8 @@
-package echoes;
+package hecho;
 
-import echoes.core.ISystem;
-import echoes.utils.LinkedList;
-
+import hecho.core.ISystem;
+import hecho.utils.LinkedList;
+ 
 /**
  * SystemList  
  * 

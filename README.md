@@ -66,7 +66,7 @@ abstract Name(String) from String to String {
   public function new(name:String) this = name;
 }
 
-class Movement extends echoes.System {
+class Movement extends hecho.System {
   // @update-functions will be called for every entity that contains all the defined components;
   // All args are interpreted as components, except Float (reserved for delta time) and Int/Entity;
   @update function updateBody(pos:Position, vel:Velocity, dt:Float, entity:Entity) {
@@ -85,7 +85,7 @@ class Movement extends echoes.System {
   }
 }
 
-class NamePrinter extends echoes.System {
+class NamePrinter extends hecho.System {
   // All of necessary for meta-functions views will be defined and initialized under the hood, 
   // but it is also possible to define the View manually (initialization is still not required) 
   // for additional features such as counting and sorting entities;
@@ -98,7 +98,7 @@ class NamePrinter extends echoes.System {
   }
 }
 
-class Render extends echoes.System {
+class Render extends hecho.System {
   var scene:DisplayObjectContainer;
   // There are @a, @u and @r shortcuts for @added, @update and @removed metas;
   // @added/@removed-functions are callbacks that are called when an entity is added/removed from the view;

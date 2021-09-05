@@ -1,4 +1,4 @@
-package echoes;
+package hecho;
 
 /**
  * System  
@@ -27,9 +27,9 @@ package echoes;
  * @author https://github.com/deepcake
  */
 #if !macro
-@:autoBuild(echoes.core.macro.SystemBuilder.build())
+@:autoBuild(hecho.core.macro.SystemBuilder.build())
 #end
-class System implements echoes.core.ISystem {
+class System implements hecho.core.ISystem {
 
 
     #if echoes_profiling
