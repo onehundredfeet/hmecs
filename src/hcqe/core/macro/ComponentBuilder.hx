@@ -1,9 +1,9 @@
-package hecho.core.macro;
+package hcqe.core.macro;
 
 #if macro
-import hecho.core.macro.MacroTools.*;
+import hcqe.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
-using hecho.core.macro.MacroTools;
+using hcqe.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 using Lambda;
@@ -36,7 +36,7 @@ class ComponentBuilder {
                 var componentContainerTypePath = tpath([], componentContainerTypeName, []);
                 var componentContainerComplexType = TPath(componentContainerTypePath);
 
-                var def = macro class $componentContainerTypeName implements hecho.core.ICleanableComponentContainer {
+                var def = macro class $componentContainerTypeName implements hcqe.core.ICleanableComponentContainer {
 
                     static var instance = new $componentContainerTypePath();
 
@@ -46,10 +46,10 @@ class ComponentBuilder {
 
                     // instance
 
-                    var storage = new hecho.core.Storage<$componentComplexType>();
+                    var storage = new hcqe.core.Storage<$componentComplexType>();
 
                     function new() {
-                        @:privateAccess hecho.Workflow.definedContainers.push(this);
+                        @:privateAccess hcqe.Workflow.definedContainers.push(this);
                     }
 
                     public inline function get(id:Int):$componentComplexType {

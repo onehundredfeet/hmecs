@@ -1,4 +1,4 @@
-package hecho.core.macro;
+package hcqe.core.macro;
 
 #if macro
 import haxe.macro.ComplexTypeTools;

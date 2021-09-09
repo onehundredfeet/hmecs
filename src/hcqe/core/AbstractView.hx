@@ -1,4 +1,4 @@
-package hecho.core;
+package hcqe.core;
 
 /**
  * ...
@@ -61,7 +61,7 @@ class AbstractView {
     }
 
 
-    @:allow(hecho.Workflow) function addIfMatched(id:Int) {
+    @:allow(hcqe.Workflow) function addIfMatched(id:Int) {
         if (isMatched(id)) {
             if (collected[id] != true) {
                 collected[id] = true;
@@ -71,7 +71,7 @@ class AbstractView {
         }
     }
 
-    @:allow(hecho.Workflow) function removeIfExists(id:Int) {
+    @:allow(hcqe.Workflow) function removeIfExists(id:Int) {
         if (collected[id] == true) {
             collected[id] = false;
             entities.remove(id);
@@ -80,7 +80,7 @@ class AbstractView {
     }
 
 
-    @:allow(hecho.Workflow) function reset() {
+    @:allow(hcqe.Workflow) function reset() {
         activations = 0;
         Workflow.views.remove(this);
         while (entities.length > 0) {

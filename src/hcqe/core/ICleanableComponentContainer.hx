@@ -1,4 +1,4 @@
-package hecho.core;
+package hcqe.core;
 
 interface ICleanableComponentContainer {
     function exists(id:Int):Bool;

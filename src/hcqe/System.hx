@@ -1,4 +1,4 @@
-package hecho;
+package hcqe;
 
 /**
  * System  
@@ -27,9 +27,9 @@ package hecho;
  * @author https://github.com/deepcake
  */
 #if !macro
-@:autoBuild(hecho.core.macro.SystemBuilder.build())
+@:autoBuild(hcqe.core.macro.SystemBuilder.build())
 #end
-class System implements hecho.core.ISystem {
+class System implements hcqe.core.ISystem {
 
 
     #if echoes_profiling

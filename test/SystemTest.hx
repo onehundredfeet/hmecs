@@ -1,4 +1,4 @@
-import hecho.*;
+import hcqe.*;
 
 using buddy.Should;
 
@@ -365,12 +365,12 @@ class Y {
     public function new() { };
 }
 
-class SystemX extends hecho.System {
+class SystemX extends hcqe.System {
     var x:View<X>;
     var xy:View<X, Y>;
 }
 
-class SystemY extends hecho.System {
+class SystemY extends hcqe.System {
     @u inline function update(y:Y) { }
     @u inline function updatexy(x:X, y:Y, dt:Float) { }
 }

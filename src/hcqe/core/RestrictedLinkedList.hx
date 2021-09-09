@@ -1,10 +1,10 @@
-package hecho.core;
+package hcqe.core;
 
-@:allow(hecho)
+@:allow(hcqe)
 @:forward(head, tail, length, iterator, sort)
-abstract RestrictedLinkedList<T>(hecho.utils.LinkedList<T>) to hecho.utils.LinkedList<T> {
+abstract RestrictedLinkedList<T>(hcqe.utils.LinkedList<T>) to hcqe.utils.LinkedList<T> {
 
-    inline function new() this = new hecho.utils.LinkedList<T>();
+    inline function new() this = new hcqe.utils.LinkedList<T>();
 
     inline function add(item:T) this.add(item);
     inline function pop() return this.pop();

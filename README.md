@@ -5,7 +5,7 @@ Super lightweight Entity Component System framework for Haxe.
 Initially created to learn the power of macros. 
 Focused to be simple and fast. 
 Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fponticelli/edge), [ECX](https://github.com/eliasku/ecx), [ESKIMO](https://github.com/PDeveloper/eskimo) and [Ash-Haxe](https://github.com/nadako/Ash-Haxe)
-Extended to HECHO - For performance improvements with struct only types
+Extended to hcqe - For performance improvements with struct only types
 
 #### Acknowledgement by onehundredfeet
 The original vision that [deepcake](https://github.com/deepcake/echo) had was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had two flaws I wanted to fix. 
@@ -24,9 +24,9 @@ The first version of this will primarily target HashLink, but may be extended to
 
 #### Example
 ```haxe
-import hecho.SystemList;
-import hecho.Workflow;
-import hecho.Entity;
+import hcqe.SystemList;
+import hcqe.Workflow;
+import hcqe.Entity;
 
 class Example {
   static function main() {
@@ -66,7 +66,7 @@ abstract Name(String) from String to String {
   public function new(name:String) this = name;
 }
 
-class Movement extends hecho.System {
+class Movement extends hcqe.System {
   // @update-functions will be called for every entity that contains all the defined components;
   // All args are interpreted as components, except Float (reserved for delta time) and Int/Entity;
   @update function updateBody(pos:Position, vel:Velocity, dt:Float, entity:Entity) {
@@ -85,7 +85,7 @@ class Movement extends hecho.System {
   }
 }
 
-class NamePrinter extends hecho.System {
+class NamePrinter extends hcqe.System {
   // All of necessary for meta-functions views will be defined and initialized under the hood, 
   // but it is also possible to define the View manually (initialization is still not required) 
   // for additional features such as counting and sorting entities;
@@ -98,7 +98,7 @@ class NamePrinter extends hecho.System {
   }
 }
 
-class Render extends hecho.System {
+class Render extends hcqe.System {
   var scene:DisplayObjectContainer;
   // There are @a, @u and @r shortcuts for @added, @update and @removed metas;
   // @added/@removed-functions are callbacks that are called when an entity is added/removed from the view;

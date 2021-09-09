@@ -1,4 +1,4 @@
-package hecho.utils;
+package hcqe.utils;
 
 /**
  * ...
@@ -136,7 +136,7 @@ class LinkedList<T> {
 
 }
 
-@:allow(hecho.utils.LinkedList)
+@:allow(hcqe.utils.LinkedList)
 @:generic
 class LinkedNode<T> {
 
@@ -150,7 +150,7 @@ class LinkedNode<T> {
 
 }
 
-@:allow(hecho.utils.LinkedList)
+@:allow(hcqe.utils.LinkedList)
 @:generic
 class LinkedListIterator<T> {
 

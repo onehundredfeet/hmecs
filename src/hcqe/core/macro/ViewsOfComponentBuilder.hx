@@ -1,9 +1,9 @@
-package hecho.core.macro;
+package hcqe.core.macro;
 
 #if macro
-import hecho.core.macro.MacroTools.*;
+import hcqe.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
-using hecho.core.macro.MacroTools;
+using hcqe.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 
@@ -38,11 +38,11 @@ class ViewsOfComponentBuilder {
 
                     // instance
 
-                    var views = new Array<hecho.core.AbstractView>();
+                    var views = new Array<hcqe.core.AbstractView>();
 
                     function new() { }
 
-                    public inline function addRelatedView(v:hecho.core.AbstractView) {
+                    public inline function addRelatedView(v:hcqe.core.AbstractView) {
                         views.push(v);
                     }
 

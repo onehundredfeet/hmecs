@@ -1,10 +1,10 @@
-package hecho.core.macro;
+package hcqe.core.macro;
 
 import haxe.Log;
 #if macro
-import hecho.core.macro.MacroTools.*;
-import hecho.core.macro.ViewBuilder.*;
-import hecho.core.macro.ComponentBuilder.*;
+import hcqe.core.macro.MacroTools.*;
+import hcqe.core.macro.ViewBuilder.*;
+import hcqe.core.macro.ComponentBuilder.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Printer;
@@ -13,7 +13,7 @@ import haxe.macro.Type.ClassField;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
-using hecho.core.macro.MacroTools;
+using hcqe.core.macro.MacroTools;
 using StringTools;
 using Lambda;
 
@@ -78,14 +78,14 @@ class SystemBuilder {
             return switch (a.type.followComplexType()) {
                 case macro:StdTypes.Float : macro __dt__;
                 case macro:StdTypes.Int : macro __entity__;
-                case macro:hecho.Entity : macro __entity__;
+                case macro:hcqe.Entity : macro __entity__;
                 default: macro $i{ a.name };
             }
         }
 
         function metaFuncArgIsEntity(a:FunctionArg) {
             return switch (a.type.followComplexType()) {
-                case macro:StdTypes.Int, macro:hecho.Entity : true;
+                case macro:StdTypes.Int, macro:hcqe.Entity : true;
                 default: false;
             }
         }
@@ -104,7 +104,7 @@ class SystemBuilder {
             return switch (a.type.followComplexType()) {
                 case macro:StdTypes.Float : null;
                 case macro:StdTypes.Int : null;
-                case macro:hecho.Entity : null;
+                case macro:hcqe.Entity : null;
                 default: { cls: a.type.followComplexType() };
             }
         }
@@ -184,7 +184,7 @@ class SystemBuilder {
 
                         var viewClsName = getViewName(components);
                         var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
-                        var viewArgs = [ arg('__entity__', macro:hecho.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
+                        var viewArgs = [ arg('__entity__', macro:hcqe.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
 
                         { name: funcName, args: funcCallArgs, view: view, viewargs: viewArgs, type: VIEW_ITER };
 
@@ -244,7 +244,7 @@ class SystemBuilder {
                             macro $i{ f.view.name }.iter($fwrapper);
                         }
                         case ENTITY_ITER: {
-                            macro for (__entity__ in hecho.Workflow.entities) {
+                            macro for (__entity__ in hcqe.Workflow.entities) {
                                 $i{ f.name }($a{ f.args });
                             }
                         }

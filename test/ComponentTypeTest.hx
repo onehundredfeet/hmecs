@@ -1,4 +1,4 @@
-import hecho.*;
+import hcqe.*;
 
 using buddy.Should;
 

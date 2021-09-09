@@ -1,8 +1,8 @@
 using buddy.Should;
 
-import hecho.View;
-import hecho.Workflow;
-import hecho.Entity;
+import hcqe.View;
+import hcqe.Workflow;
+import hcqe.Entity;
 
 class ViewTypeTest extends buddy.BuddySuite {
     public function new() {
@@ -73,7 +73,7 @@ typedef VAVBTypedef = { a:VA, b:VB };
 
 typedef ViewVAVBTypedef = View<{ a:VA, b:VB }>;
 
-class ViewTypeSystem extends hecho.System {
+class ViewTypeSystem extends hcqe.System {
 
     public var func:View<VA->VB->Void>;
 
@@ -107,6 +107,6 @@ class ViewTypeSystem extends hecho.System {
 
 }
 
-class StandaloneVAVBSystem extends hecho.System {
+class StandaloneVAVBSystem extends hcqe.System {
     public static var ab:View<VA, VB>;
 }

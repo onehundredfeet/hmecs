@@ -1,5 +1,5 @@
-package hecho.utils;
-import hecho.utils.LinkedList.LinkedListIterator;
+package hcqe.utils;
+import hcqe.utils.LinkedList.LinkedListIterator;
 #if macro
 import haxe.macro.Expr;
 #end

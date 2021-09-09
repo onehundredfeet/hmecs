@@ -1,4 +1,4 @@
-import hecho.utils.Signal;
+import hcqe.utils.Signal;
 
 using buddy.Should;
 
