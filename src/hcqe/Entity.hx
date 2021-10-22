@@ -25,10 +25,13 @@ abstract Entity(Int) from Int to Int {
      * Creates a new Entity instance  
      * @param immediate immediately adds this entity to the workflow if `true`, otherwise `activate()` call is required
      */
-    public inline function new(immediate = true) {
-        this = Workflow.id(immediate);
+    public inline function new(worlds:Int = 0xffffffff, immediate = true) {
+        this = Workflow.id(immediate, worlds);
     }
 
+    public inline function worlds() {
+        return Workflow.worlds(this);
+    }
 
     /**
      * Adds this entity to the workflow, so it can be collected by views  

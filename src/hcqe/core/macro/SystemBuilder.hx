@@ -27,6 +27,7 @@ class SystemBuilder {
     static var AD_META = [ 'added', 'ad', 'a' ];
     static var RM_META = [ 'removed', 'rm', 'r' ];
     static var UPD_META = [ 'update', 'up', 'u' ];
+    static var WORLD_META = [ 'worlds', 'world', 'wd'];
 
     public static var systemIndex = -1;
     public static var systemIds = new Map<String, Int>();

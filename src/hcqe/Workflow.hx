@@ -23,6 +23,8 @@ class Workflow {
 
     static var statuses = new Array<Status>();
 
+    static var worldFlags = new Array<Int>();
+
     // all of every defined component container
     static var definedContainers = new Array<ICleanableComponentContainer>();
     // all of every defined view
@@ -113,6 +115,7 @@ class Workflow {
 
         idPool.splice(0, idPool.length);
         statuses.splice(0, statuses.length);
+        worldFlags.splice(0, worldFlags.length);
 
         nextId = INVALID_ID + 1;
     }
@@ -154,7 +157,7 @@ class Workflow {
 
     // Entity
 
-    @:allow(hcqe.Entity) static function id(immediate:Bool):Int {
+    @:allow(hcqe.Entity) static function id(immediate:Bool, worlds:Int):Int {
         var id = idPool.pop();
 
         if (id == null) {
@@ -167,9 +170,33 @@ class Workflow {
         } else {
             statuses[id] = Inactive;
         }
+        worldFlags[id] = worlds;
         return id;
     }
 
+    @:allow(hcqe.Entity) static function worlds(id:Int) {
+        if (status(id) == Active) {
+            return worldFlags[id];
+        }
+        return 0;
+    }
+    @:allow(hcqe.Entity) static function setWorlds(id:Int,flags:Int) {
+        if (status(id) == Active) {
+            worldFlags[id] = flags;
+        }
+        return 0;
+    }
+    @:allow(hcqe.Entity) static function joinWorld(id:Int, idx:Int) {
+        if (status(id) == Active) {
+            worldFlags[id] = worldFlags[id] | (1 << idx);
+        }
+    }
+
+    @:allow(hcqe.Entity) static function leaveWorld(id:Int, idx:Int) {
+        if (status(id) == Active) {
+            worldFlags[id] = worldFlags[id] & ~(1 << idx);
+        }
+    }
     @:allow(hcqe.Entity) static function cache(id:Int) {
         // Active or Inactive
         if (status(id) < Cached) {
