@@ -174,7 +174,7 @@ class Workflow {
         return id;
     }
 
-    @:allow(hcqe.Entity) static function worlds(id:Int) {
+    public static function worlds(id:Int) {
         if (status(id) == Active) {
             return worldFlags[id];
         }

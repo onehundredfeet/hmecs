@@ -1,5 +1,6 @@
 package hcqe.core.macro;
 
+import haxe.macro.Printer;
 #if macro
 import hcqe.core.macro.MacroTools.*;
 import hcqe.core.macro.ComponentBuilder.*;
@@ -154,7 +155,14 @@ class ViewBuilder {
                 {
                     var checks = components.map(function(c) return macro $i{ getComponentContainer(c.cls).followName() }.inst().exists(id));
                     var cond = checks.slice(1).fold(function(check1, check2) return macro $check1 && $check2, checks[0]);
-                    var body = macro return $cond;
+                    var body;
+                    if (worlds != 0xffffffff) {
+                        var worldVal : Expr = { expr : EConst(CInt('${worlds}')), pos: Context.currentPos()};
+                        var entityWorld = macro hcqe.Workflow.worlds(id);
+                        body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
+                    } else {
+                        body = macro return $cond;
+                    }
                     def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:Int)], macro:Bool, body, Context.currentPos()));
                 }
 
