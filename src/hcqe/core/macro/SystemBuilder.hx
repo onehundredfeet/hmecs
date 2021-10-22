@@ -110,6 +110,25 @@ class SystemBuilder {
             }
         }
 
+        function metaFieldToWorlds(f : Field) {
+            var worldData = f.meta.filter( function (m) return WORLD_META.contains(m.name));
+            if (worldData != null && worldData.length > 0) {
+                var wd = worldData[0];
+                if (wd.params.length > 0) {
+                    var p : Expr = wd.params[0];
+                    switch(p.expr) {
+                        case EConst(c):
+                            switch(c) {
+                                case CInt(v):
+                                    return Std.parseInt(v);
+                                default:
+                            }
+                        default:
+                    }
+                }
+            }
+            return 0xffffffff;
+        }
 
         var definedViews = new Array<{ name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> }>();
 
@@ -151,14 +170,15 @@ class SystemBuilder {
                     case FFun(func): {
 
                         var components = func.args.map(metaFuncArgToComponentDef).filter(notNull);
+                        var worlds = metaFieldToWorlds(field);
 
                         if (components.length > 0) {
 
-                            var viewClsName = getViewName(components);
+                            var viewClsName = getViewName(components, worlds);
                             var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
 
                             if (view == null) {
-                                var viewComplexType = getView(components);
+                                var viewComplexType = getView(components, worlds);
 
                                 // instant define and init
                                 fields.push(fvar([], [], viewClsName.toLowerCase(), viewComplexType, macro $i{viewClsName}.inst(), Context.currentPos()));
@@ -179,11 +199,13 @@ class SystemBuilder {
                     var funcName = field.name;
                     var funcCallArgs = func.args.map(metaFuncArgToCallArg).filter(notNull);
                     var components = func.args.map(metaFuncArgToComponentDef).filter(notNull);
+                    var worlds = metaFieldToWorlds(field);
 
                     if (components.length > 0) {
                         // view iterate
 
-                        var viewClsName = getViewName(components);
+
+                        var viewClsName = getViewName(components,worlds);
                         var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
                         var viewArgs = [ arg('__entity__', macro:hcqe.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
 

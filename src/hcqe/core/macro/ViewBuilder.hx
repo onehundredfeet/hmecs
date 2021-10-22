@@ -24,17 +24,16 @@ class ViewBuilder {
     public static var viewCache = new Map<String, { cls:ComplexType, components:Array<{ cls:ComplexType }> }>();
 
 
-    public static function getView(components:Array<{ cls:ComplexType }>):ComplexType {
-        return createViewType(components).toComplexType();
+    public static function getView(components:Array<{ cls:ComplexType }>, worlds : Int):ComplexType {
+        return createViewType(components, worlds).toComplexType();
     }
 
-    public static function getViewName(components:Array<{ cls:ComplexType }>) {
-        return 'ViewOf_' + components.map(function(c) return c.cls).joinFullName('_');
+    public static function getViewName(components:Array<{ cls:ComplexType }>, worlds :Int) {
+        return 'ViewOf_' + StringTools.hex(worlds, 8) + "_" + components.map(function(c) return c.cls).joinFullName('_');
     }
 
-
-    public static function build() {
-        return createViewType(parseComponents(Context.getLocalType()));
+    public static function build(worlds = 0xffffffff) {
+        return createViewType(parseComponents(Context.getLocalType()),worlds);
     }
 
 
@@ -73,8 +72,8 @@ class ViewBuilder {
     }
 
 
-    public static function createViewType(components:Array<{ cls:ComplexType }>) {
-        var viewClsName = getViewName(components);
+    public static function createViewType(components:Array<{ cls:ComplexType }>, worlds : Int) {
+        var viewClsName = getViewName(components, worlds);
         var viewType = viewTypeCache.get(viewClsName);
 
         if (viewType == null) { 

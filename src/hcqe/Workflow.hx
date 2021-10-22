@@ -182,19 +182,25 @@ class Workflow {
     }
     @:allow(hcqe.Entity) static function setWorlds(id:Int,flags:Int) {
         if (status(id) == Active) {
+            remove(id);
             worldFlags[id] = flags;
+            add(id);
         }
         return 0;
     }
     @:allow(hcqe.Entity) static function joinWorld(id:Int, idx:Int) {
         if (status(id) == Active) {
+            remove(id);
             worldFlags[id] = worldFlags[id] | (1 << idx);
+            add(id);
         }
     }
 
     @:allow(hcqe.Entity) static function leaveWorld(id:Int, idx:Int) {
         if (status(id) == Active) {
+            remove(id);
             worldFlags[id] = worldFlags[id] & ~(1 << idx);
+            add(id);
         }
     }
     @:allow(hcqe.Entity) static function cache(id:Int) {
