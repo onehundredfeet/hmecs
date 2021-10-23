@@ -54,6 +54,10 @@ class SystemList implements ISystem {
         }
     }
 
+    @:final  public function forceUpdate( dt : Float ) : Void {
+        __update__(dt);
+    }
+
     @:noCompletion @:final public function __update__(dt:Float) {
         #if echoes_profiling
         var __timestamp__ = Date.now().getTime();
