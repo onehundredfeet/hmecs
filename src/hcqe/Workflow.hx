@@ -30,6 +30,15 @@ class Workflow {
     // all of every defined view
     static var definedViews = new Array<AbstractView>();
 
+    static var _singleton : Entity;
+
+    public static function singleton() {
+        if (_singleton.isValid()) {
+            return _singleton;
+        }
+        _singleton = new Entity();
+        return _singleton;
+    }
     /**
      * All active entities
      */

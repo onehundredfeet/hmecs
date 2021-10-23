@@ -1,4 +1,5 @@
---class-path tests
 --class-path src
+--class-path test
+--library tink_macro
 -hl bin/test.hl
 --main Test
