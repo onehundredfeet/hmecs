@@ -282,7 +282,6 @@ class SystemBuilder {
         var ufuncs = fields.filter(notSkipped).filter(containsMeta.bind(_, UPD_META)).map(procMetaFunc).filter(notNull);
         var afuncs = fields.filter(notSkipped).filter(containsMeta.bind(_, AD_META)).map(procMetaFunc).filter(notNull);
         var rfuncs = fields.filter(notSkipped).filter(containsMeta.bind(_, RM_META)).map(procMetaFunc).filter(notNull);
-
         var listeners = afuncs.concat(rfuncs);
 
         // define signal listener wrappers
@@ -333,7 +332,8 @@ class SystemBuilder {
             .concat(
                 // init signal listener wrappers
                 listeners.map(function(f) {
-                    var fwrapper = { expr: EFunction(null, { args: f.viewargs, ret: macro:Void, expr: macro $i{ f.name }($a{ f.args }) }), pos: Context.currentPos()};
+                    // DCE is eliminating this on 'full'
+                    var fwrapper = { expr: EFunction(FunctionKind.FAnonymous, { args: f.viewargs, ret: macro:Void, expr: macro $i{ f.name }($a{ f.args }) }), pos: Context.currentPos()};
                     return macro $i{'__${f.name}_listener__'} = $fwrapper;
                 })
             )
@@ -425,7 +425,7 @@ class SystemBuilder {
                         pack: p.pack,
                         name: p.name,
                         pos: clsType.pos,
-                        kind: TDClass(tpath("echoes", "System")),
+                        kind: TDClass(tpath("hcqe", "System")),
                         fields: fields
                     }
                     trace(new Printer().printTypeDefinition(td));
