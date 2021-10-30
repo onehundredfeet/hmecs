@@ -73,11 +73,6 @@ class Workflow {
     public static var systems(default, null) = new RestrictedLinkedList<ISystem>();
 
 
-    /**
-     * All factories that can create archetypes
-     */
-     public static var factories(default, null) = new RestrictedLinkedList<Factory>();
-
     #if echoes_profiling
     static var updateTime = .0;
     #end
