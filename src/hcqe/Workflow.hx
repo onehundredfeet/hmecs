@@ -1,10 +1,27 @@
 package hcqe;
 
+#if macro
+import haxe.macro.Expr;
+using hcqe.core.macro.ComponentBuilder;
+using hcqe.core.macro.ViewsOfComponentBuilder;
+using hcqe.core.macro.MacroTools;
+using haxe.macro.Context;
+using Lambda;
+using haxe.macro.ComplexTypeTools;
+using haxe.macro.Context;
+using haxe.macro.Expr;
+using haxe.macro.TypeTools;
+import haxe.macro.Expr.ComplexType;
+using hcqe.core.macro.MacroTools;
+using haxe.macro.Context;
+#end
+
 import hcqe.Entity.Status;
 import hcqe.core.AbstractView;
 import hcqe.core.ICleanableComponentContainer;
 import hcqe.core.ISystem;
 import hcqe.core.RestrictedLinkedList;
+
 
 /**
  *  Workflow  
@@ -32,6 +49,8 @@ class Workflow {
 
     static var _singleton : Entity;
 
+    static var _worldSingletons : Array<Entity> = [];
+
     public static function singleton() {
         if (_singleton.isValid()) {
             return _singleton;
@@ -53,6 +72,11 @@ class Workflow {
      */
     public static var systems(default, null) = new RestrictedLinkedList<ISystem>();
 
+
+    /**
+     * All factories that can create archetypes
+     */
+     public static var factories(default, null) = new RestrictedLinkedList<Factory>();
 
     #if echoes_profiling
     static var updateTime = .0;
@@ -189,6 +213,146 @@ class Workflow {
         }
         return 0;
     }
+
+    public static function worldEntity( idx : Int ) {
+        if (!_worldSingletons[idx].isValid()) {
+            _worldSingletons[idx] = new Entity();
+        }
+       
+        return _worldSingletons[idx];
+    }
+/*
+    macro function getContainer( containerName : String ) {
+        var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
+        return macro @:privateAccess $i{ containerName }.inst();
+    }
+
+
+  /**
+     * Creates a new archetype that makes entities
+     * @param components comma separated list of components of `Any` type
+     * @return `Entity`
+     */
+   
+
+   
+     #if macro
+     static function exprOfClassToTypeName( e : ExprOf<Class<Any>>)  {
+         return e.parseClassName().getType().follow().toComplexType().typeFullName();
+     }
+     static function exprOfClassToTypePath( e : ExprOf<Class<Any>>) : TypePath{
+        var x  =  e.parseClassName().getType().toComplexType().followComplexType();
+        //trace("tpath: " + x);
+        switch(x) {
+            case TPath(p): return p;
+            default:
+        }
+        return null;
+    }
+     
+     /*
+     static function exprOfClassToTypePath( e : ExprOf<Class<Any>>) : TPath {
+        var x =  e.parseClassName().getType().follow().toComplexType();
+        trace("tpath: " + x);
+        return x;
+    }
+    */
+    // var allocation = components.map(function(c) return  {expr: ENew(exprOfClassToTypePath(c)),  pos:Context.currentPos()});
+     #end
+    
+/*
+     macro public static function addNoViews(self:Expr, components:Array<ExprOf<Any>>):ExprOf<hcqe.Entity> {
+        if (components.length == 0) {
+            Context.error('Required one or more Components', Context.currentPos());
+        }
+
+       
+        var body = []
+            .concat(
+                addComponentsToContainersExprs
+            )
+            
+            .concat([ 
+                macro return __entity__ 
+            ]);
+
+        var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:hcqe.Entity) $b{body} )($self);
+
+        return ret;
+    }
+*/
+     macro public static function createFactory( worlds : ExprOf<Any>, components:Array<ExprOf<Class<Any>>>) { //:ExprOf<hcqe.Factory> {
+        if (components.length == 0) {
+            Context.error('Required one or more Components', Context.currentPos());
+        }
+
+        //var pp = new haxe.macro.Printer();
+        var classNames = components.map(function(c) return  {expr: EConst(CString(exprOfClassToTypeName(c))),  pos:Context.currentPos()});
+       var allocation = components.map(function(c) return {expr: ENew(exprOfClassToTypePath(c), []),  pos:Context.currentPos()} );
+
+       var addComponentsToContainersExprs = components.map(function(c) {
+          // trace("parsetname|" + c.parseClassName().getType().toComplexType());
+           var containerName = (c.parseClassName().getType().follow().toComplexType()).getComponentContainer().followName();
+           var alloc = {expr: ENew(exprOfClassToTypePath(c), []), pos:Context.currentPos()};
+           return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $alloc);
+       });
+
+       //trace(pp.printExprs(allocation, "\n"));
+
+        var body = []
+        .concat([ 
+            macro var _views : Array<hcqe.core.AbstractView> = []
+        ])
+        .concat([ 
+           // macro trace("Tracing against " + hcqe.Workflow.views.length)
+        ])
+        .concat([ 
+            macro 
+            for (v in hcqe.Workflow.views) {
+                if (@:privateAccess  v.isMatchedByTypes( $worlds, $a{classNames})) {
+                    _views.push( v );
+                }
+            }
+        ])
+        .concat([ 
+            macro return function( ) {
+                var __entity__ = new hcqe.Entity($worlds);
+//                hcqe.Workflow.addNoViews(e, $a{allocation});
+                $b{addComponentsToContainersExprs};
+
+                //trace("adding to views " + _views.length);
+                for(v in _views) {
+                    //trace("adding to view ");
+                    @:privateAccess v.addMatchedNew(__entity__ );
+                }
+                return __entity__;
+            }
+        ])
+        ;
+
+        var ret = macro inline ( function() $b{body} )();
+
+        //trace(pp.printExpr(ret));
+        return ret;
+
+        #if false
+        .concat(
+            addComponentsToContainersExprs
+        )
+        var addComponentsToContainersExprs = components
+            .map(function(c) {
+                var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
+                return macro @:privateAccess $i{ containerName }.inst();
+            });
+
+      
+      
+        return macro "";
+        #end
+    }  
+    #if factories
+#end
+
     @:allow(hcqe.Entity) static function setWorlds(id:Int,flags:Int) {
         if (status(id) == Active) {
             remove(id);
@@ -262,6 +426,7 @@ class Workflow {
         }
         return ret.substr(0, ret.length - 1);
     }
+
 
 
 }

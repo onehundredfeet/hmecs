@@ -51,6 +51,12 @@ class AbstractView {
         return false;
     }
 
+    function isMatchedByTypes(worlds:Int, typeNames : Array<String>):Bool {
+        // each required component exists in component container with this id
+        // macro generated
+        return false;
+    }
+
 
     function dispatchAddedCallback(id:Int) {
         // macro generated
@@ -69,6 +75,13 @@ class AbstractView {
                 dispatchAddedCallback(id);
             }
         }
+    }
+
+
+    @:allow(hcqe.Workflow) function addMatchedNew(id:Int) {
+        collected[id] = true;
+        entities.add(id);
+        dispatchAddedCallback(id);
     }
 
     @:allow(hcqe.Workflow) function removeIfExists(id:Int) {

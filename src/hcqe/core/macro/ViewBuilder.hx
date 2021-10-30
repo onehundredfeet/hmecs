@@ -167,6 +167,28 @@ class ViewBuilder {
                     def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:Int)], macro:Bool, body, Context.currentPos()));
                 }
 
+                 // isMatchedByTypes
+                 {
+                    var classNames = components.map(function(c) return  {expr: EConst(CString(c.cls.typeFullName())),  pos:Context.currentPos()});       
+                    var checks = classNames.map(function(c) return macro names.contains( $c ));
+                    var cond = checks.slice(1).fold(function(check1, check2) return macro $check1 && $check2, checks[0]);
+                    var body;
+                    if (worlds != 0xffffffff) {
+                        var worldVal : Expr = { expr : EConst(CInt('${worlds}')), pos: Context.currentPos()};
+                        var entityWorld = macro world;
+                        body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
+                    } else {
+                        body = macro return $cond;
+                    }
+                    var show = macro trace("names " + names);
+                    body = {expr :EBlock([ body]), pos: Context.currentPos()};
+                    def.fields.push(ffun([ AOverride, APublic], 'isMatchedByTypes', [arg('world', macro:Int), arg('names', macro:Array<String>)], macro:Bool, body, Context.currentPos()));
+                    var xx = ffun([ AOverride, APublic], 'isMatchedByTypes', [arg('world', macro:Int), arg('names', macro:Array<String>)], macro:Bool, body, Context.currentPos());
+
+                    var pp = new Printer();
+                    //trace('isMatchedByTypes : ${pp.printField(xx)}');
+                }
+
                 // toString
                 {
                     var componentNames = components.map(function(c) return c.cls.typeValidShortName()).join(', ');
