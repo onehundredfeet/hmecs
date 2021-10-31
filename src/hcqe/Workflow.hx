@@ -31,7 +31,7 @@ import hcqe.core.RestrictedLinkedList;
 class Workflow {
 
 
-    @:allow(hcqe.Entity) static inline var INVALID_ID = -1;
+    @:allow(hcqe.Entity) static inline var INVALID_ID = 0;
 
 
     static var nextId = INVALID_ID + 1;
@@ -398,6 +398,7 @@ class Workflow {
     }
 
     @:allow(hcqe.Entity) static inline function status(id:Int):Status {
+        if (id <= Workflow.INVALID_ID) return Status.Invalid;
         return statuses[id];
     }
 

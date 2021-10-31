@@ -30,7 +30,6 @@ class SystemBuilder {
     static var AD_META = [ 'added', 'ad', 'a' ];
     static var RM_META = [ 'removed', 'rm', 'r' ];
     static var UPD_META = [ 'update', 'up', 'u' ];
-    static var WORLD_META = [ 'worlds', 'world', 'wd'];
 
     public static var systemIndex = -1;
     public static var systemIds = new Map<String, Int>();
@@ -113,64 +112,7 @@ class SystemBuilder {
             }
         }
 
-        function getNumericValue( e : Expr ) : Dynamic {
-            switch(e.expr) {
-                case EConst(c):
-                    switch(c) {
-                        case CInt(v):
-                            return Std.parseInt(v);
-                        case CFloat(f):
-                            return Std.parseFloat(f);
-                        case CString(s, kind):
-//                            var x = macro $i{s};
-  //                          trace('x = ${x}');
-                            return getNumericValue(Context.parse(s, Context.currentPos()) );
-                        case CIdent(s):
-                            return s;
-                        default:
-                    }
-                case EField( e, f ):
-                    var path = Types.asTypePath(getNumericValue(e));
-                    var ct = Types.asComplexType( getNumericValue(e));
-                    var tt = ComplexTypeTools.toType(ct);
-                    var c = TypeTools.getClass(tt);
-                    var cf = TypeTools.findField(c,f, true );
-                    var ce = Context.getTypedExpr( cf.expr() );
-                    return getNumericValue( ce );
-                case EBinop(op, e1, e2) :
-                    var a = getNumericValue(e1);
-                    var b = getNumericValue(e2);
-                    if (a != null && b != null)
-                        switch(op) {
-                            case OpShl: return getNumericValue(e1) << getNumericValue(e2);
-                            case OpShr: return getNumericValue(e1) >> getNumericValue(e2);
-                            case OpAdd: return getNumericValue(e1) + getNumericValue(e2);
-                            case OpMult: return getNumericValue(e1) * getNumericValue(e2);
-                            case OpOr: return getNumericValue(e1) | getNumericValue(e2);
-                            case OpAnd: return getNumericValue(e1) & getNumericValue(e2);
-
-                            default: trace('Unknown op: ${op}');
-                        }
-                    
-                default:
-                    trace('Unknown expr: ${e.expr}');
-            }
-            return null;
-        }
-        function metaFieldToWorlds(f : Field) : Int {
-            var worldData = f.meta.filter( function (m) return WORLD_META.contains(m.name));
-            if (worldData != null && worldData.length > 0) {
-                var wd = worldData[0];
-                if (wd.params.length > 0) {
-                    var p : Expr = wd.params[0];
-                    var pe = getNumericValue( p );
-                    if (pe != null) {
-                        return pe;
-                    }
-                }
-            }
-            return 0xffffffff;
-        }
+        
 
         var definedViews = new Array<{ name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> }>();
 

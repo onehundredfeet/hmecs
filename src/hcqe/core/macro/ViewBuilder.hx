@@ -1,7 +1,9 @@
 package hcqe.core.macro;
 
-import haxe.macro.Printer;
+
 #if macro
+import haxe.macro.Printer;
+import tink.core.Ref;
 import hcqe.core.macro.MacroTools.*;
 import hcqe.core.macro.ComponentBuilder.*;
 import hcqe.core.macro.ViewsOfComponentBuilder.*;
@@ -34,18 +36,24 @@ class ViewBuilder {
         return 'ViewOf_' + StringTools.hex(worlds, 8) + "_" + components.map(function(c) return c.cls).joinFullName('_');
     }
 
-    public static function build(worlds = 0xffffffff) {
-        return createViewType(parseComponents(Context.getLocalType()),worlds);
+    public static function build() {
+        var x = Context.getLocalType();
+        
+        //trace('Creating view for: ${x} -> ${x.getName()}');
+
+        var worlds : Ref<Int> = 0xffffffff;
+        var components = parseComponents(Context.getLocalType(), worlds);
+        return createViewType(components, worlds.value);
     }
 
 
-    static function parseComponents(type:haxe.macro.Type) {
+    static function parseComponents(type:haxe.macro.Type, worlds : tink.core.Ref<Int>) {
         return switch(type) {
             case TInst(_, params = [x = TType(_, _) | TAnonymous(_) | TFun(_, _)]) if (params.length == 1):
-                parseComponents(x);
+                parseComponents(x,worlds );
 
             case TType(_.get() => { type: x }, []):
-                parseComponents(x);
+                parseComponents(x,worlds);
 
             case TAnonymous(_.get() => p):
                 p.fields
@@ -63,7 +71,21 @@ class ViewBuilder {
                     })
                     .map(function(ct) return { cls: ct });
 
-            case TInst(_, types):
+            case TInst(c, types):
+                types = types.filter(function(tt){
+                    switch(tt) {
+                        case TInst(t, params):
+                            if (StringTools.startsWith(t.get().name, "SWorlds.")) {
+                                worlds.value = MacroTools.stringToWorlds( t.get().name.substring(1));
+                                return false;
+                            }
+                            return true;
+                        default:
+                            return true;
+                    }
+                    
+                });
+                
                 types
                     .map(function(t) return t.follow().toComplexType())
                     .map(function(ct) return { cls: ct });
@@ -74,7 +96,7 @@ class ViewBuilder {
     }
 
 
-    public static function createViewType(components:Array<{ cls:ComplexType }>, worlds : Int) {
+    public static function createViewType(components:Array<{ cls:ComplexType }>, worlds = 0xffffffff) {
         var viewClsName = getViewName(components, worlds);
         var viewType = viewTypeCache.get(viewClsName);
 

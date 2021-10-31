@@ -18,7 +18,7 @@ using Lambda;
 abstract Entity(Int) from Int to Int {
 
 
-    public static inline var INVALID:Entity = Workflow.INVALID_ID;
+    public static inline var INVALID_ENTITY:Entity = Workflow.INVALID_ID;
 
 
     /**
@@ -48,6 +48,14 @@ abstract Entity(Int) from Int to Int {
         Workflow.remove(this);
     }
 
+        /**
+     * Returns the status of this entity: Active, Inactive, Cached or Invalid. Method is used mostly for debug purposes  
+     * @return Status
+     */
+     public inline  function status():Status {
+        return Workflow.status(this);
+    }
+
     /**
      * Returns `true` if this entity is added to the workflow, otherwise returns `false`  
      * @return Bool
@@ -60,17 +68,11 @@ abstract Entity(Int) from Int to Int {
      * Returns `true` if this entity has not been destroyed and therefore can be used safely  
      * @return Bool
      */
-    public inline function isValid():Bool {
+    public inline  function isValid():Bool {
         return Workflow.status(this) < Cached;
     }
 
-    /**
-     * Returns the status of this entity: Active, Inactive, Cached or Invalid. Method is used mostly for debug purposes  
-     * @return Status
-     */
-    public inline function status():Status {
-        return Workflow.status(this);
-    }
+
 
     /**
      * Removes all of associated to this entity components.  
