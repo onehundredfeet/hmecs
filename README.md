@@ -8,10 +8,12 @@ Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fpon
 Extended to hcqe - For performance improvements with struct only types
 
 #### Acknowledgement by onehundredfeet
-The original vision that [deepcake](https://github.com/deepcake/echo) had was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had two flaws I wanted to fix. 
+The original vision by [deepcake](https://github.com/deepcake/echo) was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had a few flaws I wanted to fix. 
 
 - The first was that it had a single world.  This is fine for most applications, but world partitions are sometimes necessary.
 - The second is that struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  Passing it off to SIMD processing is also difficult as each element needs to be brought in separately. 
+- The performance at scale with lots of views makes adding and removing entities expensive. I plan on adding a factory system to speed the creation of entities.
+- Singleton components are not natively supported
 
 The first version of this will primarily target HashLink, but may be extended to others.
 
@@ -21,6 +23,7 @@ The first version of this will primarily target HashLink, but may be extended to
  * `View<T1, T2, TN>` is a collection of entities containing all components of the required types `T1, T2, TN`. Views are placed in Systems. 
  * `System` is a place for processing a certain set of data represented by views. 
  * To organize systems in phases can be used the `SystemList`. 
+* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view.
 
 #### Example
 ```haxe
@@ -29,6 +32,11 @@ import hcqe.Workflow;
 import hcqe.Entity;
 
 class Example {
+  final FIELDS = 1;
+  final FOREST = 2;
+  final WORLDS_FIELDS = 1 << FIELDS;
+  final WORLDS_FOREST = 1 << FOREST;
+
   static function main() {
     var physics = new SystemList()
       .add(new Movement())
@@ -37,8 +45,8 @@ class Example {
     Workflow.addSystem(physics);
     Workflow.addSystem(new Render()); // or just add systems directly
 
-    var john = createRabbit(0, 0, 1, 1, 'John');
-    var jack = createRabbit(5, 5, 1, 1, 'Jack');
+    var john = createRabbit(0, 0, 1, 1, 'John', WORLDS_FIELDS); // Only in the forest
+    var jack = createRabbit(5, 5, 1, 1, 'Jack', WORLDS_FIELDS | WORLDS_FOREST); // In both worlds
 
     trace(jack.exists(Position)); // true
     trace(jack.get(Position).x); // 5
@@ -49,15 +57,15 @@ class Example {
     Workflow.update(1.0);
   }
   static function createTree(x:Float, y:Float) {
-    return new Entity()
+    return new Entity()   // Trees are present in all worlds
       .add(new Position(x, y))
       .add(new Sprite('assets/tree.png'));
   }
-  static function createRabbit(x:Float, y:Float, vx:Float, vy:Float, name:Name) {
+  static function createRabbit(x:Float, y:Float, vx:Float, vy:Float, name:Name, worlds:Int) {
     var pos = new Position(x, y);
     var vel = new Velocity(vx, vy);
     var spr = new Sprite('assets/rabbit.png');
-    return new Entity().add(pos, vel, spr, name);
+    return new Entity(worlds).add(pos, vel, spr, name); // rabbits can be in world specified
   }
 }
 
@@ -73,6 +81,18 @@ class Movement extends hcqe.System {
     pos.x += vel.x * dt;
     pos.y += vel.y * dt;
   }
+
+  //Can narrow the scope of the update to only entities that are present in a world set
+  @worlds("Example.WORLDS_FOREST") // These are bit flags.  The string is evaulate as an expression
+  @update function inForest(name:Name) {
+    trace('${name} is in the forest'); // Will display Jack
+  }
+
+  @worlds("Example.WORLDS_FIELDS") // These are bit flags.  The string is evaulate as an expression
+  @update function inFields(name:Name) {
+    trace('${name} is in the fields'); // Will display Jack & John
+  }
+
   // If @update-functions are defined without components, 
   // they are called only once per system's update;
   @update function traceHello(dt:Float) {
