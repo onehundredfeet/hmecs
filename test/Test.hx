@@ -11,11 +11,17 @@ class Y {
 }
 
 class SystemX extends hcqe.System {
+    final TESTWORLDA : Int = 5;
     var x:View<X>;
     var xy:View<X, Y>;
 }
 
+
+
+
 class SystemY extends hcqe.System {
+    
+    @:worlds(SystemX.TESTWORLDA)
     @u inline function update(y:Y) { 
         trace("SystemY|update");
     }
@@ -27,6 +33,7 @@ class SystemY extends hcqe.System {
 
 
 class Test {
+    public final TESTWORLD = 5;
     public static function main() {
 
         Workflow.addSystem(new SystemX());

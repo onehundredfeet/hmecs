@@ -27,9 +27,9 @@ class SystemBuilder {
 
     static var PRINT_META = [ 'print' ];
 
-    static var AD_META = [ 'added', 'ad', 'a' ];
-    static var RM_META = [ 'removed', 'rm', 'r' ];
-    static var UPD_META = [ 'update', 'up', 'u' ];
+    static var AD_META = [ 'added', 'ad', 'a', ':added', ':ad', ':a' ];
+    static var RM_META = [ 'removed', 'rm', 'r',':removed', ':rm', ':r' ];
+    static var UPD_META = [ 'update', 'up', 'u', ':update', ':up', ':u' ];
 
     public static var systemIndex = -1;
     public static var systemIds = new Map<String, Int>();
@@ -47,7 +47,7 @@ class SystemBuilder {
     }
 
 
-    public static function build() {
+    public static function build(debug: Bool = false) {
         var fields = Context.getBuildFields();
 
         var ct = Context.getLocalType().toComplexType();
@@ -112,8 +112,6 @@ class SystemBuilder {
             }
         }
 
-        
-
         var definedViews = new Array<{ name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> }>();
 
         // find and init manually defined views
@@ -142,8 +140,6 @@ class SystemBuilder {
                     default:
                 }
             } );
-
-
 
         // find and init meta defined views
         fields
@@ -359,9 +355,9 @@ class SystemBuilder {
 
 
         var clsType = Context.getLocalClass().get();
-
-        if (PRINT_META.exists(function(m) return clsType.meta.has(m))) {
-            switch (ct) {
+        
+        if (debug || PRINT_META.exists(function(m) return clsType.meta.has(m))) {
+            switch (Context.getLocalType().toComplexType()) {
                 case TPath(p): {
                     var td:TypeDefinition = {
                         pack: p.pack,
@@ -377,7 +373,6 @@ class SystemBuilder {
                 }
             }
         }
-
         return fields;
     }
 

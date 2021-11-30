@@ -3,3 +3,5 @@
 *.map
 /bin
 dump
+out.txt
+.DS_Store
