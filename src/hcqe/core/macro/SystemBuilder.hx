@@ -1,10 +1,11 @@
 package hcqe.core.macro;
 
+
+import haxe.Log;
+#if macro
 import haxe.macro.MacroStringTools;
 import tink.macro.Types;
 import haxe.macro.ExprTools;
-import haxe.Log;
-#if macro
 import hcqe.core.macro.MacroTools.*;
 import hcqe.core.macro.ViewBuilder.*;
 import hcqe.core.macro.ComponentBuilder.*;
@@ -17,8 +18,12 @@ using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
 using hcqe.core.macro.MacroTools;
+using tink.MacroApi;
 using StringTools;
 using Lambda;
+
+typedef ViewRec = { name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> };
+typedef UpdateRec = { name: String,  rawargs: Array<FunctionArg>, meta:haxe.ds.Map<String,Array<Array<Expr>>>, args: Array<Expr>, view: ViewRec, viewargs: Array<FunctionArg>, type: MetaFuncType };
 
 class SystemBuilder {
 
@@ -30,6 +35,9 @@ class SystemBuilder {
     static var AD_META = [ 'added', 'ad', 'a', ':added', ':ad', ':a' ];
     static var RM_META = [ 'removed', 'rm', 'r',':removed', ':rm', ':r' ];
     static var UPD_META = [ 'update', 'up', 'u', ':update', ':up', ':u' ];
+    static var PARALLEL_META =  ':parallel' ;
+    static var FORK_META =  ':fork' ;
+    static var JOIN_META =  ':join' ;
 
     public static var systemIndex = -1;
     public static var systemIds = new Map<String, Int>();
@@ -46,6 +54,7 @@ class SystemBuilder {
             });
     }
 
+    static var _printer = new Printer();
 
     public static function build(debug: Bool = false) {
         var fields = Context.getBuildFields();
@@ -173,7 +182,7 @@ class SystemBuilder {
             } );
 
 
-        function procMetaFunc(field:Field) {
+        function procMetaFunc(field:Field) : UpdateRec{
             return switch (field.kind) {
                 case FFun(func): {
                     var funcName = field.name;
@@ -184,12 +193,11 @@ class SystemBuilder {
                     if (components.length > 0) {
                         // view iterate
 
-
                         var viewClsName = getViewName(components,worlds);
                         var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
                         var viewArgs = [ arg('__entity__', macro:hcqe.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
 
-                        { name: funcName, args: funcCallArgs, view: view, viewargs: viewArgs, type: VIEW_ITER };
+                        { name: funcName, rawargs: func.args, meta:field.meta.toMap(), args: funcCallArgs, view: view, viewargs: viewArgs, type: VIEW_ITER };
 
                     } else {
 
@@ -197,11 +205,11 @@ class SystemBuilder {
                             // every entity iterate
                             Context.warning("Are you sure you want to iterate over all the entities? If not, you should add some components or remove the Entity / Int argument", field.pos);
 
-                            { name: funcName, args: funcCallArgs, view: null, viewargs: null, type: ENTITY_ITER };
+                            { name: funcName,  rawargs: func.args, meta:field.meta.toMap(), args: funcCallArgs, view: null, viewargs: null, type: ENTITY_ITER };
 
                         } else {
                             // single call
-                            { name: funcName, args: funcCallArgs, view: null, viewargs: null, type: SINGLE_CALL };
+                            { name: funcName,  rawargs: func.args, meta:field.meta.toMap(), args: funcCallArgs, view: null, viewargs: null, type: SINGLE_CALL };
                         }
 
                     }
@@ -242,8 +250,46 @@ class SystemBuilder {
                             macro $i{ f.name }($a{ f.args });
                         }
                         case VIEW_ITER: {
-                            var fwrapper = { expr: EFunction(null, { args: f.viewargs, ret: macro:Void, expr: macro $i{ f.name }($a{ f.args }) }), pos: Context.currentPos()};
-                            macro $i{ f.view.name }.iter($fwrapper);
+                            var maxParallel : Null<Int> = null;
+                            if (f.meta.exists(":parallel")) {
+                                // TODO - Make it run in parallel :)
+                                var pm = f.meta[":parallel"][0]; //only pay attention to the first one
+                                if (pm.length > 0) {
+                                    maxParallel = pm[0].getNumericValue();
+                                } else {
+                                    maxParallel = -1;
+                                }
+                            }
+                            
+                            var callTypeMap = new Map<String, Expr>();
+
+                            callTypeMap["Float".asComplexType().followComplexType().typeFullName()] = macro __dt__;
+                            callTypeMap["hcqe.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
+                            for (c in f.view.components) {
+                                var ct = c.cls.typeFullName();
+                                callTypeMap[ct] = macro $i{ getComponentContainer(c.cls).followName() + "_inst" }[__entity__];
+                            }
+
+                            var remappedArgs = f.rawargs.map( (x) -> {
+                                var ctn = x.type.followComplexType().typeFullName();
+                                if (callTypeMap.exists(ctn)) {
+                                    return callTypeMap[ctn];
+                                }
+                                throw 'No experession for type ${ctn}';
+                            });
+
+                            var cache = f.view.components.map(function(c) {
+                                var ct = getComponentContainer(c.cls).followName();
+//                                return (ct + "_inst").define( macro $i{ ct }.inst().getStorage().getArray(), TPath({pack:[], name:"Array", params:[TPType(c.cls)]}) );
+                                  return (ct + "_inst").define( macro $i{ ct }.inst().getStorage().getArray() );
+                            });
+                            
+                            var loop = macro 
+                                for (__entity__ in $i{ f.view.name }.entities) {
+                                    $i{ '${f.name}' }($a{ remappedArgs });
+                                }
+
+                            cache.concat([loop]).toBlock();
                         }
                         case ENTITY_ITER: {
                             macro for (__entity__ in hcqe.Workflow.entities) {
@@ -373,6 +419,11 @@ class SystemBuilder {
                 }
             }
         }
+//        trace("New Func");
+        for (f in fields) {
+            //trace(_printer.printField(f));
+        }
+
         return fields;
     }
 

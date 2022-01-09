@@ -1,7 +1,7 @@
 package hcqe.core;
 
-#if echoes_vector_container
-
+#if (hcqe_vector_container || false)
+@:generic
 class Storage<T> {
 
 
@@ -14,38 +14,38 @@ class Storage<T> {
     }
 
 
-    public function add(id:Int, c:T) {
+    public inline function add(id:Int, c:T) {
         if (id >= size) {
             growTo(id);
         }
         h[id] = c;
     }
 
-    public function get(id:Int):T {
+    public inline function get(id:Int):T {
         return id < size ? h[id] : null;
     }
 
-    public function remove(id:Int) {
+    public inline function remove(id:Int) {
         if (id < size) {
             h[id] = null;
         }
     }
 
-    public function exists(id:Int) {
+    public inline function exists(id:Int) {
         return id < size ? h[id] != null : false;
     }
 
-    public function reset() {
+    public inline function reset() {
         init(64);
     }
 
 
-    inline function init(size:Int) {
+    inline  function init(size:Int) {
         this.size = size;
         this.h = new haxe.ds.Vector<T>(size);
     }
 
-    inline function growTo(id:Int) {
+    inline  function growTo(id:Int) {
         var nsize = size;
 
         while (id >= nsize) {
@@ -63,34 +63,38 @@ class Storage<T> {
 
 }
 
-#elseif echoes_array_container
+#elseif (hcqe_array_container || true)
 
-abstract Storage<T>(Array<T>) {
-
+@:generic
+class Storage<T> {
+    var  _array : Array<T>;
 
     public inline function new() {
-        this = new Array<T>();
+        _array = new Array<T>();
     }
 
+    public inline function getArray() : Array<T> {
+        return _array;
+    }
 
     public inline function add(id:Int, c:T) {
-        this[id] = c;
+        _array[id] = c;
     }
 
     public inline function get(id:Int):T {
-        return this[id];
+        return _array[id];
     }
 
     public inline function remove(id:Int) {
-        this[id] = null;
+        _array[id] = null;
     }
 
     public inline function exists(id:Int) {
-        return this[id] != null;
+        return _array[id] != null;
     }
 
     public inline function reset() {
-        this.splice(0, this.length);
+        _array.splice(0, _array.length);
     }
 
 
@@ -99,6 +103,7 @@ abstract Storage<T>(Array<T>) {
 #else
 
 @:forward(get, remove, exists)
+@:generic
 abstract Storage<T>(haxe.ds.IntMap<T>) {
 
 
@@ -117,7 +122,9 @@ abstract Storage<T>(haxe.ds.IntMap<T>) {
         while (--i > -1) this.remove(i); 
     }
 
-
+    public inline function getArray() : Array<T>{
+        return null;
+    }
 }
 
 #end

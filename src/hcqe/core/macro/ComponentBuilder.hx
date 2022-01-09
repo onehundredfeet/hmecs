@@ -1,5 +1,6 @@
 package hcqe.core.macro;
 
+import haxe.macro.Expr.MetadataEntry;
 #if macro
 import hcqe.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
@@ -48,6 +49,10 @@ class ComponentBuilder {
 
                     var storage = new hcqe.core.Storage<$componentComplexType>();
 
+                    public inline function getStorage() : hcqe.core.Storage<$componentComplexType> {
+                        return storage;
+                    }
+                    
                     function new() {
                         @:privateAccess hcqe.Workflow.definedContainers.push(this);
                     }
@@ -78,6 +83,7 @@ class ComponentBuilder {
 
                 }
 
+                def.meta.push(":generic".meta(def.pos));
                 Context.defineType(def);
 
                 componentContainerType = componentContainerComplexType.toType();

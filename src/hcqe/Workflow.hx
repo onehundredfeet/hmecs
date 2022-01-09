@@ -31,7 +31,7 @@ import hcqe.core.RestrictedLinkedList;
 class Workflow {
 
 
-    @:allow(hcqe.Entity) static inline var INVALID_ID = 0;
+    @:allow(hcqe.Entity) static inline final INVALID_ID = 0;
 
 
     static var nextId = INVALID_ID + 1;
@@ -348,7 +348,7 @@ class Workflow {
     #if factories
 #end
 
-    @:allow(hcqe.Entity) static function setWorlds(id:Int,flags:Int) {
+    @:allow(hcqe.Entity) static inline function setWorlds(id:Int,flags:Int) {
         if (status(id) == Active) {
             remove(id);
             worldFlags[id] = flags;
@@ -356,7 +356,7 @@ class Workflow {
         }
         return 0;
     }
-    @:allow(hcqe.Entity) static function joinWorld(id:Int, idx:Int) {
+    @:allow(hcqe.Entity) static inline function joinWorld(id:Int, idx:Int) {
         if (status(id) == Active) {
             remove(id);
             worldFlags[id] = worldFlags[id] | (1 << idx);
@@ -364,14 +364,14 @@ class Workflow {
         }
     }
 
-    @:allow(hcqe.Entity) static function leaveWorld(id:Int, idx:Int) {
+    @:allow(hcqe.Entity) static inline function leaveWorld(id:Int, idx:Int) {
         if (status(id) == Active) {
             remove(id);
             worldFlags[id] = worldFlags[id] & ~(1 << idx);
             add(id);
         }
     }
-    @:allow(hcqe.Entity) static function cache(id:Int) {
+    @:allow(hcqe.Entity) static inline function cache(id:Int) {
         // Active or Inactive
         if (status(id) < Cached) {
             removeAllComponentsOf(id);
@@ -381,7 +381,7 @@ class Workflow {
         }
     }
 
-    @:allow(hcqe.Entity) static function add(id:Int) {
+    @:allow(hcqe.Entity) static inline function add(id:Int) {
         if (status(id) == Inactive) {
             statuses[id] = Active;
             entities.add(id);
@@ -389,7 +389,7 @@ class Workflow {
         }
     }
 
-    @:allow(hcqe.Entity) static function remove(id:Int) {
+    @:allow(hcqe.Entity) static inline function remove(id:Int) {
         if (status(id) == Active) {
             for (v in views) v.removeIfExists(id);
             entities.remove(id);
