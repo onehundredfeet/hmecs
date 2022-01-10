@@ -20,6 +20,7 @@ using tink.MacroApi;
 	var SINGLETON = 2;
 	var TAG = 3;
 
+	//    var GLOBAL = 4;
 	public static function getStorageType(ct:ComplexType) {
 		var storageType = StorageType.FAST;
 
@@ -69,8 +70,10 @@ class StorageInfo {
 		containerTypeNameExpr = macro $i{containerTypeName};
 		componentIndex = i;
 
+		// TODO [RC] Figure out a way of stripping singleEntity from unnecessary classes
 		var def = macro class $containerTypeName {
 			public static var storage:$storageCT;
+			public static var owner:Int = 0;
 		};
 
 		Context.defineType(def);
@@ -99,7 +102,7 @@ class StorageInfo {
 		return switch (storageType) {
 			case FAST: macro $containerTypeNameExpr.storage[$entityVar] != null;
 			case COMPACT: macro $containerTypeNameExpr.storage.exists($entityVar);
-			case SINGLETON: macro true;
+			case SINGLETON: macro $containerTypeNameExpr.owner == $entityVar;
 			case TAG: macro $containerTypeNameExpr.storage[$entityVar] != null;
 		};
 	}
@@ -112,7 +115,10 @@ class StorageInfo {
 		return switch (storageType) {
 			case FAST: macro $containerTypeNameExpr.storage[$entityVarExpr] = $componentExpr;
 			case COMPACT: macro $containerTypeNameExpr.storage.set($entityVarExpr, $componentExpr);
-			case SINGLETON: macro $containerTypeNameExpr.storage = $componentExpr;
+			case SINGLETON: macro { 
+                if ($containerTypeNameExpr.owner != 0) throw 'Singleton already has an owner';
+                $containerTypeNameExpr.storage = $componentExpr; $containerTypeNameExpr.owner = $entityVarExpr;
+            };
 			case TAG: macro $containerTypeNameExpr.storage[$entityVarExpr] = $componentExpr;
 		};
 	}
@@ -121,7 +127,10 @@ class StorageInfo {
 		return switch (storageType) {
 			case FAST: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = null;
 			case COMPACT: macro @:privateAccess $containerTypeNameExpr.storage.remove($entityVarExpr);
-			case SINGLETON: macro {};
+			case SINGLETON: macro if ($containerTypeNameExpr.owner == $entityVarExpr) {
+					$containerTypeNameExpr.storage = null;
+					$containerTypeNameExpr.owner = 0;
+				}
 			case TAG: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = null;
 		};
 	}
