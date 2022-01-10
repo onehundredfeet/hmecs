@@ -21,8 +21,7 @@ using tink.MacroApi;
 	var TAG = 3;
 
 	//  var GLOBAL = 4;     // Exists on every entity
-    //  var TRANSIENT = 5;  // Designed to be wiped every frame
-
+	//  var TRANSIENT = 5;  // Designed to be wiped every frame
 	public static function getStorageType(ct:ComplexType) {
 		var storageType = StorageType.FAST;
 
@@ -72,12 +71,12 @@ class StorageInfo {
 		containerTypeNameExpr = macro $i{containerTypeName};
 		componentIndex = i;
 
-		// TODO [RC] Figure out a way of stripping singleEntity from unnecessary classes
-		var def = macro class $containerTypeName {
+		var def = (storageType == SINGLETON) ? macro class $containerTypeName {
 			public static var storage:$storageCT;
 			public static var owner:Int = 0;
-		};
-
+		} : macro class $containerTypeName {
+			public static var storage:$storageCT = new $tp ();
+			};
 		Context.defineType(def);
 
 		containerCT = containerTypeName.asComplexType();
@@ -117,10 +116,12 @@ class StorageInfo {
 		return switch (storageType) {
 			case FAST: macro $containerTypeNameExpr.storage[$entityVarExpr] = $componentExpr;
 			case COMPACT: macro $containerTypeNameExpr.storage.set($entityVarExpr, $componentExpr);
-			case SINGLETON: macro { 
-                if ($containerTypeNameExpr.owner != 0) throw 'Singleton already has an owner';
-                $containerTypeNameExpr.storage = $componentExpr; $containerTypeNameExpr.owner = $entityVarExpr;
-            };
+			case SINGLETON: macro {
+					if ($containerTypeNameExpr.owner != 0)
+						throw 'Singleton already has an owner';
+					$containerTypeNameExpr.storage = $componentExpr;
+					$containerTypeNameExpr.owner = $entityVarExpr;
+				};
 			case TAG: macro $containerTypeNameExpr.storage[$entityVarExpr] = $componentExpr;
 		};
 	}
