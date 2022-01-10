@@ -20,7 +20,9 @@ using tink.MacroApi;
 	var SINGLETON = 2;
 	var TAG = 3;
 
-	//    var GLOBAL = 4;
+	//  var GLOBAL = 4;     // Exists on every entity
+    //  var TRANSIENT = 5;  // Designed to be wiped every frame
+
 	public static function getStorageType(ct:ComplexType) {
 		var storageType = StorageType.FAST;
 
@@ -61,7 +63,7 @@ class StorageInfo {
 			case FAST: tpath([], "Array", [TPType(followedCT)]);
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
 			case SINGLETON: followedCT.toString().asTypePath();
-			case TAG: tpath([], "Array", [TPType(followedCT)]);
+			case TAG: tpath([], "Array", [TPType(followedCT)]); // TODO [RC] - Optimize tag path
 		});
 
 		storageCT = TPath(tp);
