@@ -14,6 +14,7 @@ The original vision by [deepcake](https://github.com/deepcake/echo) was fantasti
 - The second is that struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  Passing it off to SIMD processing is also difficult as each element needs to be brought in separately. 
 - The performance at scale with lots of views makes adding and removing entities expensive. I plan on adding a factory system to speed the creation of entities.
 - Singleton components are not natively supported
+- Ability to customize the storage type per component
 
 The first version of this will primarily target HashLink, but may be extended to others.
 
@@ -30,6 +31,21 @@ The first version of this will primarily target HashLink, but may be extended to
 import hcqe.SystemList;
 import hcqe.Workflow;
 import hcqe.Entity;
+
+@:storage(FAST)
+class SmallComponent {
+  public function new(){}
+}
+
+@:storage(COMPACT)
+class HeavyComponent {
+  public function new(){}
+}
+
+@:storage(SINGLETON)
+class SingletonComponent {
+  public function new(){}
+}
 
 class Example {
   final FIELDS = 1;
@@ -52,6 +68,7 @@ class Example {
     trace(jack.get(Position).x); // 5
     jack.remove(Position); // oh no!
     jack.add(new Position(1, 1)); // okay
+    jack.add(new SingletonComponent()); // Only one can be added globally at any one time
 
     // also somewhere should be Workflow.update call on every tick
     Workflow.update(1.0);
@@ -59,13 +76,14 @@ class Example {
   static function createTree(x:Float, y:Float) {
     return new Entity()   // Trees are present in all worlds
       .add(new Position(x, y))
-      .add(new Sprite('assets/tree.png'));
+      .add(new Sprite('assets/tree.png'))
+      .add(new HeavyComponent());
   }
   static function createRabbit(x:Float, y:Float, vx:Float, vy:Float, name:Name, worlds:Int) {
     var pos = new Position(x, y);
     var vel = new Velocity(vx, vy);
     var spr = new Sprite('assets/rabbit.png');
-    return new Entity(worlds).add(pos, vel, spr, name); // rabbits can be in world specified
+    return new Entity(worlds).add(pos, vel, spr, name, new SmallComponent()); // rabbits can be in world specified
   }
 }
 
