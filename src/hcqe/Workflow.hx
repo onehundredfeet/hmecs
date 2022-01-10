@@ -287,9 +287,15 @@ class Workflow {
 
        var addComponentsToContainersExprs = components.map(function(c) {
           // trace("parsetname|" + c.parseClassName().getType().toComplexType());
+          var info = (c.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+
+            trace('add and alloc ${c}');
+            return info.getAllocAddExpr( macro __entity__ );
+            /*
            var containerName = (c.parseClassName().getType().follow().toComplexType()).getComponentContainer().followName();
            var alloc = {expr: ENew(exprOfClassToTypePath(c), []), pos:Context.currentPos()};
            return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $alloc);
+           */
        });
 
        //trace(pp.printExprs(allocation, "\n"));

@@ -116,7 +116,7 @@ class ViewBuilder {
                 var signalTypePath = tpath(['hcqe', 'utils'], 'Signal', [ TPType(signalTypeParamComplexType) ]);
 
                 // signal args for dispatch() call
-                var signalArgs = [ macro id ].concat(components.map(function(c) return macro $i{ getComponentContainer(c.cls).followName() }.inst().get(id)));
+                var signalArgs = [ macro id ].concat(components.map(function(c) return getLookup(c.cls, macro id )));
 
                 // component related views
                 var addViewToViewsOfComponent = components.map(function(c) {
@@ -165,7 +165,7 @@ class ViewBuilder {
                 // iter
                 {
                     var funcComplexType = TFunction([ macro:hcqe.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
-                    var funcCallArgs = [ macro __entity__ ].concat(components.map(function(c) return macro $i{ getComponentContainer(c.cls).followName() }.inst().get(__entity__)));
+                    var funcCallArgs = [ macro __entity__ ].concat(components.map(function(c) return getComponentContainerInfo(c.cls).getGetExpr(macro __entity__)));
                     var body = macro {
                         for (__entity__ in entities) {
                             f($a{ funcCallArgs });
@@ -176,7 +176,7 @@ class ViewBuilder {
 
                 // isMatched
                 {
-                    var checks = components.map(function(c) return macro $i{ getComponentContainer(c.cls).followName() }.inst().exists(id));
+                    var checks = components.map(function(c) return getComponentContainerInfo(c.cls).getExistsExpr( macro id));
                     var cond = checks.slice(1).fold(function(check1, check2) return macro $check1 && $check2, checks[0]);
                     var body;
                     if (worlds != 0xffffffff) {

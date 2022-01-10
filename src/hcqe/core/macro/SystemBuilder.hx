@@ -267,7 +267,8 @@ class SystemBuilder {
                             callTypeMap["hcqe.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
                             for (c in f.view.components) {
                                 var ct = c.cls.typeFullName();
-                                callTypeMap[ct] = macro $i{ getComponentContainer(c.cls).followName() + "_inst" }[__entity__];
+                                var info = getComponentContainerInfo(c.cls);
+                                callTypeMap[ct] = info.getGetExpr(macro __entity__,  info.fullName + "_inst");
                             }
 
                             var remappedArgs = f.rawargs.map( (x) -> {
@@ -279,9 +280,8 @@ class SystemBuilder {
                             });
 
                             var cache = f.view.components.map(function(c) {
-                                var ct = getComponentContainer(c.cls).followName();
-//                                return (ct + "_inst").define( macro $i{ ct }.inst().getStorage().getArray(), TPath({pack:[], name:"Array", params:[TPType(c.cls)]}) );
-                                  return (ct + "_inst").define( macro $i{ ct }.inst().getStorage().getArray() );
+                                var info = getComponentContainerInfo(c.cls);
+                                return info.getCacheExpr( info.fullName + "_inst" );
                             });
                             
                             var loop = macro 
@@ -419,9 +419,9 @@ class SystemBuilder {
                 }
             }
         }
-//        trace("New Func");
+        //trace("New Func");
         for (f in fields) {
-            //trace(_printer.printField(f));
+          //  trace(_printer.printField(f));
         }
 
         return fields;

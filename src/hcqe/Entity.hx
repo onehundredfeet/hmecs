@@ -114,8 +114,10 @@ abstract Entity(Int) from Int to Int {
 
         var addComponentsToContainersExprs = components
             .map(function(c) {
-                var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
-                return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+                var info = (c.typeof().follow().toComplexType()).getComponentContainerInfo();
+                return info.getAddExpr( macro __entity__, c );
+                //var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
+                //return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
             });
 
         var body = []
@@ -155,10 +157,8 @@ abstract Entity(Int) from Int to Int {
 
         var removeComponentsFromContainersExprs = cts
             .map(function(ct) {
-                return ct.getComponentContainer().followName();
-            })
-            .map(function(componentContainerClassName) {
-                return macro @:privateAccess $i{ componentContainerClassName }.inst().remove(__entity__);
+                var info = ct.getComponentContainerInfo();
+                return info.getRemoveExpr( macro __entity__ );
             });
 
         var removeEntityFromRelatedViewsExprs = cts
@@ -192,11 +192,11 @@ abstract Entity(Int) from Int to Int {
      * @return `T:Any` component instance
      */
     macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
-        var containerName = (type.parseClassName().getType().follow().toComplexType()).getComponentContainer().followName();
 
-        var ret = macro $i{ containerName }.inst().get($self);
 
-        return ret;
+        var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+
+        return info.getGetExpr( self );
     }
 
     /**
@@ -205,11 +205,9 @@ abstract Entity(Int) from Int to Int {
      * @return `Bool`
      */
     macro public function exists(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-        var containerName = (type.parseClassName().getType().follow().toComplexType()).getComponentContainer().followName();
+        var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
 
-        var ret = macro $i{ containerName }.inst().exists($self);
-
-        return ret;
+        return info.getExistsExpr( self );
     }
 
 
