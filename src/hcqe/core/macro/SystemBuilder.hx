@@ -419,9 +419,9 @@ class SystemBuilder {
                 }
             }
         }
-        trace("New Func");
+//        trace("New Func");
         for (f in fields) {
-            trace(_printer.printField(f));
+            //trace(_printer.printField(f));
         }
 
         return fields;

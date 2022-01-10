@@ -342,6 +342,8 @@ class Workflow {
         )
         var addComponentsToContainersExprs = components
             .map(function(c) {
+                var info = (c.typeof().follow().toComplexType()).getComponentContainerInfo();
+
                 var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
                 return macro @:privateAccess $i{ containerName }.inst();
             });
