@@ -113,11 +113,15 @@ class SystemBuilder {
         }
 
         function metaFuncArgToComponentDef(a:FunctionArg) {
+
+
             return switch (a.type.followComplexType()) {
                 case macro:StdTypes.Float : null;
                 case macro:StdTypes.Int : null;
                 case macro:hcqe.Entity : null;
-                default: { cls: a.type.followComplexType() };
+                default: 
+                    var mm = a.meta.toMap();
+                    mm.exists(":local") ? null : { cls: a.type.followComplexType() };
             }
         }
 
@@ -262,7 +266,7 @@ class SystemBuilder {
                             }
                             
                             var callTypeMap = new Map<String, Expr>();
-
+                            var callNameMap = new Map<String, Expr>();
                             callTypeMap["Float".asComplexType().followComplexType().typeFullName()] = macro __dt__;
                             callTypeMap["hcqe.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
                             for (c in f.view.components) {
@@ -271,18 +275,33 @@ class SystemBuilder {
                                 callTypeMap[ct] = info.getGetExpr(macro __entity__,  info.fullName + "_inst");
                             }
 
-                            var remappedArgs = f.rawargs.map( (x) -> {
-                                var ctn = x.type.followComplexType().typeFullName();
-                                if (callTypeMap.exists(ctn)) {
-                                    return callTypeMap[ctn];
-                                }
-                                throw 'No experession for type ${ctn}';
-                            });
-
                             var cache = f.view.components.map(function(c) {
                                 var info = getComponentContainerInfo(c.cls);
                                 return info.getCacheExpr( info.fullName + "_inst" );
                             });
+
+                            for (a in f.rawargs) {
+                                var am = a.meta.toMap();
+                                var local = am.get(":local");
+                                if (local != null && local.length > 0 && local[0].length > 0) {
+                                    callNameMap[a.name] = macro $i{"__l_" + a.name};
+                                    cache.push( ("__l_" + a.name).define(local[0][0]));
+                                }
+                            }
+
+                            var remappedArgs = f.rawargs.map( (x) -> {
+                                var ctn = x.type.followComplexType().typeFullName();
+                                if (callNameMap.exists(x.name)) {
+                                    return callNameMap[x.name];
+                                }
+                                if (callTypeMap.exists(ctn)) {
+                                    return callTypeMap[ctn];
+                                }
+                                
+                                throw 'No experession for type ${ctn}';
+                            });
+
+                            
                             
                             var loop = macro 
                                 for (__entity__ in $i{ f.view.name }.entities) {
@@ -419,9 +438,9 @@ class SystemBuilder {
                 }
             }
         }
-//        trace("New Func");
+        //trace("New Func");
         for (f in fields) {
-            //trace(_printer.printField(f));
+          //  trace(_printer.printField(f));
         }
 
         return fields;

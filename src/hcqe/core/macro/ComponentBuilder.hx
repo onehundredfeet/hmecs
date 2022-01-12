@@ -138,23 +138,6 @@ class StorageInfo {
 		};
 	}
 
-	public function getAllocAddExpr(entityVarExpr:Expr):Expr {
-		throw "Unimplemented";
-		/*
-			var sid = EConst(CIdent(storageCT.toString())).at();
-
-			return switch(storageType) {
-				case FAST:  macro $sid[ $entityVarExpr ];
-				case COMPACT: macro $sid.map.get($entityVarExpr);
-				case SINGLETON: macro $sid.instance;
-				case TAG: macro $sid[ $entityVarExpr];
-			};
-
-			var containerName = (c.parseClassName().getType().follow().toComplexType()).getComponentContainer().followName();
-			var alloc = {expr: ENew(exprOfClassToTypePath(c), []), pos:Context.currentPos()};
-			return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $alloc);
-		 */
-	}
 
 	public final givenCT:ComplexType;
 	public final followedCT:ComplexType;
