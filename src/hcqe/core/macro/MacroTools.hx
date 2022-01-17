@@ -12,8 +12,8 @@ import haxe.macro.Expr.Position;
 import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.Type.ClassField;
-import tink.macro.Types;
 
+using tink.MacroApi;
 using haxe.macro.Context;
 using Lambda;
 
@@ -313,6 +313,22 @@ class MacroTools {
 				trace('Unknown expr: ${e.expr}');
 		}
 		return null;
+	}
+
+
+	public static function exprOfClassToTypePath(e:ExprOf<Class<Any>>):TypePath {
+		var x = followComplexType(parseClassName(e).getType().toComplexType());
+		// trace("tpath: " + x);
+		switch (x) {
+			case TPath(p):
+				return p;
+			default:
+		}
+		return null;
+	}
+
+	public static function constructExpr( tp : TypePath, ?position : Position ) {
+		return {expr: ENew(tp, []), pos: (position == null) ? Context.currentPos() : position};
 	}
 }
 #end
