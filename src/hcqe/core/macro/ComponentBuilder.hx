@@ -15,13 +15,14 @@ import haxe.macro.Expr;
 using tink.MacroApi;
 
 @:enum abstract StorageType(Int) from Int to Int {
-	var FAST = 0;
-	var COMPACT = 1;
-	var SINGLETON = 2;
-	var TAG = 3;
+	var FAST = 0;			// An array the length of all entities, with non-null meaning membership
+	var COMPACT = 1;		// A map from entity to members
+	var SINGLETON = 2;		// A single reference with a known entity owner
+	var TAG = 3;			// An bitfield the length of all entities, with ON | OFF meaning membership
 
 	//  var GLOBAL = 4;     // Exists on every entity
-	//  var TRANSIENT = 5;  // Designed to be wiped every frame
+	//  var TRANSIENT = 5;  // Automatically removed every tick
+	//  var NONE = 6; 		// This class is not allowed to be used as a component
 	public static function getStorageType(ct:ComplexType) {
 		var storageType = StorageType.FAST;
 

@@ -26,7 +26,7 @@ class PoolBuilder {
         var atalloc = constructExpr( tp );
 
         fields.push(fvar(null, [AStatic], "__pool", at, atalloc , Context.currentPos() ));
-        fields.push(ffun(null, [APublic, AStatic, AInline], "alloc", null, ct, allocBody, Context.currentPos()        ));
+        fields.push(ffun(null, [APublic, AStatic, AInline], "rent", null, ct, allocBody, Context.currentPos()        ));
         fields.push(ffun(null, [APublic, AInline], "retire", [], null, macro __pool.push(this), Context.currentPos()        ));
 
         return fields;
@@ -38,7 +38,7 @@ class PoolBuilder {
         var ct = Context.getLocalType().toComplex();
 
         var body = macro {};
-        fields.push(ffun(null, [APublic, AStatic, AInline], "alloc", null, ct, body, Context.currentPos()        ));
+        fields.push(ffun(null, [APublic, AStatic, AInline], "rent", null, ct, body, Context.currentPos()        ));
 
         fields.push(ffun(null, [APublic, AInline], "retire", [{name:"p", type:ct }], null, body, Context.currentPos()        ));
 
