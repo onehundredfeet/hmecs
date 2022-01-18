@@ -25,6 +25,15 @@ using Lambda;
 typedef ViewRec = { name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> };
 typedef UpdateRec = { name: String,  rawargs: Array<FunctionArg>, meta:haxe.ds.Map<String,Array<Array<Expr>>>, args: Array<Expr>, view: ViewRec, viewargs: Array<FunctionArg>, type: MetaFuncType };
 
+
+enum ParallelType {
+    PUnknown;
+    PFull;
+    PHalf;
+    PDouble;
+    PCount(n : Int);
+}
+
 class SystemBuilder {
 
 
@@ -254,15 +263,28 @@ class SystemBuilder {
                             macro $i{ f.name }($a{ f.args });
                         }
                         case VIEW_ITER: {
-                            var maxParallel : Null<Int> = null;
+                            var maxParallel = PUnknown;
                             if (f.meta.exists(":parallel")) {
                                 // TODO - Make it run in parallel :)
                                 var pm = f.meta[":parallel"][0]; //only pay attention to the first one
                                 if (pm.length > 0) {
-                                    maxParallel = pm[0].getNumericValue();
-                                } else {
-                                    maxParallel = -1;
-                                }
+                                    var pstr = pm[0].getStringValue();
+                                    if (pstr != null) {
+                                        maxParallel = switch (pstr.toUpperCase()) {
+                                            case "FULL": PFull; 
+                                            case "HALF": PHalf;
+                                            case "DOUBLE": PDouble;
+                                            default: PUnknown;
+                                        }
+                                    } 
+
+                                    if (maxParallel == PUnknown) {
+                                        try  maxParallel = PCount(pm[0].getNumericValue()) catch (x){
+                                            throw 'Could not parse parallel value ${x.message}';
+                                        }
+                                    }
+                                    
+                                } 
                             }
                             
                             var callTypeMap = new Map<String, Expr>();

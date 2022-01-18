@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2021 Ryan Cleven 
+Copyright (c) 2022 Ryan Cleven 
 Copyright (c) 2017 [From deepcake/echo]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

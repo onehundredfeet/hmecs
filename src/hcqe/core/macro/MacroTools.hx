@@ -316,6 +316,22 @@ class MacroTools {
 	}
 
 
+	public static function getStringValue(e:Expr):String {
+		var str = e.getString();
+		if (str.isSuccess()) return str.sure();
+		switch (e.expr) {
+			case EConst(c):
+				switch(c) {
+					case CString(s, kind): return s;
+					case CIdent(s): return s;
+					case CFloat(f, s): return f;
+					case CInt(v, s): return v;
+					default:
+				}
+			default:
+		}
+		return null;
+	}
 	public static function exprOfClassToTypePath(e:ExprOf<Class<Any>>):TypePath {
 		var x = followComplexType(parseClassName(e).getType().toComplexType());
 		// trace("tpath: " + x);

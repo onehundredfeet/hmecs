@@ -210,6 +210,11 @@ abstract Entity(Int) from Int to Int {
         return info.getExistsExpr( self );
     }
 
+    macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
+        var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+
+        return info.getExistsExpr( self );
+    }
 
 }
 
