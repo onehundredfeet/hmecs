@@ -36,22 +36,60 @@ import hcqe.SystemList;
 import hcqe.Workflow;
 import hcqe.Entity;
 
-@:storage(FAST)
+
+// Can use vanilla classes with no annotation
+class MediumComponent {
+
+}
+
+@:storage(FAST) // This is the default
 #if !macro @:build(hcqe.core.macro.PoolBuilder.arrayPool()) #end // Implicitly adds rent & retire
+//@:no_autoretire  // default is true | will automatically return the object to the pool on being removed from the entity
 class SmallComponent {
     // Implicitly added by the pool builder
     // static function rent() : SmallComponent 
     // function retire()
+    
+    function new() {
+
+    }
+
+    @:pool_factory  // overrides the default 'new' 
+    static function factory() : SmallComponent{
+      return new SmallComponent();  // Example - This is identical to the generated default factory
+    }
+
+    @:pool_retire  // callback when retiring
+    function onRetire() {
+
+    }
 }
 
 @:storage(COMPACT)
 class HeavyComponent {
   public function new(){}
+
+  @:onadd
+    function onAdd() {
+      // Custom logic when a component is added from an entity
+    }
+
+  @:onremove
+    function onRemove() {
+      // Custom logic when a component is removed from an entity
+    }
 }
 
 @:storage(SINGLETON)  // Simply specifies the storage capacity, does not affect the behaviour
 class SingletonComponent {
   public function new(){}
+}
+
+// 0 is assumed to mean 'empty' with Int abstracts. This may mean that with some cases it is not possible to use this approach.
+abstract MicroComponent(Int) from Int to Int {
+  public function new(x : Int) {
+    this = x;
+  }
 }
 
 class Example {
@@ -88,6 +126,7 @@ class Example {
     return new Entity()   // Trees are present in all worlds
       .add(new Position(x, y))
       .add(new Sprite('assets/tree.png'))
+      .add(new MediumComponent(1))
       .add(new HeavyComponent());
   }
   static function createRabbit(x:Float, y:Float, vx:Float, vy:Float, name:Name, worlds:Int) {

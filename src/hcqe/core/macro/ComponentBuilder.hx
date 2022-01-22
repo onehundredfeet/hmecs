@@ -14,6 +14,8 @@ import haxe.macro.Expr;
 
 using tink.MacroApi;
 
+typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
+
 @:enum abstract StorageType(Int) from Int to Int {
 	var FAST = 0;			// An array the length of all entities, with non-null meaning membership
 	var COMPACT = 1;		// A map from entity to members
@@ -23,13 +25,10 @@ using tink.MacroApi;
 	//  var GLOBAL = 4;     // Exists on every entity
 	//  var TRANSIENT = 5;  // Automatically removed every tick
 	//  var NONE = 6; 		// This class is not allowed to be used as a component
-	public static function getStorageType(ct:ComplexType) {
+	public static function getStorageType(mm :MetaMap) {
 		var storageType = StorageType.FAST;
 
-		var t = ct.followComplexType().mtToType();
-		if (t == null)
-			throw('Could not find type for ${ct}');
-		var mm = t.getMeta().flatMap((x) -> x.get()).toMap();
+
 		var stma = mm.get(":storage");
 
 		if (stma != null) {
@@ -56,9 +55,31 @@ class StorageInfo {
 	public function new(ct:ComplexType, i:Int) {
 		givenCT = ct;
 		followedCT = ct.followComplexType();
-		fullName = followedCT.followComplexType().typeFullName();
-		storageType = StorageType.getStorageType(followedCT);
+		followedT = followedCT.mtToType();
+		if (followedT == null)
+			throw('Could not find type for ${ct}');
+		followedMeta = followedT.getMeta().flatMap((x) -> x.get()).toMap();
 
+		var rt = followedT.followWithAbstracts();
+		
+		emptyExpr = switch(rt) {
+			case TInst(t, params): macro null;
+			case TAbstract(t, params):
+				if (t.get().name == "Int") {
+					macro 0;
+				} else {
+					macro null;
+				}
+				
+			default: macro null;
+		}
+//		trace('Underlaying type is ${rt} with empty ${_printer.printExpr(emptyExpr)}');
+
+//		followedMeta.exists(":empty") ? followedMeta.get(":empty")[0][0] : macro null;
+
+		fullName = followedCT.followComplexType().typeFullName();
+		storageType = StorageType.getStorageType( followedMeta);
+		
 		var tp = (switch (storageType) {
 			case FAST: tpath([], "Array", [TPType(followedCT)]);
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
@@ -102,10 +123,10 @@ class StorageInfo {
 
 	public function getExistsExpr(entityVar:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerTypeNameExpr.storage[$entityVar] != null;
+			case FAST: macro $containerTypeNameExpr.storage[$entityVar] != $emptyExpr;
 			case COMPACT: macro $containerTypeNameExpr.storage.exists($entityVar);
 			case SINGLETON: macro $containerTypeNameExpr.owner == $entityVar;
-			case TAG: macro $containerTypeNameExpr.storage[$entityVar] != null;
+			case TAG: macro $containerTypeNameExpr.storage[$entityVar] != $emptyExpr;
 		};
 	}
 
@@ -129,19 +150,21 @@ class StorageInfo {
 
 	public function getRemoveExpr(entityVarExpr:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = null;
+			case FAST: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = $emptyExpr;
 			case COMPACT: macro @:privateAccess $containerTypeNameExpr.storage.remove($entityVarExpr);
 			case SINGLETON: macro if ($containerTypeNameExpr.owner == $entityVarExpr) {
-					$containerTypeNameExpr.storage = null;
+					$containerTypeNameExpr.storage = $emptyExpr;
 					$containerTypeNameExpr.owner = 0;
 				}
-			case TAG: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = null;
+			case TAG: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = $emptyExpr;
 		};
 	}
 
 
 	public final givenCT:ComplexType;
+	public final followedT:haxe.macro.Type;
 	public final followedCT:ComplexType;
+	public final followedMeta:MetaMap;
 	public final storageType:StorageType;
 	public final storageCT:ComplexType;
 	public final componentIndex:Int;
@@ -150,6 +173,7 @@ class StorageInfo {
 	public final containerType:haxe.macro.Type;
 	public final containerTypeName:String;
 	public final containerTypeNameExpr:Expr;
+	public final emptyExpr:Expr;
 }
 
 class ComponentBuilder {
