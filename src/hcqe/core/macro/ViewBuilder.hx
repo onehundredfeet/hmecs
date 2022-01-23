@@ -9,6 +9,7 @@ import hcqe.core.macro.ComponentBuilder.*;
 import hcqe.core.macro.ViewsOfComponentBuilder.*;
 import haxe.macro.Expr;
 import haxe.macro.Type.ClassField;
+import haxe.macro.Type.ModuleType;
 
 using hcqe.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
@@ -36,7 +37,25 @@ class ViewBuilder {
         return 'ViewOf_' + StringTools.hex(worlds, 8) + "_" + components.map(function(c) return c.cls).joinFullName('_');
     }
 
+    static var callbackEstablished = false;
+
+    static function afterTypingCallback(m:Array<ModuleType>) {
+        #if false
+//        trace('After typing callback : ${m.length}');
+
+        trace ('Total Views ${viewNames.length}');
+        for (n in viewNames) {
+            trace('View ${n}');
+        }
+        #end
+    }
+
     public static function build() {
+        if (!callbackEstablished) {
+            Context.onAfterTyping(afterTypingCallback);
+            callbackEstablished = true;
+        }
+
         var x = Context.getLocalType();
         
         //trace('Creating view for: ${x} -> ${x.getName()}');

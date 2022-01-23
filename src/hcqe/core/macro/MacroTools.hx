@@ -280,10 +280,16 @@ class MacroTools {
 
 				var path = parseClassName(ee);
 				var ct = Types.asComplexType(path);
-				if (ct == null)	throw ('Type not found ${path}');
+				if (ct == null)	{
+					Context.error ('Type not found ${path}', Context.currentPos());
+					return 0.;
+				}
 				var tt = ComplexTypeTools.toType(ct);
 				var c = TypeTools.getClass(tt);
-				if (c == null)	throw ('Type not a class ${path}');
+				if (c == null)	{
+					Context.error ('Type not a class ${path}', Context.currentPos());
+					return 0.;
+				}
 				var cf = TypeTools.findField(c, f, true);
 				if (cf == null)
 					cf = TypeTools.findField(c, f, false);

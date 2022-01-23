@@ -205,9 +205,14 @@ abstract Entity(Int) from Int to Int {
      * @return `Bool`
      */
     macro public function exists(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-        var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
-
-        return info.getExistsExpr( self );
+        try { 
+            var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+            return info.getExistsExpr( self );
+        }
+        catch(e) {
+            Context.error( 'Type not found  ${type.parseClassName()}', Context.currentPos());
+            return macro false;
+        }
     }
 
     macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
