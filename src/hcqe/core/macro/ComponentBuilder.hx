@@ -51,13 +51,25 @@ typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 
 var _printer = new Printer();
 
+@:persistent var createdModule = false;
+final modulePrefix = "__hcqe__storage";
+function getModulePath() : String {
+	if (!createdModule) {
+		Context.defineModule(modulePrefix, []);
+	}
+	return modulePrefix;
+}
+
 class StorageInfo {
 	public function new(ct:ComplexType, i:Int) {
+		//trace ('Generating storage for ${ct.toString()}');
 		givenCT = ct;
 		followedCT = ct.followComplexType();
 		followedT = followedCT.mtToType();
 		if (followedT == null)
 			throw('Could not find type for ${ct}');
+
+
 		followedMeta = followedT.getMeta().flatMap((x) -> x.get()).toMap();
 
 		var rt = followedT.followWithAbstracts();
@@ -90,19 +102,48 @@ class StorageInfo {
 		storageCT = TPath(tp);
 
 		containerTypeName = 'StorageOf' + fullName;
-		containerTypeNameExpr = macro $i{containerTypeName};
+		containerFullName = containerTypeName;
+		containerFullNameExpr = macro $i{containerFullName};
+		//trace ('Container name ${containerFullName}');
+//		containerTypeNameExpr = macro $i{containerTypeName};
 		componentIndex = i;
 
-		var def = (storageType == SINGLETON) ? macro class $containerTypeName {
-			public static var storage:$storageCT;
-			public static var owner:Int = 0;
-		} : macro class $containerTypeName {
-			public static var storage:$storageCT = new $tp ();
-			};
-		Context.defineType(def);
+			
 
-		containerCT = containerTypeName.asComplexType();
-		containerType = containerCT.mtToType();
+		/*
+		var tc = TypeTools.getClass(followedT);
+		var moduleDependecy = null;
+		if (tc != null) {
+			def.pack = followedT.pack();
+
+			trace('Pack is ${def.pack} for ${givenCT.toString()}');
+		}
+		else {
+			Context.error("Component is not a class.", Context.currentPos());
+		}
+*/
+		//def.
+		
+//		Context.registerModuleDependency()
+		containerCT = containerFullName.asComplexType();
+		try {
+			// Defined in a previous build - How does it get invalidated?
+			containerType = Context.getType(containerCT.toString());
+		} catch (err:String) {
+			
+			var def = (storageType == SINGLETON) ? macro class $containerTypeName {
+				public static var storage:$storageCT;
+				public static var owner:Int = 0;
+			} : macro class $containerTypeName {
+				public static var storage:$storageCT = new $tp ();
+			};	
+
+			Context.defineType( def, followedCT.modulePath() );
+		} 
+		
+		if (containerType == null) {
+			containerType = containerCT.mtToType();
+		}
 	}
 
 	public function getGetExpr(entityExpr:Expr, cachedVarName:String = null):Expr {
@@ -114,49 +155,49 @@ class StorageInfo {
 				case TAG: macro $i{cachedVarName}[$entityExpr];
 			};
 		return switch (storageType) {
-			case FAST: macro $containerTypeNameExpr.storage[$entityExpr];
-			case COMPACT: macro $containerTypeNameExpr.storage.get($entityExpr);
-			case SINGLETON: macro $containerTypeNameExpr.storage;
-			case TAG: macro $containerTypeNameExpr.storage[$entityExpr];
+			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
+			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
+			case SINGLETON: macro $containerFullNameExpr.storage;
+			case TAG: macro $containerFullNameExpr.storage[$entityExpr];
 		};
 	}
 
 	public function getExistsExpr(entityVar:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerTypeNameExpr.storage[$entityVar] != $emptyExpr;
-			case COMPACT: macro $containerTypeNameExpr.storage.exists($entityVar);
-			case SINGLETON: macro $containerTypeNameExpr.owner == $entityVar;
-			case TAG: macro $containerTypeNameExpr.storage[$entityVar] != $emptyExpr;
+			case FAST: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
+			case COMPACT: macro $containerFullNameExpr.storage.exists($entityVar);
+			case SINGLETON: macro $containerFullNameExpr.owner == $entityVar;
+			case TAG: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
 		};
 	}
 
 	public function getCacheExpr(cacheVarName:String):Expr {
-		return cacheVarName.define(macro $containerTypeNameExpr.storage);
+		return cacheVarName.define(macro $containerFullNameExpr.storage);
 	}
 
 	public function getAddExpr(entityVarExpr:Expr, componentExpr:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerTypeNameExpr.storage[$entityVarExpr] = $componentExpr;
-			case COMPACT: macro $containerTypeNameExpr.storage.set($entityVarExpr, $componentExpr);
+			case FAST: macro $containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+			case COMPACT: macro $containerFullNameExpr.storage.set($entityVarExpr, $componentExpr);
 			case SINGLETON: macro {
-					if ($containerTypeNameExpr.owner != 0)
+					if ($containerFullNameExpr.owner != 0)
 						throw 'Singleton already has an owner';
-					$containerTypeNameExpr.storage = $componentExpr;
-					$containerTypeNameExpr.owner = $entityVarExpr;
+					$containerFullNameExpr.storage = $componentExpr;
+					$containerFullNameExpr.owner = $entityVarExpr;
 				};
-			case TAG: macro $containerTypeNameExpr.storage[$entityVarExpr] = $componentExpr;
+			case TAG: macro $containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
 		};
 	}
 
 	public function getRemoveExpr(entityVarExpr:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = $emptyExpr;
-			case COMPACT: macro @:privateAccess $containerTypeNameExpr.storage.remove($entityVarExpr);
-			case SINGLETON: macro if ($containerTypeNameExpr.owner == $entityVarExpr) {
-					$containerTypeNameExpr.storage = $emptyExpr;
-					$containerTypeNameExpr.owner = 0;
+			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
+			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.remove($entityVarExpr);
+			case SINGLETON: macro if ($containerFullNameExpr.owner == $entityVarExpr) {
+					$containerFullNameExpr.storage = $emptyExpr;
+					$containerFullNameExpr.owner = 0;
 				}
-			case TAG: macro @:privateAccess $containerTypeNameExpr.storage[$entityVarExpr] = $emptyExpr;
+			case TAG: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
 		};
 	}
 
@@ -172,7 +213,8 @@ class StorageInfo {
 	public final containerCT:ComplexType;
 	public final containerType:haxe.macro.Type;
 	public final containerTypeName:String;
-	public final containerTypeNameExpr:Expr;
+	public final containerFullName:String;
+	public final containerFullNameExpr:Expr;
 	public final emptyExpr:Expr;
 }
 
@@ -184,14 +226,12 @@ class ComponentBuilder {
 		var name = componentComplexType.followName();
 		var info = componentContainerTypeCache.get(name);
 		if (info != null) {
-			Report.gen();
 			return info;
 		}
 
 		info = new StorageInfo(componentComplexType, ++componentIndex);
 		componentContainerTypeCache[name] = info;
 
-		Report.gen();
 		return info;
 	}
 

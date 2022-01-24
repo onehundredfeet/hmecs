@@ -352,5 +352,34 @@ class MacroTools {
 	public static function constructExpr( tp : TypePath, ?position : Position ) {
 		return {expr: ENew(tp, []), pos: (position == null) ? Context.currentPos() : position};
 	}
+
+	public static function pack( t : haxe.macro.Type ) : Array<String> {
+		var c = TypeTools.getClass(t);
+		if (c != null) return c.pack;
+
+		
+		switch(t) {
+			case TAbstract(at, params): Context.error('No abstract component support for ${t.getName()}', Context.currentPos());
+			default:
+		}
+
+		Context.error('Unknown component type', Context.currentPos());
+		return [];
+	}
+
+	public static function modulePath( tp : TypePath ) {
+		return (tp.pack.length > 0) ? tp.pack.join('.') + '.' + tp.name : tp.name;
+	}
+}
+
+class ComplexTools {
+	public static function modulePath( ct : ComplexType ) {
+		var tp = switch(ct) {
+			case TPath(p): p;
+			default: Context.error("Type must have a path", Context.currentPos());
+		}
+
+		return (tp.pack.length > 0) ? tp.pack.join('.') + '.' + tp.name : tp.name;
+	}
 }
 #end
