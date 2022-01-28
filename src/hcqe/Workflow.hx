@@ -1,7 +1,9 @@
 package hcqe;
 
+import haxe.macro.Printer;
 #if macro
 import haxe.macro.Expr;
+import haxe.macro.Type.ModuleType;
 
 using hcqe.core.macro.ComponentBuilder;
 using hcqe.core.macro.ViewsOfComponentBuilder;
@@ -399,15 +401,76 @@ class Workflow {
 		return statuses[id];
 	}
 
+	static var removeAllFunction : (hcqe.Entity) -> Void = null;
+
+	#if macro
+	static var addedLate = false;
+	static var lateDef : TypeDefinition;
+
+	static function defineLateCalls() : TypeDefinition {
+		
+		var containers = ComponentBuilder.containerNames();
+		var removeExprs = new Array<Expr>();
+
+		for (container in containers) {
+			var info = ComponentBuilder.getComponentContainerInfoByName(container);
+			removeExprs.push(info.getRemoveExpr(macro e));
+		}
+
+		var lateClass = macro class LateCalls {
+			public static function removeAllComponents(e : hcqe.Entity ) {
+				trace('Removing all on ${e} ' + ${addedLate.toExpr()});
+				$b{removeExprs}
+			}
+
+			public function getRemoveFunc() : (hcqe.Entity) -> Void{
+				return removeAllComponents;
+			}
+		};
+
+		//var p = new Printer();
+		//trace ('${p.printTypeDefinition(lateClass)}');
+
+		lateClass.meta.push({name:":keep", pos: Context.currentPos()});
+		return lateClass;
+	}
+
+	static function removeCallback(mt : Array<ModuleType>) {
+		if (!addedLate) {
+			defineLateCalls().defineType();
+			addedLate = true;
+		} 
+	}
+
+
+	#end
+	macro static function removeAllComponents(e : Expr) : Expr {
+		Context.onAfterTyping(removeCallback);
+		return macro {
+			if (removeAllFunction == null) {
+				var c = Type.resolveClass("LateCalls");
+				if (c == null) throw "Internal HCQE Error - no LateCalls class available in reflection";
+				var i = Type.createInstance(c,null);
+				if (i == null) throw "Internal HCQE Error - could not instance LateCalls";
+				removeAllFunction = i.getRemoveFunc();
+			}
+			removeAllFunction($e);			
+		}		
+	}
+
 	@:allow(hcqe.Entity) static inline function removeAllComponentsOf(id:Int) {
 		if (status(id) == Active) {
 			for (v in views) {
 				v.removeIfExists(id);
 			}
 		}
+		#if hcqe_legacy_remove
 		for (c in definedContainers) {
 			c.remove(id);
 		}
+		#else
+		removeAllComponents(id);
+		#end
 	}
 
 	@:allow(hcqe.Entity) static inline function printAllComponentsOf(id:Int):String {
