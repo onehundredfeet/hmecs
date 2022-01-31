@@ -1,4 +1,4 @@
-# ecs
+# hmecs (Haxe Macro Entity Component System)
 
 Super lightweight Entity Component System framework for Haxe. 
 Initially created to learn the power of macros. 
