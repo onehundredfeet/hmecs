@@ -1,6 +1,7 @@
 -cp src
 -cp test
 -lib buddy
+--macro ecs.core.macro.Global.setup()
 -main Run.hx
 --interp
 -D echoes_profiling

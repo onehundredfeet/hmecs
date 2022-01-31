@@ -407,9 +407,9 @@ class Workflow {
 		return macro {
 			if (removeAllFunction == null) {
 				var c = Type.resolveClass("LateCalls");
-				if (c == null) throw "Internal ecs Error - no LateCalls class available in reflection";
+				if (c == null) throw "Internal ecs Error - no LateCalls class available in reflection. Required compilation macro: --macro ecs.core.macro.Global.setup()";
 				var i = Type.createInstance(c,null);
-				if (i == null) throw "Internal ecs Error - could not instance LateCalls";
+				if (i == null) throw "Internal ecs Error - could not instance LateCalls. Required compilation macro: --macro ecs.core.macro.Global.setup()";
 				removeAllFunction = i.getRemoveFunc();
 			}
 			removeAllFunction($e);			

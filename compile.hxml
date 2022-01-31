@@ -2,4 +2,5 @@
 --class-path test
 --library tink_macro
 -hl bin/test.hl
+--macro ecs.core.macro.Global.setup()
 --main Test
