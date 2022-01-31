@@ -84,7 +84,7 @@ class StorageInfo {
 	}
 
 	public function new(ct:ComplexType, i:Int) {
-		// trace ('Generating storage for ${ct.toString()}');
+		//trace ('Generating storage for ${ct.toString()}');
 		givenCT = ct;
 		followedCT = ct.followComplexType();
 		followedT = followedCT.mtToType();

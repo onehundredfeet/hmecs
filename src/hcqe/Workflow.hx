@@ -403,49 +403,7 @@ class Workflow {
 
 	static var removeAllFunction : (hcqe.Entity) -> Void = null;
 
-	#if macro
-	static var addedLate = false;
-	static var lateDef : TypeDefinition;
-
-	static function defineLateCalls() : TypeDefinition {
-		
-		var containers = ComponentBuilder.containerNames();
-		var removeExprs = new Array<Expr>();
-
-		for (container in containers) {
-			var info = ComponentBuilder.getComponentContainerInfoByName(container);
-			removeExprs.push(info.getRemoveExpr(macro e));
-		}
-
-		var lateClass = macro class LateCalls {
-			public static function removeAllComponents(e : hcqe.Entity ) {
-				trace('Removing all on ${e} ' + ${addedLate.toExpr()});
-				$b{removeExprs}
-			}
-
-			public function getRemoveFunc() : (hcqe.Entity) -> Void{
-				return removeAllComponents;
-			}
-		};
-
-		//var p = new Printer();
-		//trace ('${p.printTypeDefinition(lateClass)}');
-
-		lateClass.meta.push({name:":keep", pos: Context.currentPos()});
-		return lateClass;
-	}
-
-	static function removeCallback(mt : Array<ModuleType>) {
-		if (!addedLate) {
-			defineLateCalls().defineType();
-			addedLate = true;
-		} 
-	}
-
-
-	#end
 	macro static function removeAllComponents(e : Expr) : Expr {
-		Context.onAfterTyping(removeCallback);
 		return macro {
 			if (removeAllFunction == null) {
 				var c = Type.resolveClass("LateCalls");
