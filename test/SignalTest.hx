@@ -1,4 +1,4 @@
-import hcqe.utils.Signal;
+import ecs.utils.Signal;
 
 using buddy.Should;
 

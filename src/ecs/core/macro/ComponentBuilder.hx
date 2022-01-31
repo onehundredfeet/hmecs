@@ -1,11 +1,11 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 #if macro
 import haxe.macro.Printer;
-import hcqe.core.macro.MacroTools.*;
+import ecs.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
 
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
@@ -52,7 +52,7 @@ typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 
 var _printer = new Printer();
 @:persistent var createdModule = false;
-final modulePrefix = "__hcqe__storage";
+final modulePrefix = "__ecs__storage";
 
 function getModulePath():String {
 	if (!createdModule) {
@@ -71,7 +71,7 @@ class StorageInfo {
 					case ECall(e, p):
 						switch (e.expr) {
 							case EField(fe, field):
-								if (fe.toString() == "hcqe.core.macro.PoolBuilder") {
+								if (fe.toString() == "ecs.core.macro.PoolBuilder") {
 									return true;
 								}
 							default:

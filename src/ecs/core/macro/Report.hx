@@ -1,9 +1,9 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 #if macro
-import hcqe.core.macro.MacroTools.*;
-import hcqe.core.macro.ViewBuilder.*;
-import hcqe.core.macro.ComponentBuilder.*;
+import ecs.core.macro.MacroTools.*;
+import ecs.core.macro.ViewBuilder.*;
+import ecs.core.macro.ComponentBuilder.*;
 import haxe.macro.Context;
 
 using Lambda;

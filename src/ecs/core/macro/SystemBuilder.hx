@@ -1,4 +1,4 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 
 import haxe.Log;
@@ -6,9 +6,9 @@ import haxe.Log;
 import haxe.macro.MacroStringTools;
 import tink.macro.Types;
 import haxe.macro.ExprTools;
-import hcqe.core.macro.MacroTools.*;
-import hcqe.core.macro.ViewBuilder.*;
-import hcqe.core.macro.ComponentBuilder.*;
+import ecs.core.macro.MacroTools.*;
+import ecs.core.macro.ViewBuilder.*;
+import ecs.core.macro.ComponentBuilder.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Printer;
@@ -17,7 +17,7 @@ import haxe.macro.Type.ClassField;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.MacroTools;
 using tink.MacroApi;
 using StringTools;
 using Lambda;
@@ -99,14 +99,14 @@ class SystemBuilder {
             return switch (a.type.followComplexType()) {
                 case macro:StdTypes.Float : macro __dt__;
                 case macro:StdTypes.Int : macro __entity__;
-                case macro:hcqe.Entity : macro __entity__;
+                case macro:ecs.Entity : macro __entity__;
                 default: macro $i{ a.name };
             }
         }
 
         function metaFuncArgIsEntity(a:FunctionArg) {
             return switch (a.type.followComplexType()) {
-                case macro:StdTypes.Int, macro:hcqe.Entity : true;
+                case macro:StdTypes.Int, macro:ecs.Entity : true;
                 default: false;
             }
         }
@@ -127,7 +127,7 @@ class SystemBuilder {
             return switch (a.type.followComplexType()) {
                 case macro:StdTypes.Float : null;
                 case macro:StdTypes.Int : null;
-                case macro:hcqe.Entity : null;
+                case macro:ecs.Entity : null;
                 default: 
                     var mm = a.meta.toMap();
                     mm.exists(":local") ? null : { cls: a.type.followComplexType() };
@@ -208,7 +208,7 @@ class SystemBuilder {
 
                         var viewClsName = getViewName(components,worlds);
                         var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
-                        var viewArgs = [ arg('__entity__', macro:hcqe.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
+                        var viewArgs = [ arg('__entity__', macro:ecs.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
 
                         { name: funcName, rawargs: func.args, meta:field.meta.toMap(), args: funcCallArgs, view: view, viewargs: viewArgs, type: VIEW_ITER };
 
@@ -290,7 +290,7 @@ class SystemBuilder {
                             var callTypeMap = new Map<String, Expr>();
                             var callNameMap = new Map<String, Expr>();
                             callTypeMap["Float".asComplexType().followComplexType().typeFullName()] = macro __dt__;
-                            callTypeMap["hcqe.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
+                            callTypeMap["ecs.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
                             for (c in f.view.components) {
                                 var ct = c.cls.typeFullName();
                                 var info = getComponentContainerInfo(c.cls);
@@ -333,7 +333,7 @@ class SystemBuilder {
                             cache.concat([loop]).toBlock();
                         }
                         case ENTITY_ITER: {
-                            macro for (__entity__ in hcqe.Workflow.entities) {
+                            macro for (__entity__ in ecs.Workflow.entities) {
                                 $i{ f.name }($a{ f.args });
                             }
                         }
@@ -450,7 +450,7 @@ class SystemBuilder {
                         pack: p.pack,
                         name: p.name,
                         pos: clsType.pos,
-                        kind: TDClass(tpath("hcqe", "System")),
+                        kind: TDClass(tpath("ecs", "System")),
                         fields: fields
                     }
                     trace(new Printer().printTypeDefinition(td));

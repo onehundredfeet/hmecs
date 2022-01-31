@@ -1,11 +1,11 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 import haxe.macro.Type.AbstractType;
 import haxe.macro.Printer;
 #if macro
 import haxe.macro.Expr;
 using tink.MacroApi;
-import hcqe.core.macro.MacroTools.*;
+import ecs.core.macro.MacroTools.*;
 using StringTools;
 using Lambda;
 import haxe.macro.Context;

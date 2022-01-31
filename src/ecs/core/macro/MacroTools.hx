@@ -1,4 +1,4 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 #if macro
 import haxe.macro.ComplexTypeTools;

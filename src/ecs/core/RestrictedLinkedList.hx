@@ -1,10 +1,10 @@
-package hcqe.core;
+package ecs.core;
 
-@:allow(hcqe)
+@:allow(ecs)
 @:forward(head, tail, length, iterator, sort)
-abstract RestrictedLinkedList<T>(hcqe.utils.LinkedList<T>) to hcqe.utils.LinkedList<T> {
+abstract RestrictedLinkedList<T>(ecs.utils.LinkedList<T>) to ecs.utils.LinkedList<T> {
 
-    inline function new() this = new hcqe.utils.LinkedList<T>();
+    inline function new() this = new ecs.utils.LinkedList<T>();
 
     inline function add(item:T) this.add(item);
     inline function pop() return this.pop();

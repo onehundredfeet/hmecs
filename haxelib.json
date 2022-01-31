@@ -1,6 +1,6 @@
 {
-  "name": "hcqe",
-  "url" : "https://github.com/onehundredfeet/hcqe",
+  "name": "ecs",
+  "url" : "https://github.com/onehundredfeet/ecs",
   "license": "MIT",
   "tags": [ "entity", "component", "system", "ecs" ],
   "description": "Macro component query engine (i.e. an ECS) for Haxe. Designed for easy expression & performance.",

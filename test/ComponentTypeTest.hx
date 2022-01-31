@@ -1,4 +1,4 @@
-import hcqe.*;
+import ecs.*;
 
 using buddy.Should;
 

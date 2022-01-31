@@ -1,10 +1,10 @@
-package hcqe;
+package ecs;
 
 #if macro
 import haxe.macro.Expr;
-using hcqe.core.macro.ComponentBuilder;
-using hcqe.core.macro.ViewsOfComponentBuilder;
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.ComponentBuilder;
+using ecs.core.macro.ViewsOfComponentBuilder;
+using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
 #end
@@ -107,7 +107,7 @@ abstract Entity(Int) from Int to Int {
      * @param components comma separated list of components of `Any` type
      * @return `Entity`
      */
-    macro public function add(self:Expr, components:Array<ExprOf<Any>>):ExprOf<hcqe.Entity> {
+    macro public function add(self:Expr, components:Array<ExprOf<Any>>):ExprOf<ecs.Entity> {
         if (components.length == 0) {
             Context.error('Required one or more Components', Context.currentPos());
         }
@@ -126,7 +126,7 @@ abstract Entity(Int) from Int to Int {
             )
             .concat([ 
                 macro if (__entity__.isActive()) {
-                    for (v in hcqe.Workflow.views) {
+                    for (v in ecs.Workflow.views) {
                         @:privateAccess v.addIfMatched(__entity__);
                     }
                 }
@@ -135,7 +135,7 @@ abstract Entity(Int) from Int to Int {
                 macro return __entity__ 
             ]);
 
-        var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:hcqe.Entity) $b{body} )($self);
+        var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:ecs.Entity) $b{body} )($self);
 
         return ret;
     }
@@ -145,7 +145,7 @@ abstract Entity(Int) from Int to Int {
      * @param types comma separated `Class<Any>` types of components that should be removed
      * @return `Entity`
      */
-    macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<hcqe.Entity> {
+    macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
         if (types.length == 0) {
             Context.error('Required one or more Component Types', Context.currentPos());
         }
@@ -180,7 +180,7 @@ abstract Entity(Int) from Int to Int {
                 macro return __entity__ 
             ]);
 
-        var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:hcqe.Entity) $b{body} )($self);
+        var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:ecs.Entity) $b{body} )($self);
 
         return ret;
     }

@@ -1,4 +1,4 @@
-package hcqe;
+package ecs;
 
 /**
  * System  
@@ -27,9 +27,9 @@ package hcqe;
  * @author https://github.com/deepcake
  */
 #if !macro
-@:autoBuild(hcqe.core.macro.SystemBuilder.build())
+@:autoBuild(ecs.core.macro.SystemBuilder.build())
 #end
-class System implements hcqe.core.ISystem {
+class System implements ecs.core.ISystem {
 
 
     #if echoes_profiling

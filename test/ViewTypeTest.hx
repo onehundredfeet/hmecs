@@ -1,8 +1,8 @@
 using buddy.Should;
 
-import hcqe.View;
-import hcqe.Workflow;
-import hcqe.Entity;
+import ecs.View;
+import ecs.Workflow;
+import ecs.Entity;
 
 class ViewTypeTest extends buddy.BuddySuite {
     public function new() {
@@ -73,7 +73,7 @@ typedef VAVBTypedef = { a:VA, b:VB };
 
 typedef ViewVAVBTypedef = View<{ a:VA, b:VB }>;
 
-class ViewTypeSystem extends hcqe.System {
+class ViewTypeSystem extends ecs.System {
 
     public var func:View<VA->VB->Void>;
 
@@ -107,6 +107,6 @@ class ViewTypeSystem extends hcqe.System {
 
 }
 
-class StandaloneVAVBSystem extends hcqe.System {
+class StandaloneVAVBSystem extends ecs.System {
     public static var ab:View<VA, VB>;
 }

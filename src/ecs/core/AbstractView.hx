@@ -1,4 +1,4 @@
-package hcqe.core;
+package ecs.core;
 
 /**
  * ...
@@ -67,7 +67,7 @@ class AbstractView {
     }
 
 
-    @:allow(hcqe.Workflow) function addIfMatched(id:Int) {
+    @:allow(ecs.Workflow) function addIfMatched(id:Int) {
         if (isMatched(id)) {
             if (collected[id] != true) {
                 collected[id] = true;
@@ -78,13 +78,13 @@ class AbstractView {
     }
 
 
-    @:allow(hcqe.Workflow) function addMatchedNew(id:Int) {
+    @:allow(ecs.Workflow) function addMatchedNew(id:Int) {
         collected[id] = true;
         entities.add(id);
         dispatchAddedCallback(id);
     }
 
-    @:allow(hcqe.Workflow) function removeIfExists(id:Int) {
+    @:allow(ecs.Workflow) function removeIfExists(id:Int) {
         if (collected[id] == true) {
             collected[id] = false;
             entities.remove(id);
@@ -93,7 +93,7 @@ class AbstractView {
     }
 
 
-    @:allow(hcqe.Workflow) function reset() {
+    @:allow(ecs.Workflow) function reset() {
         activations = 0;
         Workflow.views.remove(this);
         while (entities.length > 0) {

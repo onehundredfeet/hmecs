@@ -1,9 +1,9 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 #if macro
 import haxe.macro.Type;
 import haxe.macro.Expr;
 
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
@@ -26,12 +26,12 @@ class Global {
 		}
 
 		var lateClass = macro class LateCalls {
-			public static function removeAllComponents(e:hcqe.Entity) {
+			public static function removeAllComponents(e:ecs.Entity) {
 				trace('Removing all on ${e}');
 				$b{removeExprs}
 			}
 
-			public function getRemoveFunc():(hcqe.Entity) -> Void {
+			public function getRemoveFunc():(ecs.Entity) -> Void {
 				return removeAllComponents;
 			}
 		};

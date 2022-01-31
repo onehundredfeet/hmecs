@@ -1,4 +1,4 @@
-package hcqe.utils;
+package ecs.utils;
 
 /**
  * ...
@@ -136,7 +136,7 @@ class LinkedList<T> {
 
 }
 
-@:allow(hcqe.utils.LinkedList)
+@:allow(ecs.utils.LinkedList)
 @:generic
 class LinkedNode<T> {
 
@@ -150,7 +150,7 @@ class LinkedNode<T> {
 
 }
 
-@:allow(hcqe.utils.LinkedList)
+@:allow(ecs.utils.LinkedList)
 @:generic
 class LinkedListIterator<T> {
 

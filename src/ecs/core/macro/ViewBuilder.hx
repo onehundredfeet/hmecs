@@ -1,17 +1,17 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 
 #if macro
 import haxe.macro.Printer;
 import tink.core.Ref;
-import hcqe.core.macro.MacroTools.*;
-import hcqe.core.macro.ComponentBuilder.*;
-import hcqe.core.macro.ViewsOfComponentBuilder.*;
+import ecs.core.macro.MacroTools.*;
+import ecs.core.macro.ComponentBuilder.*;
+import ecs.core.macro.ViewsOfComponentBuilder.*;
 import haxe.macro.Expr;
 import haxe.macro.Type.ClassField;
 import haxe.macro.Type.ModuleType;
 
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using Lambda;
@@ -131,8 +131,8 @@ class ViewBuilder {
                 var viewComplexType = TPath(viewTypePath);
 
                 // signals
-                var signalTypeParamComplexType = TFunction([ macro:hcqe.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
-                var signalTypePath = tpath(['hcqe', 'utils'], 'Signal', [ TPType(signalTypeParamComplexType) ]);
+                var signalTypeParamComplexType = TFunction([ macro:ecs.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
+                var signalTypePath = tpath(['ecs', 'utils'], 'Signal', [ TPType(signalTypeParamComplexType) ]);
 
                 // signal args for dispatch() call
                 var signalArgs = [ macro id ].concat(components.map(function(c) return getLookup(c.cls, macro id )));
@@ -144,7 +144,7 @@ class ViewBuilder {
                 });
 
                 // type def
-                var def:TypeDefinition = macro class $viewClsName extends hcqe.core.AbstractView {
+                var def:TypeDefinition = macro class $viewClsName extends ecs.core.AbstractView {
 
                     static var instance = new $viewTypePath();
 
@@ -158,7 +158,7 @@ class ViewBuilder {
                     public var onRemoved(default, null) = new $signalTypePath();
 
                     function new() {
-                        @:privateAccess hcqe.Workflow.definedViews.push(this);
+                        @:privateAccess ecs.Workflow.definedViews.push(this);
                         $b{ addViewToViewsOfComponent }
                     }
 
@@ -183,7 +183,7 @@ class ViewBuilder {
 
                 // iter
                 {
-                    var funcComplexType = TFunction([ macro:hcqe.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
+                    var funcComplexType = TFunction([ macro:ecs.Entity ].concat(components.map(function(c) return c.cls)), macro:Void);
                     var funcCallArgs = [ macro __entity__ ].concat(components.map(function(c) return getComponentContainerInfo(c.cls).getGetExpr(macro __entity__)));
                     var body = macro {
                         for (__entity__ in entities) {
@@ -200,7 +200,7 @@ class ViewBuilder {
                     var body;
                     if (worlds != 0xffffffff) {
                         var worldVal : Expr = { expr : EConst(CInt('${worlds}')), pos: Context.currentPos()};
-                        var entityWorld = macro hcqe.Workflow.worlds(id);
+                        var entityWorld = macro ecs.Workflow.worlds(id);
                         body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
                     } else {
                         body = macro return $cond;

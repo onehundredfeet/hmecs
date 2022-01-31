@@ -1,9 +1,9 @@
-package hcqe.core.macro;
+package ecs.core.macro;
 
 #if macro
-import hcqe.core.macro.MacroTools.*;
+import ecs.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 
@@ -38,11 +38,11 @@ class ViewsOfComponentBuilder {
 
                     // instance
 
-                    var views = new Array<hcqe.core.AbstractView>();
+                    var views = new Array<ecs.core.AbstractView>();
 
                     function new() { }
 
-                    public inline function addRelatedView(v:hcqe.core.AbstractView) {
+                    public inline function addRelatedView(v:ecs.core.AbstractView) {
                         views.push(v);
                     }
 

@@ -1,13 +1,13 @@
-package hcqe;
+package ecs;
 
 import haxe.macro.Printer;
 #if macro
 import haxe.macro.Expr;
 import haxe.macro.Type.ModuleType;
 
-using hcqe.core.macro.ComponentBuilder;
-using hcqe.core.macro.ViewsOfComponentBuilder;
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.ComponentBuilder;
+using ecs.core.macro.ViewsOfComponentBuilder;
+using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
 using haxe.macro.ComplexTypeTools;
@@ -17,16 +17,16 @@ using haxe.macro.TypeTools;
 
 import haxe.macro.Expr.ComplexType;
 
-using hcqe.core.macro.MacroTools;
+using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using tink.MacroApi;
 #end
 
-import hcqe.Entity.Status;
-import hcqe.core.AbstractView;
-import hcqe.core.ICleanableComponentContainer;
-import hcqe.core.ISystem;
-import hcqe.core.RestrictedLinkedList;
+import ecs.Entity.Status;
+import ecs.core.AbstractView;
+import ecs.core.ICleanableComponentContainer;
+import ecs.core.ISystem;
+import ecs.core.RestrictedLinkedList;
 
 /**
  *  Workflow  
@@ -34,7 +34,7 @@ import hcqe.core.RestrictedLinkedList;
  * @author https://github.com/deepcake
  */
 class Workflow {
-	@:allow(hcqe.Entity) static inline final INVALID_ID = 0;
+	@:allow(ecs.Entity) static inline final INVALID_ID = 0;
 
 	static var nextId = INVALID_ID + 1;
 
@@ -181,7 +181,7 @@ class Workflow {
 
 	// Entity
 
-	@:allow(hcqe.Entity) static function id(immediate:Bool, worlds:Int):Int {
+	@:allow(ecs.Entity) static function id(immediate:Bool, worlds:Int):Int {
 		var id = idPool.pop();
 
 		if (id == null) {
@@ -251,7 +251,7 @@ class Workflow {
 	// var allocation = components.map(function(c) return  {expr: ENew(exprOfClassToTypePath(c)),  pos:Context.currentPos()});
 	#end
 	/*
-		 macro public static function addNoViews(self:Expr, components:Array<ExprOf<Any>>):ExprOf<hcqe.Entity> {
+		 macro public static function addNoViews(self:Expr, components:Array<ExprOf<Any>>):ExprOf<ecs.Entity> {
 			if (components.length == 0) {
 				Context.error('Required one or more Components', Context.currentPos());
 			}
@@ -266,12 +266,12 @@ class Workflow {
 					macro return __entity__ 
 				]);
 
-			var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:hcqe.Entity) $b{body} )($self);
+			var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:ecs.Entity) $b{body} )($self);
 
 			return ret;
 		}
 	 */
-	macro public static function createFactory(worlds:ExprOf<Any>, components:Array<ExprOf<Class<Any>>>) { // :ExprOf<hcqe.Factory> {
+	macro public static function createFactory(worlds:ExprOf<Any>, components:Array<ExprOf<Class<Any>>>) { // :ExprOf<ecs.Factory> {
 		#if macro
 		if (components.length == 0) {
 			Context.error('Required one or more Components', Context.currentPos());
@@ -294,12 +294,12 @@ class Workflow {
 
 		// trace(pp.printExprs(allocation, "\n"));
 
-		var body = [].concat([macro var _views:Array<hcqe.core.AbstractView> = []])
+		var body = [].concat([macro var _views:Array<ecs.core.AbstractView> = []])
 			.concat([
-				// macro trace("Tracing against " + hcqe.Workflow.views.length)
+				// macro trace("Tracing against " + ecs.Workflow.views.length)
 			])
 			.concat([
-				macro for (v in hcqe.Workflow.views) {
+				macro for (v in ecs.Workflow.views) {
 					if (@:privateAccess v.isMatchedByTypes($worlds, $a{classNames})) {
 						_views.push(v);
 					}
@@ -307,8 +307,8 @@ class Workflow {
 			])
 			.concat([
 				macro return function() {
-					var __entity__ = new hcqe.Entity($worlds);
-					//                hcqe.Workflow.addNoViews(e, $a{allocation});
+					var __entity__ = new ecs.Entity($worlds);
+					//                ecs.Workflow.addNoViews(e, $a{allocation});
 					$b{addComponentsToContainersExprs};
 
 					// trace("adding to views " + _views.length);
@@ -342,7 +342,7 @@ class Workflow {
 
 	#if factories
 	#end
-	@:allow(hcqe.Entity) static inline function setWorlds(id:Int, flags:Int) {
+	@:allow(ecs.Entity) static inline function setWorlds(id:Int, flags:Int) {
 		if (status(id) == Active) {
 			remove(id);
 			worldFlags[id] = flags;
@@ -351,7 +351,7 @@ class Workflow {
 		return 0;
 	}
 
-	@:allow(hcqe.Entity) static inline function joinWorld(id:Int, idx:Int) {
+	@:allow(ecs.Entity) static inline function joinWorld(id:Int, idx:Int) {
 		if (status(id) == Active) {
 			remove(id);
 			worldFlags[id] = worldFlags[id] | (1 << idx);
@@ -359,7 +359,7 @@ class Workflow {
 		}
 	}
 
-	@:allow(hcqe.Entity) static inline function leaveWorld(id:Int, idx:Int) {
+	@:allow(ecs.Entity) static inline function leaveWorld(id:Int, idx:Int) {
 		if (status(id) == Active) {
 			remove(id);
 			worldFlags[id] = worldFlags[id] & ~(1 << idx);
@@ -367,7 +367,7 @@ class Workflow {
 		}
 	}
 
-	@:allow(hcqe.Entity) static inline function cache(id:Int) {
+	@:allow(ecs.Entity) static inline function cache(id:Int) {
 		// Active or Inactive
 		if (status(id) < Cached) {
 			removeAllComponentsOf(id);
@@ -377,7 +377,7 @@ class Workflow {
 		}
 	}
 
-	@:allow(hcqe.Entity) static inline function add(id:Int) {
+	@:allow(ecs.Entity) static inline function add(id:Int) {
 		if (status(id) == Inactive) {
 			statuses[id] = Active;
 			entities.add(id);
@@ -386,7 +386,7 @@ class Workflow {
 		}
 	}
 
-	@:allow(hcqe.Entity) static inline function remove(id:Int) {
+	@:allow(ecs.Entity) static inline function remove(id:Int) {
 		if (status(id) == Active) {
 			for (v in views)
 				v.removeIfExists(id);
@@ -395,34 +395,34 @@ class Workflow {
 		}
 	}
 
-	@:allow(hcqe.Entity) static inline function status(id:Int):Status {
+	@:allow(ecs.Entity) static inline function status(id:Int):Status {
 		if (id <= Workflow.INVALID_ID)
 			return Status.Invalid;
 		return statuses[id];
 	}
 
-	static var removeAllFunction : (hcqe.Entity) -> Void = null;
+	static var removeAllFunction : (ecs.Entity) -> Void = null;
 
 	macro static function removeAllComponents(e : Expr) : Expr {
 		return macro {
 			if (removeAllFunction == null) {
 				var c = Type.resolveClass("LateCalls");
-				if (c == null) throw "Internal HCQE Error - no LateCalls class available in reflection";
+				if (c == null) throw "Internal ecs Error - no LateCalls class available in reflection";
 				var i = Type.createInstance(c,null);
-				if (i == null) throw "Internal HCQE Error - could not instance LateCalls";
+				if (i == null) throw "Internal ecs Error - could not instance LateCalls";
 				removeAllFunction = i.getRemoveFunc();
 			}
 			removeAllFunction($e);			
 		}		
 	}
 
-	@:allow(hcqe.Entity) static inline function removeAllComponentsOf(id:Int) {
+	@:allow(ecs.Entity) static inline function removeAllComponentsOf(id:Int) {
 		if (status(id) == Active) {
 			for (v in views) {
 				v.removeIfExists(id);
 			}
 		}
-		#if hcqe_legacy_remove
+		#if ecs_legacy_remove
 		for (c in definedContainers) {
 			c.remove(id);
 		}
@@ -431,7 +431,7 @@ class Workflow {
 		#end
 	}
 
-	@:allow(hcqe.Entity) static inline function printAllComponentsOf(id:Int):String {
+	@:allow(ecs.Entity) static inline function printAllComponentsOf(id:Int):String {
 		var ret = '#$id:';
 		for (c in definedContainers) {
 			if (c.exists(id)) {

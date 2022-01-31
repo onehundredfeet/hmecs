@@ -1,4 +1,4 @@
-package hcqe.core;
+package ecs.core;
 
 interface ICleanableComponentContainer {
     function exists(id:Int):Bool;

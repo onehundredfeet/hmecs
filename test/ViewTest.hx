@@ -1,4 +1,4 @@
-import hcqe.*;
+import ecs.*;
 
 using buddy.Should;
 using Lambda;
@@ -530,7 +530,7 @@ class ViewTest extends buddy.BuddySuite {
     }
 }
 
-class MatchingViewSystem extends hcqe.System {
+class MatchingViewSystem extends ecs.System {
 
     public var a:View<A>;
     public var b:View<B>;
@@ -544,7 +544,7 @@ class MatchingViewSystem extends hcqe.System {
 
 }
 
-class IteratingViewSystem extends hcqe.System {
+class IteratingViewSystem extends ecs.System {
 
     public var av:View<A, V>;
 

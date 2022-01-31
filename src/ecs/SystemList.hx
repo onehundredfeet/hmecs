@@ -1,7 +1,7 @@
-package hcqe;
+package ecs;
 
-import hcqe.core.ISystem;
-import hcqe.utils.LinkedList;
+import ecs.core.ISystem;
+import ecs.utils.LinkedList;
  
 /**
  * SystemList  

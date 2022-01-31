@@ -1,5 +1,5 @@
-package hcqe.utils;
-import hcqe.utils.LinkedList.LinkedListIterator;
+package ecs.utils;
+import ecs.utils.LinkedList.LinkedListIterator;
 #if macro
 import haxe.macro.Expr;
 #end

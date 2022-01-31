@@ -1,6 +1,6 @@
 package;
-import hcqe.Workflow;
-import hcqe.View;
+import ecs.Workflow;
+import ecs.View;
 
 class X {
     public function new() { };
@@ -10,7 +10,7 @@ class Y {
     public function new() { };
 }
 
-class SystemX extends hcqe.System {
+class SystemX extends ecs.System {
     final TESTWORLDA : Int = 5;
     var x:View<X>;
     var xy:View<X, Y>;
@@ -19,7 +19,7 @@ class SystemX extends hcqe.System {
 
 
 
-class SystemY extends hcqe.System {
+class SystemY extends ecs.System {
     
     @:worlds(SystemX.TESTWORLDA)
     @u inline function update(y:Y) { 
@@ -40,7 +40,7 @@ class Test {
         Workflow.addSystem(new SystemY());
 
         // only works with static views
-        var factory = hcqe.Workflow.createFactory(1, X, Y);
+        var factory = ecs.Workflow.createFactory(1, X, Y);
         trace(factory);
 
         var e = factory();

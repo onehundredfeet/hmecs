@@ -1,8 +1,8 @@
 using buddy.Should;
 
-import hcqe.View;
-import hcqe.Workflow;
-import hcqe.Entity;
+import ecs.View;
+import ecs.Workflow;
+import ecs.Entity;
 
 class SystemMetaTest extends buddy.BuddySuite {
     public function new() {
@@ -281,7 +281,7 @@ abstract CompC(String) {
     public function new() this = 'C';
 }
 
-class SystemUpdateMeta extends hcqe.System {
+class SystemUpdateMeta extends ecs.System {
     @u function empty0() BuildResult.value += '[';
     @u function _f____(f:Float) BuildResult.value += '$f';
     @u function empty1() BuildResult.value += '_';
@@ -303,7 +303,7 @@ class SystemUpdateMeta extends hcqe.System {
     }
 }
 
-class SystemAddRemMeta extends hcqe.System {
+class SystemAddRemMeta extends ecs.System {
     @a function ad_a1(a:CompA) BuildResult.value += '+${a}';
     @a function ad_a2(a:CompA) BuildResult.value += '>${a}';
     @r function rm_a2(a:CompA) BuildResult.value += '<${a}';
@@ -312,7 +312,7 @@ class SystemAddRemMeta extends hcqe.System {
     @r function rm_ae(a:CompA, e:Entity) BuildResult.value += '-${a}e';
 }
 
-class SystemAddRemMeta2 extends hcqe.System {
+class SystemAddRemMeta2 extends ecs.System {
     @a function ad_a(a:CompA) BuildResult.value += '!';
     @r function rm_a(a:CompA) BuildResult.value += '#';
 }
