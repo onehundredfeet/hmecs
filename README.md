@@ -30,6 +30,10 @@ The first version of this will primarily target HashLink, but may be extended to
 * `Pool` a pool is a static container that can be used to speed up allocations using a rent/retire paradigm. Call a static rent to get a new instance and then retire on that instance to return it to the pool
 * `Workflow` a global class used to access common features such as a singleton
 
+#### Note: Currently requires a compiler macro to handle all setup. Add into your .hxml or command line
+
+--macro hcqe.core.macro.Global.setup()
+
 #### Example
 ```haxe
 import hcqe.SystemList;
