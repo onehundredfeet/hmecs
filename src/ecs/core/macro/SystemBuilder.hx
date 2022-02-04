@@ -7,12 +7,13 @@ import haxe.macro.MacroStringTools;
 import tink.macro.Types;
 import haxe.macro.ExprTools;
 import ecs.core.macro.MacroTools.*;
-import ecs.core.macro.ViewBuilder.*;
+import ecs.core.macro.ViewBuilder;
 import ecs.core.macro.ComponentBuilder.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Printer;
 import haxe.macro.Type.ClassField;
+import ecs.core.macro.ViewSpec;
 
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
@@ -22,7 +23,7 @@ using tink.MacroApi;
 using StringTools;
 using Lambda;
 
-typedef ViewRec = { name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> };
+
 typedef UpdateRec = { name: String,  rawargs: Array<FunctionArg>, meta:haxe.ds.Map<String,Array<Array<Expr>>>, args: Array<Expr>, view: ViewRec, viewargs: Array<FunctionArg>, type: MetaFuncType };
 
 
@@ -70,6 +71,7 @@ class SystemBuilder {
 
         var ct = Context.getLocalType().toComplexType();
 
+
         var index = ++systemIndex;
 
         systemIds[ct.followName()] = index;
@@ -111,13 +113,13 @@ class SystemBuilder {
             }
         }
 
-        function refComponentDefToFuncArg(c:{ cls:ComplexType }, args:Array<FunctionArg>) {
-            var copmonentClsName = c.cls.followName();
+        function refComponentDefToFuncArg(cls:ComplexType , args:Array<FunctionArg>) {
+            var copmonentClsName = cls.followName();
             var a = args.find(function(a) return a.type.followName() == copmonentClsName);
             if (a != null) {
                 return arg(a.name, a.type);
             } else {
-                return arg(c.cls.typeFullName().toLowerCase(), c.cls);
+                return arg(cls.typeFullName().toLowerCase(), cls);
             }
         }
 
@@ -134,7 +136,7 @@ class SystemBuilder {
             }
         }
 
-        var definedViews = new Array<{ name:String, cls:ComplexType, components:Array<{ cls:ComplexType }> }>();
+        var definedViews = new Array<{view: ViewRec, varname: String}>();
 
         // find and init manually defined views
         fields
@@ -143,20 +145,50 @@ class SystemBuilder {
                 switch (field.kind) {
                     // defined var only
                     case FVar(cls, _) if (cls != null): {
-                        var complexType = cls.followComplexType();
-                        switch (complexType) {
-                            // tpath only
-                            case TPath(_): {
-                                var clsName = complexType.followName();
-                                // if it is a view, it was built (and collected to cache) when followComplexType() was called
-                                if (viewCache.exists(clsName)) {
-                                    // init
-                                    field.kind = FVar(complexType, macro $i{clsName}.inst());
+                        
+                        var t = Context.resolveType(cls, Context.currentPos());
+                        var av = Context.getType("ecs.core.AbstractView");
+                        var st = t.isSubTypeOf( av );
 
-                                    definedViews.push({ name: field.name, cls: complexType, components: viewCache.get(clsName).components });
+                        if (st.isSuccess()) {
+                            var tn = t.toString();
+                            var vr : ViewRec = null;
+
+                            if (t.getMeta().exists((x) -> x.has( ":ecs_view"))) {
+                                for (v in ViewBuilder.viewCache.keyValueIterator()) {
+                                    if (v.value.spec.name == tn) {
+                                       
+                                        var worlds = metaFieldToWorlds(field);
+                                        var excludes = ViewSpec.getExcludesFromField(field);
+                                        if (worlds != v.value.spec.worlds || excludes.length > 0) {
+                                            //trace('Cloning cache !!! ${tn}');
+                                            var vs = v.value.spec.clone();
+                                            vs.worlds = worlds;
+                                            vs.excludes = excludes;
+                                            vs.generateName();
+                                            vr = ViewBuilder.getViewRec(vs);
+                                        } else {
+                                            //trace('Re-using cache!!! ${tn}');
+                                            vr = v.value;
+                                        }
+                                    }
                                 }
                             }
-                            default:
+                            if (vr == null) {
+                                var vs = ViewSpec.fromVar( field, t );
+                                trace('vs name: ${vs.name}');
+                                vr = ViewBuilder.getViewRec(vs);
+                            }
+
+                            if (definedViews.find(function(v) return v.view.spec.name == vr.spec.name) == null) {
+                                // init
+                                field.kind = FVar(vr.ct, macro $i{vr.spec.name}.inst());
+                                definedViews.push( {view: vr, varname: field.name } );
+                            }
+
+                            
+                            
+                            //trace('Done!!!');
                         }
                     }
                     default:
@@ -175,19 +207,16 @@ class SystemBuilder {
                         var worlds = metaFieldToWorlds(field);
                         
                         if (components.length > 0) {
+                            var vs = ViewSpec.fromField( field, func);
+                            
+                            var view = definedViews.find(function(v) return v.view.spec.name == vs.name);
 
-                            var viewClsName = getViewName(components, worlds);
-                            var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
-
-                            if (view == null) {
-                                var viewComplexType = getView(components, worlds);
-
+                            if (view == null || view.varname != vs.name.toLowerCase()) {
+                                var vr = ViewBuilder.getViewRec(vs);
+                                definedViews.push( {view: vr, varname: vs.name.toLowerCase()} );
                                 // instant define and init
-                                fields.push(fvar([], [], viewClsName.toLowerCase(), viewComplexType, macro $i{viewClsName}.inst(), Context.currentPos()));
-
-                                definedViews.push({ name: viewClsName.toLowerCase(), cls: viewComplexType, components: viewCache.get(viewClsName).components });
-                            }
-
+                                fields.push(fvar([], [], vs.name.toLowerCase(), vr.ct, macro $i{vs.name}.inst(), Context.currentPos()));
+                            } 
                         }
                     }
                     default:
@@ -206,11 +235,11 @@ class SystemBuilder {
                     if (components.length > 0) {
                         // view iterate
 
-                        var viewClsName = getViewName(components,worlds);
-                        var view = definedViews.find(function(v) return v.cls.followName() == viewClsName);
-                        var viewArgs = [ arg('__entity__', macro:ecs.Entity) ].concat(view.components.map(refComponentDefToFuncArg.bind(_, func.args)));
-
-                        { name: funcName, rawargs: func.args, meta:field.meta.toMap(), args: funcCallArgs, view: view, viewargs: viewArgs, type: VIEW_ITER };
+                        var vi = ViewSpec.fromField(field, func);
+                        var vr = ViewBuilder.getViewRec( vi );
+                        var viewArgs = [ arg('__entity__', macro:ecs.Entity) ].concat(vi.includes.map((x) -> refComponentDefToFuncArg(x.ct, func.args)));
+                        
+                        { name: funcName, rawargs: func.args, meta:field.meta.toMap(), args: funcCallArgs, view: vr, viewargs: viewArgs, type: VIEW_ITER };
 
                     } else {
 
@@ -291,14 +320,14 @@ class SystemBuilder {
                             var callNameMap = new Map<String, Expr>();
                             callTypeMap["Float".asComplexType().followComplexType().typeFullName()] = macro __dt__;
                             callTypeMap["ecs.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
-                            for (c in f.view.components) {
-                                var ct = c.cls.typeFullName();
-                                var info = getComponentContainerInfo(c.cls);
+                            for (c in f.view.spec.includes) {
+                                var ct = c.ct.typeFullName();
+                                var info = getComponentContainerInfo(c.ct);
                                 callTypeMap[ct] = info.getGetExpr(macro __entity__,  info.fullName + "_inst");
                             }
 
-                            var cache = f.view.components.map(function(c) {
-                                var info = getComponentContainerInfo(c.cls);
+                            var cache = f.view.spec.includes.map(function(c) {
+                                var info = getComponentContainerInfo(c.ct);
                                 return info.getCacheExpr( info.fullName + "_inst" );
                             });
 
@@ -365,7 +394,7 @@ class SystemBuilder {
             .concat(
                 // activate views
                 definedViews.map(function(v) {
-                    return macro $i{ v.name }.activate();
+                    return macro $i{ v.varname }.activate();
                 })
             )
             .concat(
@@ -404,7 +433,7 @@ class SystemBuilder {
             .concat(
                 // deactivate views
                 definedViews.map(function(v) {
-                    return macro $i{ v.name }.deactivate();
+                    return macro $i{ v.varname }.deactivate();
                 })
             )
             .concat(
@@ -460,10 +489,12 @@ class SystemBuilder {
                 }
             }
         }
-        //trace("New Func");
+        #if false
+        trace('Type: ${Context.getLocalType().toComplex().toString()}');
         for (f in fields) {
-          //  trace(_printer.printField(f));
+            trace(_printer.printField(f));
         }
+        #end
 
         return fields;
     }

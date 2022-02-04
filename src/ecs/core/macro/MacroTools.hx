@@ -87,7 +87,7 @@ class MacroTools {
 		} catch (e) {
 			switch (c) {
 				case TPath(p):
-					throw 'Could not resolve type ${p}';
+					throw 'Could not resolve type ${p.pack}.${p.sub}.${p.name}<${p.params}>';
 				default:
 					throw 'Could not resolve type ${c}';
 			}

@@ -48,7 +48,7 @@ class ViewsOfComponentBuilder {
 
                     public inline function removeIfMatched(id:Int) {
                         for (v in views) {
-                            if (v.isActive()) {
+                            if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
                                  @:privateAccess v.removeIfExists(id);
                             }
                         }

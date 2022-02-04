@@ -4,6 +4,7 @@ package ecs.core;
  * ...
  * @author https://github.com/deepcake
  */
+@:ecs_view
 class AbstractView {
 
 

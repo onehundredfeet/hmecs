@@ -9,11 +9,24 @@ class X {
 class Y {
     public function new() { };
 }
+class Z {
+    public function new() { };
+}
+
 
 class SystemX extends ecs.System {
     final TESTWORLDA : Int = 5;
+
+    @:not(Y)
     var x:View<X>;
-    var xy:View<X, Y>;
+    
+    var xz:View<X,Z>;
+    var xy:View<X, Y,Z>;
+
+    @:not(Y)
+    @u inline function update(x:X) { 
+        trace("SystemX|update");
+    }
 }
 
 

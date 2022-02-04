@@ -286,7 +286,7 @@ class Workflow {
 			var ct = c.parseClassName().getType().follow().toComplexType();
 			var info = ct.getComponentContainerInfo();
 
-			trace('add and alloc ${c}');
+			//trace('add and alloc ${c}');
 			var alloc = {expr: ENew(ct.toString().asTypePath(), []), pos: Context.currentPos()};
 
 			return info.getAddExpr(macro __entity__, alloc);

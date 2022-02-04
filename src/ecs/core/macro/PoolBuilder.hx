@@ -16,6 +16,7 @@ class PoolBuilder {
 
     // Sorry this is brutally messy, it took a while to work through the edge cases
     public static function arrayPool() {
+        
         var fields = Context.getBuildFields();
 
         var lt = Context.getLocalType().follow();
