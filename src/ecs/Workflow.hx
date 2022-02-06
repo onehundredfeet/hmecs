@@ -401,6 +401,14 @@ class Workflow {
 		return statuses[id];
 	}
 
+	@:allow(ecs.Entity) static inline function pauseAdding(id:Int) {
+
+	}
+
+	@:allow(ecs.Entity) static inline function resumeAdding(id:Int) {
+		
+	}
+
 	static var removeAllFunction : (ecs.Entity) -> Void = null;
 
 	macro static function removeAllComponents(e : Expr) : Expr {

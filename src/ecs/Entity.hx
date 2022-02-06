@@ -48,6 +48,20 @@ abstract Entity(Int) from Int to Int {
         Workflow.remove(this);
     }
 
+  /**
+     * Prevents any addition callbaks until resuming
+     */
+    public inline function pauseAdding() {
+        Workflow.pauseAdding(this);
+    }
+
+    /**
+     * Calls any addition callbacks for new views
+     */
+    public inline function resumeAdding() {
+        Workflow.resumeAdding(this);
+    }
+
         /**
      * Returns the status of this entity: Active, Inactive, Cached or Invalid. Method is used mostly for debug purposes  
      * @return Status
@@ -69,7 +83,7 @@ abstract Entity(Int) from Int to Int {
      * @return Bool
      */
     public inline  function isValid():Bool {
-        return Workflow.status(this) < Cached;
+        return this != INVALID_ENTITY && Workflow.status(this) < Cached;
     }
 
 
