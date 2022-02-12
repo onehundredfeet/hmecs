@@ -166,7 +166,7 @@ class StorageInfo {
 		try {
 			// Defined in a previous build - How does it get invalidated?
 			containerType = Context.getType(containerCT.toString());
-		} catch (err:String) {
+		} catch (e) {
 			var existsExpr = getExistsExpr( macro id );
 			var removeExpr = getRemoveExpr( macro id );
 
@@ -297,16 +297,21 @@ class ComponentBuilder {
 		return componentContainerTypeCache[s];
 	}
 	public static function getComponentContainerInfo(componentComplexType:ComplexType):StorageInfo {
-		var name = componentComplexType.followName();
-		var info = componentContainerTypeCache.get(name);
-		if (info != null) {
+		try {
+			var name = componentComplexType.followName();
+
+			var info = componentContainerTypeCache.get(name);
+			if (info != null) {
+				return info;
+			}
+
+			info = new StorageInfo(componentComplexType, ++componentIndex);
+			componentContainerTypeCache[name] = info;
+
 			return info;
+		} catch(e) {
+			throw 'Could not find type ${componentComplexType.toString()} for container';
 		}
-
-		info = new StorageInfo(componentComplexType, ++componentIndex);
-		componentContainerTypeCache[name] = info;
-
-		return info;
 	}
 
 	public static function getLookup(ct:ComplexType, entityVarName:Expr):Expr {

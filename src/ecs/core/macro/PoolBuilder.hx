@@ -16,11 +16,11 @@ class PoolBuilder {
 
     // Sorry this is brutally messy, it took a while to work through the edge cases
     public static function arrayPool() {
-        
         var fields = Context.getBuildFields();
-
         var lt = Context.getLocalType().follow();
         var ct = lt.toComplexType();
+        try {
+
 
         switch(lt) {
             case TInst(t, params): 
@@ -66,6 +66,11 @@ class PoolBuilder {
         }
 
         return cb.export();
+        } catch (e) {
+            Context.reportError('Could not build pool for ${ct.toString()}', Context.currentPos());
+            Context.reportError('Exception: ${e.toString()}', Context.currentPos());
+            return fields;
+        }
     }
 
     public static function linkedPool(debug: Bool = false) {

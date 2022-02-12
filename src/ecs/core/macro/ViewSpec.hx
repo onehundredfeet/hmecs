@@ -60,15 +60,13 @@ class ViewSpec {
             case macro:ecs.Entity : needsEntity = true; null;
             default: 
                 var localA = mm.get(":local");
-                var localExpr : Expr = null;
-                if (localA != null && localA.length > 0 && localA[0].length > 0) {
-                    localExpr = localA[0][0];
+                if (localA == null) {
+                    var vt = { ct: ct, ex: false, name:ct.typeFullName(), lcname: ct.typeFullName().toLowerCase() };
+                    includes.push(vt);
+    
+                    vt;
                 }
- 
-                var vt = { ct: ct, ex: false, name:ct.typeFullName(), lcname: ct.typeFullName().toLowerCase(), fun:a, local : localExpr  };
-                includes.push(vt);
-
-                vt;
+                else null;
         }
 
         return x;

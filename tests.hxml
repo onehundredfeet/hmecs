@@ -2,7 +2,6 @@
 -cp test
 -lib buddy
 -lib tink_macro
---macro ecs.core.macro.Global.setup()
 -main Run
 -dce full
 -D analyzer-optimize

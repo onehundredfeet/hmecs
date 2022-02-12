@@ -1,4 +1,5 @@
 package;
+import ecs.core.macro.Global;
 import ecs.Workflow;
 import ecs.View;
 
@@ -44,23 +45,28 @@ class SystemY extends ecs.System {
     }
 }
 
+class K {
 
+}
 class Test {
     public final TESTWORLD = 5;
     public static function main() {
 
         Workflow.addSystem(new SystemX());
         Workflow.addSystem(new SystemY());
-
+ 
         // only works with static views
         var factory = ecs.Workflow.createFactory(1, X, Y);
         trace(factory);
 
         var e = factory();
+        
+        e.remove( K );
 
         trace(e);
 
         Workflow.update(1.);
 
+        Global.setup();
     }
 }

@@ -3,6 +3,7 @@ package ecs.core.macro;
 
 import haxe.Log;
 #if macro
+import ecs.core.macro.MetaTools;
 import haxe.macro.MacroStringTools;
 import tink.macro.Types;
 import haxe.macro.ExprTools;
@@ -23,7 +24,6 @@ using tink.MacroApi;
 using StringTools;
 using Lambda;
 
-
 typedef UpdateRec = { name: String,  rawargs: Array<FunctionArg>, meta:haxe.ds.Map<String,Array<Array<Expr>>>, args: Array<Expr>, view: ViewRec, viewargs: Array<FunctionArg>, type: MetaFuncType };
 
 
@@ -38,38 +38,22 @@ enum ParallelType {
 class SystemBuilder {
 
 
-    static var SKIP_META = [ 'skip' ];
 
-    static var PRINT_META = [ 'print' ];
-
-    static var AD_META = [ 'added', 'ad', 'a', ':added', ':ad', ':a' ];
-    static var RM_META = [ 'removed', 'rm', 'r',':removed', ':rm', ':r' ];
-    static var UPD_META = [ 'update', 'up', 'u', ':update', ':up', ':u' ];
-    static var PARALLEL_META =  ':parallel' ;
-    static var FORK_META =  ':fork' ;
-    static var JOIN_META =  ':join' ;
 
     public static var systemIndex = -1;
     public static var systemIds = new Map<String, Int>();
 
 
-    static function notSkipped(field:Field) {
-        return !containsMeta(field, SKIP_META);
-    }
 
-    static function containsMeta(field:Field, metas:Array<String>) {
-        return field.meta
-            .exists(function(me) {
-                return metas.exists(function(name) return me.name == name);
-            });
-    }
 
     static var _printer = new Printer();
 
     public static function build(debug: Bool = false) {
         var fields = Context.getBuildFields();
-
         var ct = Context.getLocalType().toComplexType();
+        //trace('Building ${ct.toString()}');
+        try {
+       
 
 
         var index = ++systemIndex;
@@ -198,7 +182,7 @@ class SystemBuilder {
         // find and init meta defined views
         fields
             .filter(notSkipped)
-            .filter(containsMeta.bind(_, UPD_META.concat(AD_META).concat(RM_META)))
+            .filter(containsMeta.bind(_, VIEW_FUNC_META))
             .iter(function(field) {
                 switch (field.kind) {
                     case FFun(func): {
@@ -497,6 +481,11 @@ class SystemBuilder {
         #end
 
         return fields;
+        }
+        catch(e) {
+            Context.reportError('Error building ${ct.toString()} : ${e.toString()}', Context.currentPos());
+           return fields;
+        }
     }
 
 }

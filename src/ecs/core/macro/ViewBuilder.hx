@@ -100,6 +100,7 @@ class ViewBuilder {
 
 
 	public static function createViewType(vi : ViewSpec) : haxe.macro.Type{
+		try {
 		var viewClsName = vi.name;
         var worlds = vi.worlds;
         var components = vi.includes;
@@ -112,7 +113,7 @@ class ViewBuilder {
 
 			try
 				viewType = Context.getType(viewClsName)
-			catch (err:String) {
+			catch (err) {
 				// type was not cached in previous build
 
 				var viewTypePath = tpath([], viewClsName, []);
@@ -252,6 +253,11 @@ class ViewBuilder {
 		}
 
 		return viewType;
+		}
+		catch(e) {
+			Context.reportError('Could not build view type ${vi.name}', Context.currentPos());
+			return null;
+		}
 	}
 }
 #end

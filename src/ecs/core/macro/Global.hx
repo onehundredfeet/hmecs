@@ -52,7 +52,15 @@ class Global {
 	#end
 
 	public macro static function setup():Expr {
-		Context.onAfterTyping(removeCallback);
-		return null;
+		//trace ('now!');
+		defineLateCalls().defineType();
+
+		var x = macro {
+			trace('setting remove all function'); 
+			@:privateAccess Workflow.removeAllFunction = LateCalls.removeAllComponents; 
+		}
+		return x;
 	}
+
+
 }

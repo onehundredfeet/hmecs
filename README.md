@@ -30,9 +30,12 @@ The first version of this will primarily target HashLink, but may be extended to
 * `Pool` a pool is a static container that can be used to speed up allocations using a rent/retire paradigm. Call a static rent to get a new instance and then retire on that instance to return it to the pool
 * `Workflow` a global class used to access common features such as a singleton
 
-#### Note: Currently requires a compiler macro to handle all setup. Add into your .hxml or command line
+#### Note: Currently requires running a macro as the last line in your main file. Add this function to the bottom of your root hx file, i.e. Main.hx.  Then call the function as your first function call.
 
---macro ecs.core.macro.Global.setup()
+function ecsSetup() {
+	ecs.core.macro.Global.setup();
+}
+
 
 #### Example
 ```haxe
@@ -46,13 +49,10 @@ class MediumComponent {
 
 }
 
-@:storage(FAST) // This is the default
+@:storage(FAST) // Sepcifies the flavour of storage to use. FAST is the default.
 #if !macro @:build(ecs.core.macro.PoolBuilder.arrayPool()) #end // Implicitly adds rent & retire
-//@:no_autoretire  // default is true | will automatically return the object to the pool on being removed from the entity
+//@:no_autoretire  // turns off automatically using the attached pool.  Unless this is added, the ECS will automatically return the object to the pool on being removed from the entity
 class SmallComponent {
-    // Implicitly added by the pool builder
-    // static function rent() : SmallComponent 
-    // function retire()
     
     function new() {
 
@@ -67,18 +67,23 @@ class SmallComponent {
     function onRetire() {
 
     }
+
+    // Implicitly added by the pool builder
+    // static function rent() : SmallComponent 
+    // function retire()
+
 }
 
 @:storage(COMPACT)
 class HeavyComponent {
   public function new(){}
 
-  @:onadd
-    function onAdd() {
+//  @:onadd // UNIMPLEMENTED
+//    function onAdd() {
       // Custom logic when a component is added from an entity
-    }
+//    }
 
-  @:onremove
+  @:on_remove
     function onRemove() {
       // Custom logic when a component is removed from an entity
     }
@@ -96,6 +101,14 @@ abstract MicroComponent(Int) from Int to Int {
   }
 }
 
+// Abstracts allow adding multiple components of the same underlying type to an entity 
+// When using abstracts, be careful not to assume the underlaying type in the system function definitions
+@:forward
+abstract Name(String) from String to String {
+  public function new(name:String) this = name;
+}
+
+
 class Example {
   final FIELDS = 1;
   final FOREST = 2;
@@ -103,6 +116,8 @@ class Example {
   final WORLDS_FOREST = 1 << FOREST;
 
   static function main() {
+    ecsSetup(); // Called to initialize the system
+
     var physics = new SystemList()
       .add(new Movement())
       .add(new CollisionResolver());
@@ -119,13 +134,17 @@ class Example {
     jack.add(new Position(1, 1)); // okay
 
     // THIS IS TWO FEATURES 
-    // - the singleton() on workflow is a global entity
-    // - the SingletonComponent is one that only allows for one to every be added to an entity
+    // - the singleton() entity on workflow is a global entity across all worlds & systems.
+    // - the SingletonComponent is a component where only one instance will ever exist and must only ever be added to one entity
     Workflow.singleton().add( new SingletonComponent() ); // Only one can be added globally at any one time
 
-// also somewhere should be Workflow.update call on every tick
+    // also somewhere should be Workflow.update call on every tick
     Workflow.update(1.0);
+
+    // You can manually call the systems lists if you wish to give more granular control.
+    physics.forceUpdate(1.0);
   }
+
   static function createTree(x:Float, y:Float) {
     return new Entity()   // Trees are present in all worlds
       .add(new Position(x, y))
@@ -141,10 +160,6 @@ class Example {
   }
 }
 
-@:forward
-abstract Name(String) from String to String {
-  public function new(name:String) this = name;
-}
 
 class Movement extends ecs.System {
   // @update-functions will be called for every entity that contains all the defined components;
@@ -221,6 +236,12 @@ class Render extends ecs.System {
     // rendering, etc
   }
 }
+
+function ecsSetup() {
+	ecs.core.macro.Global.setup();  // macro to generate all the global calls and then hook them up at runtime
+}
+
+
 ```
 
 #### Also
