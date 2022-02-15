@@ -130,34 +130,36 @@ class MacroTools {
 
 		var yy = c.toType(pos);
 		if (yy.isSuccess()) {
-			return yy.sure();
+			x = yy.sure();
 		}
-		return null;
 		
-		try {
-			var t = Context.resolveType(c, pos);
-			Context.warning('Resolution ${t}', pos);
-			if (t != null) {
-				x = doFollow ? t.follow() : t;
-			}
-		} catch (e) {}
+	return x;
 
-		if (x == null && false) {
+		/*
 			try {
-				var t = Context.getType(c.toString());
-				Context.warning('Get ${t}', pos);
-
+				var t = Context.resolveType(c, pos);
+				Context.warning('Resolution ${t}', pos);
 				if (t != null) {
 					x = doFollow ? t.follow() : t;
 				}
 			} catch (e) {}
-		}
 
-		if (x == null) {
-			Context.warning('no type ${c.toString()}', pos);
-		}
+			if (x == null && false) {
+				try {
+					var t = Context.getType(c.toString());
+					Context.warning('Get ${t}', pos);
 
-		return x;
+					if (t != null) {
+						x = doFollow ? t.follow() : t;
+					}
+				} catch (e) {}
+			}
+
+			if (x == null) {
+				Context.warning('no type ${c.toString()}', pos);
+			}
+
+			return x; */
 	}
 
 	public static function followComplexType(ct:ComplexType):ComplexType {
@@ -370,7 +372,7 @@ class MacroTools {
 					if (cf.isVar()) {
 						var cfe = cf.expr();
 						if (cfe != null) {
-							switch (cfe.expr) { 
+							switch (cfe.expr) {
 								case TConst(c):
 									switch (c) {
 										case TInt(i): return i;
@@ -379,7 +381,7 @@ class MacroTools {
 								default: Context.warning('found expression ${cfe.expr}', pos);
 							}
 						}
-						
+
 						return valueDefault;
 					} else {
 						Context.error('Only var fields are supported', Context.currentPos());

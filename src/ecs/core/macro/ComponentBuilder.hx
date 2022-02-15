@@ -162,13 +162,12 @@ class StorageInfo {
 		 */
 
 		// def.
-
+ 
 		//		Context.registerModuleDependency()
 		containerCT = containerFullName.asComplexType();
 		containerType = containerCT.toTypeOrNull(Context.currentPos());
 
 		if (containerType == null) {
-			trace('redefining container i.e. ${containerCT.toString()} could not be found ');
 			var existsExpr = getExistsExpr(macro id);
 			var removeExpr = getRemoveExpr(macro id);
 
