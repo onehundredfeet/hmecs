@@ -16,79 +16,72 @@ class ViewsOfComponentBuilder {
 
 	// viewsOfComponentTypeName / viewsOfComponentType
 	public static function createViewsOfComponentType(componentComplexType:ComplexType):haxe.macro.Type {
-//		Context.warning('Making view of component ${componentComplexType.toString()}', Context.currentPos());
+		//		Context.warning('Making view of component ${componentComplexType.toString()}', Context.currentPos());
 		var errorStage = "";
-		try {
-			var componentTypeName = componentComplexType.followName();
-			var viewsOfComponentTypeName = 'ViewsOfComponent' + componentComplexType.typeFullName();
-			var viewsOfComponentTypePath = VIEW_OF_NAMESPACE + "." + viewsOfComponentTypeName;
-			var viewsOfComponentCT = viewsOfComponentTypePath.asComplexType();
-			var viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
+		var componentTypeName = componentComplexType.followName();
+		var viewsOfComponentTypeName = 'ViewsOfComponent' + componentComplexType.typeFullName();
+		var viewsOfComponentTypePath = VIEW_OF_NAMESPACE + "." + viewsOfComponentTypeName;
+		var viewsOfComponentCT = viewsOfComponentTypePath.asComplexType();
+		var viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
 
-			errorStage = "checking in cache";
-			if (viewsOfComponentType == null) {
-				// first time call in current build
-				// type was not cached in previous build
-				errorStage = "building";
+		errorStage = "checking in cache";
+		if (viewsOfComponentType == null) {
+			// first time call in current build
+			// type was not cached in previous build
+			errorStage = "building";
 
-		
-				var viewsOfComponenttpath = tpath([], viewsOfComponentTypeName, []);
-				
-				errorStage = "defining";
+			var viewsOfComponenttpath = tpath([], viewsOfComponentTypeName, []);
 
-				var def = macro class $viewsOfComponentTypeName {
-					static var instance = new $viewsOfComponenttpath();
+			errorStage = "defining";
 
-					@:keep public static inline function inst():$viewsOfComponentCT {
-						return instance;
-					}
+			var def = macro class $viewsOfComponentTypeName {
+				static var instance = new $viewsOfComponenttpath();
 
-					// instance
+				@:keep public static inline function inst():$viewsOfComponentCT {
+					return instance;
+				}
 
-					var views = new Array<ecs.core.AbstractView>();
+				// instance
 
-					function new() {}
+				var views = new Array<ecs.core.AbstractView>();
 
-					public inline function addRelatedView(v:ecs.core.AbstractView) {
-						views.push(v);
-					}
+				function new() {}
 
-					public inline function removeIfMatched(id:Int) {
-						for (v in views) {
-							if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
-								@:privateAccess v.removeIfExists(id);
-							}
+				public inline function addRelatedView(v:ecs.core.AbstractView) {
+					views.push(v);
+				}
+
+				public inline function removeIfMatched(id:Int) {
+					for (v in views) {
+						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
+							@:privateAccess v.removeIfExists(id);
 						}
 					}
 				}
-
-				errorStage = "calling define";
-
-				def.defineTypeSafe(VIEW_OF_NAMESPACE);
-
-				#if false
-					trace('ViewType: ${def.name}');
-					var p = new Printer();
-					trace(p.printTypeDefinition(def));
-					#end
-
-				errorStage = "post define";
-
-				viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
-
-				if (viewsOfComponentType == null) {
-					Context.reportError('Could not find or create view of component type', Context.currentPos());
-					return null;
-				}
-				errorStage = "caching";
 			}
 
-			return viewsOfComponentType;
-		} catch (e) {
-			Context.reportError('Could not create view of component ${componentComplexType.toString()}: ${e.toString()}', Context.currentPos());
-			Context.reportError('Info: ${errorStage}', Context.currentPos());
-			return null;
+			errorStage = "calling define";
+
+			def.defineTypeSafe(VIEW_OF_NAMESPACE);
+
+			#if false
+			trace('ViewType: ${def.name}');
+			var p = new Printer();
+			trace(p.printTypeDefinition(def));
+			#end
+
+			errorStage = "post define";
+
+			viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
+
+			if (viewsOfComponentType == null) {
+				Context.reportError('Could not find or create view of component type', Context.currentPos());
+				return null;
+			}
+			errorStage = "caching";
 		}
+
+		return viewsOfComponentType;
 	}
 
 	public static function getViewsOfComponent(componentComplexType:ComplexType):ComplexType {

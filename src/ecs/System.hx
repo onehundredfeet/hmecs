@@ -29,6 +29,7 @@ package ecs;
 #if !macro
 @:autoBuild(ecs.core.macro.SystemBuilder.build())
 #end
+@:keepSub
 class System implements ecs.core.ISystem {
 
 

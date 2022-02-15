@@ -22,7 +22,7 @@ using Lambda;
  * @author https://github.com/deepcake
  */
 @:final
-@:dce
+// @:dce
 class MacroTools {
 	public static function ffun(?meta:Metadata, ?access:Array<Access>, name:String, ?args:Array<FunctionArg>, ?ret:ComplexType, ?body:Expr,
 			pos:Position):Field {
@@ -94,19 +94,19 @@ class MacroTools {
 		}
 	}
 
-	static public function typeNotFoundError(c:ComplexType, doThrow:Bool = true) {
+	static public function typeNotFoundError(c:ComplexType, doThrow:Bool = false) {
 		if (c == null) {
-			Context.reportError('Type is null', Context.currentPos());
+			Context.error('Type is null', Context.currentPos());
 			if (doThrow)
 				throw 'Type is null';
 		}
 		switch (c) {
 			case TPath(p):
-				Context.reportError('Could not resolve type ${p.pack}.${p.sub}.${p.name}<${p.params}>', Context.currentPos());
+				Context.error('Could not resolve type ${p.pack}.${p.sub}.${p.name}<${p.params}>', Context.currentPos());
 				if (doThrow)
 					throw 'Could not resolve type ${p.pack}.${p.sub}.${p.name}<${p.params}>';
 			default:
-				Context.reportError(throw 'Could not resolve type ${c.toString()}', Context.currentPos());
+				Context.error(throw 'Could not resolve type ${c.toString()}', Context.currentPos());
 				if (doThrow)
 					throw 'Could not resolve type ${c.toString()}';
 		}
@@ -116,37 +116,48 @@ class MacroTools {
 		if (namespace.length > 0) {
 			def.pack = namespace.split(".");
 		}
-		try {
-			//Context.warning('Defining type ${namespace + "." + def.name}', Context.currentPos());
-			Context.defineModule(namespace + "." + def.name, [def], Context.getLocalImports());
-			// Context.defineType(def, null); // seems to just fail
-		} catch (e) {
-			Context.warning('Could not define type ${def}', Context.currentPos());
-			Context.reportError('Could not define type ${def}', Context.currentPos());
-			Context.reportError('Exception ${e.toString()}', Context.currentPos());
-			throw 'Could not define type ${def.name}';
-		}
+		// Context.getLocalImports()
+		Context.defineModule(namespace + "." + def.name, [def]);
 	}
 
 	static public function toTypeOrNull(c:ComplexType, doFollow:Bool = true, pos:Position):Null<haxe.macro.Type> {
+		var x:Null<haxe.macro.Type> = null;
+
 		if (c == null) {
 			Context.warning('null type', pos);
 			return null;
 		}
 
+		var yy = c.toType(pos);
+		if (yy.isSuccess()) {
+			return yy.sure();
+		}
+		return null;
+		
 		try {
 			var t = Context.resolveType(c, pos);
-			return doFollow ? t.follow() : t;
-		} catch (e) {
+			Context.warning('Resolution ${t}', pos);
+			if (t != null) {
+				x = doFollow ? t.follow() : t;
+			}
+		} catch (e) {}
+
+		if (x == null && false) {
+			try {
+				var t = Context.getType(c.toString());
+				Context.warning('Get ${t}', pos);
+
+				if (t != null) {
+					x = doFollow ? t.follow() : t;
+				}
+			} catch (e) {}
 		}
 
-		try {
-			var t = Context.getType(c.toString());
-			return doFollow ? t.follow() : t;
-		} catch (e) {
+		if (x == null) {
+			Context.warning('no type ${c.toString()}', pos);
 		}
 
-		return null;
+		return x;
 	}
 
 	public static function followComplexType(ct:ComplexType):ComplexType {
@@ -241,9 +252,11 @@ class MacroTools {
 		var worldData = f.meta.filter(function(m) return WORLD_META.contains(m.name));
 		if (worldData != null && worldData.length > 0) {
 			var wd = worldData[0];
+
 			if (wd.params.length > 0) {
 				var p:Expr = wd.params[0];
 				var pe = getNumericValue(p, 0xffffffff, p.pos);
+				return 0xffffffff;
 				if (pe != null) {
 					var t:Int = pe;
 					return pe;
@@ -314,29 +327,37 @@ class MacroTools {
 						return Std.parseFloat(f);
 					case CString(s, kind):
 						var v = getNumericValueStr(s, valueDefault, pos);
-						if (v == null)
-							throw 'Could not find string id ${s}';
+						if (v == null) {
+							Context.error('Could not find string id ${s}', pos);
+							return valueDefault;
+						}
 						return v;
 					case CIdent(s):
 						var v = getNumericValueStr(s, valueDefault, pos);
-						if (v == null)
-							throw 'Could not find id ${s}';
+						if (v == null) {
+							Context.error('Could not find id ${s}', pos);
+							return valueDefault;
+						}
 						return v;
 					default:
 				}
 			case EField(ee, f):
 				var path = parseClassName(ee);
-				var ct = Types.asComplexType(path);
+
+				var ct = path.asComplexType();
 				if (ct == null) {
 					Context.error('getNumericValue Type not found ${path}', e.pos);
 					return valueDefault;
 				}
 				var tt = toTypeOrNull(ct, pos);
+				//				Context.warning('becomes type ${tt}', pos);
 				if (tt == null) {
 					Context.error('Could not resolve type ${path}', e.pos);
 					return valueDefault;
 				}
 				var c = TypeTools.getClass(tt);
+
+				//				Context.warning('becomes class ${c}', pos);
 				if (c == null) {
 					Context.error('Type not a class ${path}', e.pos);
 					return valueDefault;
@@ -345,11 +366,28 @@ class MacroTools {
 				if (cf == null)
 					cf = TypeTools.findField(c, f, false);
 				if (cf != null) {
-					var ce = Context.getTypedExpr(cf.expr());
-					return getNumericValue(ce, valueDefault, pos);
+					//					Context.warning('found classfield ${cf}', pos);
+					if (cf.isVar()) {
+						var cfe = cf.expr();
+						if (cfe != null) {
+							switch (cfe.expr) { 
+								case TConst(c):
+									switch (c) {
+										case TInt(i): return i;
+										default: Context.warning('found constant ${c}', pos);
+									}
+								default: Context.warning('found expression ${cfe.expr}', pos);
+							}
+						}
+						
+						return valueDefault;
+					} else {
+						Context.error('Only var fields are supported', Context.currentPos());
+						return valueDefault;
+					}
 				}
 				Context.error('Could not find field ${f} in ${path}', Context.currentPos());
-				throw 'Could not find field ${f} in ${path}';
+				return valueDefault;
 
 			case EBinop(op, e1, e2):
 				var a = getNumericValue(e1, valueDefault, pos);
@@ -367,15 +405,15 @@ class MacroTools {
 					}
 
 			default:
-				trace('Unknown expr: ${e.expr}');
+				Context.error('Unknown expr: ${e.expr}', pos);
 		}
-		return null;
+		return valueDefault;
 	}
 
 	public static function asTypeIdent(s:String, pos:Position):Expr {
 		if (s == null || s.length == 0) {
-			"Null type".error( pos);
-//			Context.errror("Null type", pos);
+			"Null type".error(pos);
+			//			Context.errror("Null type", pos);
 		}
 
 		var chunks = s.split(".");
@@ -384,7 +422,7 @@ class MacroTools {
 			return EConst(CIdent(chunks.pop())).at(pos);
 		}
 
-		return chunks.fold( (item, result) -> EField( result, item).at(pos), EConst(CIdent(chunks.shift())).at(pos) );
+		return chunks.fold((item, result) -> EField(result, item).at(pos), EConst(CIdent(chunks.shift())).at(pos));
 	}
 
 	public static function getStringValue(e:Expr):String {

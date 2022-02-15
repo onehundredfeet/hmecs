@@ -88,9 +88,9 @@ class StorageInfo {
 		givenCT = ct;
 		followedCT = ct.followComplexType();
 		followedT = followedCT.toTypeOrNull(Context.currentPos());
-		if (followedT == null)
-			throw('Could not find type for ${ct}');
-
+		if (followedT == null) {
+			Context.error('Could not find type for ${ct}', Context.currentPos());
+		}
 		followedClass = null;
 		try {
 			followedClass = followedT.getClass();
@@ -143,7 +143,7 @@ class StorageInfo {
 		containerTypeName = 'StorageOf' + fullName;
 		containerFullName = STORAGE_NAMESPACE + "." + containerTypeName;
 
-		containerFullNameExpr =containerFullName.asTypeIdent(Context.currentPos());
+		containerFullNameExpr = containerFullName.asTypeIdent(Context.currentPos());
 		// trace ('Container name ${containerFullName}');
 		//		containerTypeNameExpr = macro $i{containerTypeName};
 		componentIndex = i;
@@ -168,6 +168,7 @@ class StorageInfo {
 		containerType = containerCT.toTypeOrNull(Context.currentPos());
 
 		if (containerType == null) {
+			trace('redefining container i.e. ${containerCT.toString()} could not be found ');
 			var existsExpr = getExistsExpr(macro id);
 			var removeExpr = getRemoveExpr(macro id);
 
@@ -180,8 +181,6 @@ class StorageInfo {
 				public function exists(id:Int)
 					return $existsExpr;
 				};
-
-				
 
 			def.defineTypeSafe(STORAGE_NAMESPACE);
 		}
@@ -308,21 +307,17 @@ class ComponentBuilder {
 	}
 
 	public static function getComponentContainerInfo(componentComplexType:ComplexType):StorageInfo {
-		try {
-			var name = componentComplexType.followName();
+		var name = componentComplexType.followName();
 
-			var info = componentContainerTypeCache.get(name);
-			if (info != null) {
-				return info;
-			}
-
-			info = new StorageInfo(componentComplexType, ++componentIndex);
-			componentContainerTypeCache[name] = info;
-
+		var info = componentContainerTypeCache.get(name);
+		if (info != null) {
 			return info;
-		} catch (e) {
-			throw 'Could not find type ${componentComplexType.toString()} for container';
 		}
+
+		info = new StorageInfo(componentComplexType, ++componentIndex);
+		componentContainerTypeCache[name] = info;
+
+		return info;
 	}
 
 	public static function getLookup(ct:ComplexType, entityVarName:Expr):Expr {

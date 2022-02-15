@@ -1,5 +1,12 @@
 package ecs;
 
+/**
+ *  Workflow  
+ * 
+ * @author https://github.com/deepcake
+ * @author https://github.com/onehundredfeet
+ */
+
 #if macro
 
 using ecs.core.macro.ComponentBuilder;
@@ -21,11 +28,7 @@ import ecs.core.ICleanableComponentContainer;
 import ecs.core.ISystem;
 import ecs.core.RestrictedLinkedList;
 
-/**
- *  Workflow  
- * 
- * @author https://github.com/deepcake
- */
+
 class Workflow {
 	@:allow(ecs.Entity) static inline final INVALID_ID = 0;
 

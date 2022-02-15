@@ -8,9 +8,7 @@ using ecs.core.macro.ViewsOfComponentBuilder;
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
-
 using tink.MacroApi;
-
 #end
 
 /**
@@ -120,37 +118,32 @@ abstract Entity(Int) from Int to Int {
 	 * @return `Entity`
 	 */
 	macro public function add(self:Expr, components:Array<ExprOf<Any>>):ExprOf<ecs.Entity> {
-		try {
-			if (components.length == 0) {
-				Context.error('Required one or more Components', Context.currentPos());
-			}
-
-			var addComponentsToContainersExprs = components.map(function(c) {
-				var to = c.typeof();
-				if (!to.isSuccess()) {
-					Context.error('Can not find type for ${c}', Context.currentPos());
-				}
-				var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
-				return info.getAddExpr(macro __entity__, c);
-				// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
-				// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
-			});
-
-			var body = [].concat(addComponentsToContainersExprs).concat([
-				macro if (__entity__.isActive()) {
-					for (v in ecs.Workflow.views) {
-						@:privateAccess v.addIfMatched(__entity__);
-					}
-				}
-			]).concat([macro return __entity__]);
-
-			var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
-
-			return ret;
-		} catch (e) {
-			Context.reportError('Error adding to entity: ${e.toString()}', Context.currentPos());
-			return null;
+		if (components.length == 0) {
+			Context.error('Required one or more Components', Context.currentPos());
 		}
+
+		var addComponentsToContainersExprs = components.map(function(c) {
+			var to = c.typeof();
+			if (!to.isSuccess()) {
+				Context.error('Can not find type for ${c}', Context.currentPos());
+			}
+			var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
+			return info.getAddExpr(macro __entity__, c);
+			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
+			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+		});
+
+		var body = [].concat(addComponentsToContainersExprs).concat([
+			macro if (__entity__.isActive()) {
+				for (v in ecs.Workflow.views) {
+					@:privateAccess v.addIfMatched(__entity__);
+				}
+			}
+		]).concat([macro return __entity__]);
+
+		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
+
+		return ret;
 	}
 
 	/**
@@ -163,44 +156,38 @@ abstract Entity(Int) from Int to Int {
 		if (types.length == 0) {
 			Context.error('Required one or more Component Types', Context.currentPos());
 		}
-		try {
-			errorStage = "starting";
-			var cts = types.map(function(type) {
-				return type.parseClassName().getType().follow().toComplexType();
-			});
+		errorStage = "starting";
+		var cts = types.map(function(type) {
+			return type.parseClassName().getType().follow().toComplexType();
+		});
 
-			errorStage = "found types";
-			var removeComponentsFromContainersExprs = cts.map(function(ct) {
-				var info = ct.getComponentContainerInfo();
-				return info.getRemoveExpr(macro __entity__);
-			});
-			errorStage = "got remove expression";
+		errorStage = "found types";
+		var removeComponentsFromContainersExprs = cts.map(function(ct) {
+			var info = ct.getComponentContainerInfo();
+			return info.getRemoveExpr(macro __entity__);
+		});
+		errorStage = "got remove expression";
 
-			var removeEntityFromRelatedViewsExprs = cts.map(function(ct) {
-				return ct.getViewsOfComponent().followName();
-			}).map(function(viewsOfComponentClassName) {
-				var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
-				return macro @:privateAccess $x.inst().removeIfMatched(__entity__);
-			});
-			errorStage = "got views of components";
+		var removeEntityFromRelatedViewsExprs = cts.map(function(ct) {
+			return ct.getViewsOfComponent().followName();
+		}).map(function(viewsOfComponentClassName) {
+			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
+			return macro @:privateAccess $x.inst().removeIfMatched(__entity__);
+		});
+		errorStage = "got views of components";
 
-			var body = [].concat([
-				macro if (__entity__.isActive())
-					$b{removeEntityFromRelatedViewsExprs}
-			]).concat(removeComponentsFromContainersExprs).concat([macro return __entity__]);
+		var body = [].concat([
+			macro if (__entity__.isActive())
+				$b{removeEntityFromRelatedViewsExprs}
+		]).concat(removeComponentsFromContainersExprs).concat([macro return __entity__]);
 
-			errorStage = "made body";
+		errorStage = "made body";
 
+		var ret = macro inline(function(__entity__:ecs.Entity) $b{body})($self);
 
-			var ret = macro inline  (function(__entity__:ecs.Entity) $b{body})($self);
+		errorStage = "returning";
 
-			errorStage = "returning";
-
-			return ret;
-		} catch (e) {
-			Context.error('Likely removing unknown type from entity: ${e.toString()} [${errorStage}]', Context.currentPos());
-			return macro {};
-		}
+		return ret;
 	}
 
 	/**
@@ -221,25 +208,15 @@ abstract Entity(Int) from Int to Int {
 	 * @return `Bool`
 	 */
 	macro public function exists(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-		try {
-			var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
-			return info.getExistsExpr(self);
-		} catch (e) {
-			Context.error('Exists: Type not found  ${type.parseClassName()}', Context.currentPos());
-			return macro false;
-		}
-	}
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+		return info.getExistsExpr(self);
+}
 
 	macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-		try {
-			var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
 
-			return info.getExistsExpr(self);
-		} catch (e) {
-			Context.error('Has: Type not found  ${type.parseClassName()} : ${e.toString()}', Context.currentPos());
-			return macro false;
-		}
-	}
+		return info.getExistsExpr(self);
+}
 }
 
 @:enum abstract Status(Int) {
