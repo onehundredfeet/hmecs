@@ -43,21 +43,16 @@ class Global {
 		return lateClass;
 	}
 
-	static function removeCallback(mt:Array<ModuleType>) {
-		if (!addedLate) {
-			defineLateCalls().defineType();
-			addedLate = true;
-		}
-	}
+	
 	#end
 
 	public macro static function setup():Expr {
 		//trace ('now!');
-		defineLateCalls().defineType();
+		defineLateCalls().defineTypeSafe("ecs");
 
 		var x = macro {
 			trace('setting remove all function'); 
-			@:privateAccess Workflow.removeAllFunction = LateCalls.removeAllComponents; 
+			@:privateAccess Workflow.removeAllFunction = ecs.LateCalls.removeAllComponents; 
 		}
 		return x;
 	}

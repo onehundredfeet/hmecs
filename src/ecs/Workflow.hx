@@ -1,25 +1,18 @@
 package ecs;
 
-import haxe.macro.Printer;
 #if macro
-import haxe.macro.Expr;
-import haxe.macro.Type.ModuleType;
 
 using ecs.core.macro.ComponentBuilder;
 using ecs.core.macro.ViewsOfComponentBuilder;
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
-using Lambda;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using haxe.macro.Expr;
 using haxe.macro.TypeTools;
-
-import haxe.macro.Expr.ComplexType;
-
-using ecs.core.macro.MacroTools;
-using haxe.macro.Context;
 using tink.MacroApi;
+
+
 #end
 
 import ecs.Entity.Status;
@@ -226,20 +219,7 @@ class Workflow {
 		* @return `Entity`
 	 */
 	#if macro
-	static function exprOfClassToTypeName(e:ExprOf<Class<Any>>) {
-		return e.parseClassName().getType().follow().toComplexType().typeFullName();
-	}
-
-	static function exprOfClassToTypePath(e:ExprOf<Class<Any>>):TypePath {
-		var x = e.parseClassName().getType().toComplexType().followComplexType();
-		// trace("tpath: " + x);
-		switch (x) {
-			case TPath(p):
-				return p;
-			default:
-		}
-		return null;
-	}
+	
 
 	/*
 		 static function exprOfClassToTypePath( e : ExprOf<Class<Any>>) : TPath {
@@ -271,15 +251,18 @@ class Workflow {
 			return ret;
 		}
 	 */
+	 
 	macro public static function createFactory(worlds:ExprOf<Any>, components:Array<ExprOf<Class<Any>>>) { // :ExprOf<ecs.Factory> {
 		#if macro
+		var pos = Context.currentPos();
+
 		if (components.length == 0) {
 			Context.error('Required one or more Components', Context.currentPos());
 		}
 
 		// var pp = new haxe.macro.Printer();
-		var classNames = components.map(function(c) return {expr: EConst(CString(exprOfClassToTypeName(c))), pos: Context.currentPos()});
-		var allocation = components.map(function(c) return {expr: ENew(exprOfClassToTypePath(c), []), pos: Context.currentPos()});
+		var classNames = components.map(function(c) return {expr: c.exprOfClassToFullTypeName(null, pos).asTypeIdent(pos).expr, pos: pos});
+		var allocation = components.map(function(c) return {expr: ENew(c.exprOfClassToTypePath(null, pos), []), pos:pos});
 
 		var addComponentsToContainersExprs = components.map((c) -> {
 			// trace("parsetname|" + c.parseClassName().getType().toComplexType());

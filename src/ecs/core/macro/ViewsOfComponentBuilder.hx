@@ -3,96 +3,96 @@ package ecs.core.macro;
 #if macro
 import ecs.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
+import haxe.macro.Printer;
+
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
+using haxe.macro.TypeTools;
+using tink.MacroApi;
 
 class ViewsOfComponentBuilder {
+	public static final VIEW_OF_NAMESPACE = "ecs.viewsof";
 
+	// viewsOfComponentTypeName / viewsOfComponentType
+	public static function createViewsOfComponentType(componentComplexType:ComplexType):haxe.macro.Type {
+//		Context.warning('Making view of component ${componentComplexType.toString()}', Context.currentPos());
+		var errorStage = "";
+		try {
+			var componentTypeName = componentComplexType.followName();
+			var viewsOfComponentTypeName = 'ViewsOfComponent' + componentComplexType.typeFullName();
+			var viewsOfComponentTypePath = VIEW_OF_NAMESPACE + "." + viewsOfComponentTypeName;
+			var viewsOfComponentCT = viewsOfComponentTypePath.asComplexType();
+			var viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
 
-    // viewsOfComponentTypeName / viewsOfComponentType
-    static var viewsOfComponentTypeCache = new Map<String, haxe.macro.Type>();
+			errorStage = "checking in cache";
+			if (viewsOfComponentType == null) {
+				// first time call in current build
+				// type was not cached in previous build
+				errorStage = "building";
 
+		
+				var viewsOfComponenttpath = tpath([], viewsOfComponentTypeName, []);
+				
+				errorStage = "defining";
 
-    public static function createViewsOfComponentType(componentComplexType:ComplexType):haxe.macro.Type {
-        var errorStage = "";
-        try {
-        var componentTypeName = componentComplexType.followName();
-        var viewsOfComponentTypeName = 'ViewsOfComponent' + componentComplexType.typeFullName();
-        var viewsOfComponentType = viewsOfComponentTypeCache.get(viewsOfComponentTypeName);
+				var def = macro class $viewsOfComponentTypeName {
+					static var instance = new $viewsOfComponenttpath();
 
-        errorStage = "checking in cache";
-        if (viewsOfComponentType == null) {
-            // first time call in current build
-            errorStage = "checking in previous build";
-            try viewsOfComponentType = Context.getType(viewsOfComponentTypeName) catch (e) {
-                // type was not cached in previous build
-                errorStage = "building";
+					@:keep public static inline function inst():$viewsOfComponentCT {
+						return instance;
+					}
 
-                var viewsOfComponentTypePath = tpath([], viewsOfComponentTypeName, []);
-                var viewsOfComponentComplexType = TPath(viewsOfComponentTypePath);
+					// instance
 
-                errorStage = "defining";
+					var views = new Array<ecs.core.AbstractView>();
 
-                var def = macro class $viewsOfComponentTypeName {
+					function new() {}
 
-                    static var instance = new $viewsOfComponentTypePath();
+					public inline function addRelatedView(v:ecs.core.AbstractView) {
+						views.push(v);
+					}
 
-                    @:keep public static inline function inst():$viewsOfComponentComplexType {
-                        return instance;
-                    }
+					public inline function removeIfMatched(id:Int) {
+						for (v in views) {
+							if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
+								@:privateAccess v.removeIfExists(id);
+							}
+						}
+					}
+				}
 
-                    // instance
+				errorStage = "calling define";
 
-                    var views = new Array<ecs.core.AbstractView>();
+				def.defineTypeSafe(VIEW_OF_NAMESPACE);
 
-                    function new() { }
+				#if false
+					trace('ViewType: ${def.name}');
+					var p = new Printer();
+					trace(p.printTypeDefinition(def));
+					#end
 
-                    public inline function addRelatedView(v:ecs.core.AbstractView) {
-                        views.push(v);
-                    }
+				errorStage = "post define";
 
-                    public inline function removeIfMatched(id:Int) {
-                        for (v in views) {
-                            if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
-                                 @:privateAccess v.removeIfExists(id);
-                            }
-                        }
-                    }
-                }
+				viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
 
-                errorStage = "calling define";
+				if (viewsOfComponentType == null) {
+					Context.reportError('Could not find or create view of component type', Context.currentPos());
+					return null;
+				}
+				errorStage = "caching";
+			}
 
-                try {
-                    Context.defineType(def);
-                } catch (e) {
-                    Context.reportError('Could not define type ${def}', Context.currentPos());
-                    Context.reportError('Exception ${e.toString()}', Context.currentPos());
-                    throw 'Could not define type ${viewsOfComponentTypeName}';
-                }
+			return viewsOfComponentType;
+		} catch (e) {
+			Context.reportError('Could not create view of component ${componentComplexType.toString()}: ${e.toString()}', Context.currentPos());
+			Context.reportError('Info: ${errorStage}', Context.currentPos());
+			return null;
+		}
+	}
 
-                errorStage = "post define";
-
-                viewsOfComponentType = viewsOfComponentComplexType.toType();
-            }
-            errorStage = "caching";
-            // caching current build
-            viewsOfComponentTypeCache.set(viewsOfComponentTypeName, viewsOfComponentType);
-        }
-
-        return viewsOfComponentType;
-        }
-        catch(e) {
-            Context.reportError('Could not create view of component ${componentComplexType.toString()}: ${e.toString()}', Context.currentPos());
-            Context.reportError('Info: ${errorStage}', Context.currentPos());
-            return null;
-        }
-    }
-
-    public static function getViewsOfComponent(componentComplexType:ComplexType):ComplexType {
-        return createViewsOfComponentType(componentComplexType).toComplexType();
-    }
-
-
+	public static function getViewsOfComponent(componentComplexType:ComplexType):ComplexType {
+		return createViewsOfComponentType(componentComplexType).toComplexType();
+	}
 }
 #end

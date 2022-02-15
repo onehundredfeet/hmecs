@@ -8,6 +8,9 @@ using ecs.core.macro.ViewsOfComponentBuilder;
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
+
+using tink.MacroApi;
+
 #end
 
 /**
@@ -123,7 +126,11 @@ abstract Entity(Int) from Int to Int {
 			}
 
 			var addComponentsToContainersExprs = components.map(function(c) {
-				var info = (c.typeof().follow().toComplexType()).getComponentContainerInfo();
+				var to = c.typeof();
+				if (!to.isSuccess()) {
+					Context.error('Can not find type for ${c}', Context.currentPos());
+				}
+				var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
 				return info.getAddExpr(macro __entity__, c);
 				// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 				// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
@@ -172,7 +179,8 @@ abstract Entity(Int) from Int to Int {
 			var removeEntityFromRelatedViewsExprs = cts.map(function(ct) {
 				return ct.getViewsOfComponent().followName();
 			}).map(function(viewsOfComponentClassName) {
-				return macro @:privateAccess $i{viewsOfComponentClassName}.inst().removeIfMatched(__entity__);
+				var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
+				return macro @:privateAccess $x.inst().removeIfMatched(__entity__);
 			});
 			errorStage = "got views of components";
 
@@ -217,7 +225,7 @@ abstract Entity(Int) from Int to Int {
 			var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
 			return info.getExistsExpr(self);
 		} catch (e) {
-			Context.error('Type not found  ${type.parseClassName()}', Context.currentPos());
+			Context.error('Exists: Type not found  ${type.parseClassName()}', Context.currentPos());
 			return macro false;
 		}
 	}
@@ -228,7 +236,7 @@ abstract Entity(Int) from Int to Int {
 
 			return info.getExistsExpr(self);
 		} catch (e) {
-			Context.error('Type not found  ${type.parseClassName()} : ${e.toString()}', Context.currentPos());
+			Context.error('Has: Type not found  ${type.parseClassName()} : ${e.toString()}', Context.currentPos());
 			return macro false;
 		}
 	}
