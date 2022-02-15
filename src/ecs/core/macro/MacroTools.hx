@@ -12,6 +12,7 @@ import haxe.macro.Expr.Position;
 import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.Type.ClassField;
+import haxe.macro.Type;
 
 using tink.MacroApi;
 using haxe.macro.Context;
@@ -128,36 +129,39 @@ class MacroTools {
 			return null;
 		}
 
+		#if true
 		var yy = c.toType(pos);
 		if (yy.isSuccess()) {
 			x = yy.sure();
 		}
-		
-	return x;
 
-		/*
+		#else
+		try {
+			var t = Context.resolveType(c, pos);
+			if (t != null) {
+				x = doFollow ? t.follow() : t;
+			}
+		} catch (e:String) {}
+
+		if (x == null && false) {
 			try {
-				var t = Context.resolveType(c, pos);
-				Context.warning('Resolution ${t}', pos);
+				var t = Context.getType(c.toString());
+				Context.warning('Get ${t}', pos);
+
 				if (t != null) {
 					x = doFollow ? t.follow() : t;
 				}
-			} catch (e) {}
+			} catch (e:String) {}
+		}
 
-			if (x == null && false) {
-				try {
-					var t = Context.getType(c.toString());
-					Context.warning('Get ${t}', pos);
+		if (x == null) {
+			Context.warning('no type ${c.toString()}', pos);
+		}
+		#end
+	return x;
 
-					if (t != null) {
-						x = doFollow ? t.follow() : t;
-					}
-				} catch (e) {}
-			}
-
-			if (x == null) {
-				Context.warning('no type ${c.toString()}', pos);
-			}
+		/*
+			
 
 			return x; */
 	}
@@ -319,6 +323,33 @@ class MacroTools {
 		return null;
 	}
 
+	public static function getTypeNumericValue(typedExpr:haxe.macro.Type.TypedExpr, valueDefault:Dynamic, pos:Position):Dynamic {
+
+		switch (typedExpr.expr) {
+			case TConst(c):
+				switch (c) {
+					case TInt(i): return i;
+					default: Context.warning('found constant ${c}', pos);
+				}
+				case TBinop(op, e1, e2):
+					var a = getTypeNumericValue(e1, valueDefault, pos);
+					var b = getTypeNumericValue(e2, valueDefault, pos);
+					if (a != null && b != null)
+						switch (op) {
+							case OpShl: return getTypeNumericValue(e1, valueDefault, pos) << getTypeNumericValue(e2, valueDefault, pos);
+							case OpShr: return getTypeNumericValue(e1, valueDefault, pos) >> getTypeNumericValue(e2, valueDefault, pos);
+							case OpAdd: return getTypeNumericValue(e1, valueDefault, pos) + getTypeNumericValue(e2, valueDefault, pos);
+							case OpMult: return getTypeNumericValue(e1, valueDefault, pos) * getTypeNumericValue(e2, valueDefault, pos);
+							case OpOr: return getTypeNumericValue(e1, valueDefault, pos) | getTypeNumericValue(e2, valueDefault, pos);
+							case OpAnd: return getTypeNumericValue(e1, valueDefault, pos) & getTypeNumericValue(e2, valueDefault, pos);
+	
+							default: trace('Unknown op: ${op}');
+						}
+			default:
+		}
+		return valueDefault;
+	}
+
 	public static function getNumericValue(e:Expr, valueDefault:Dynamic, pos:Position):Dynamic {
 		switch (e.expr) {
 			case EConst(c):
@@ -372,14 +403,7 @@ class MacroTools {
 					if (cf.isVar()) {
 						var cfe = cf.expr();
 						if (cfe != null) {
-							switch (cfe.expr) {
-								case TConst(c):
-									switch (c) {
-										case TInt(i): return i;
-										default: Context.warning('found constant ${c}', pos);
-									}
-								default: Context.warning('found expression ${cfe.expr}', pos);
-							}
+							return getTypeNumericValue(cfe, valueDefault, pos);
 						}
 
 						return valueDefault;
@@ -436,8 +460,8 @@ class MacroTools {
 				switch (c) {
 					case CString(s, kind): return s;
 					case CIdent(s): return s;
-					case CFloat(f, s): return f;
-					case CInt(v, s): return v;
+					case CFloat(f): return f;
+					case CInt(v): return v;
 					default:
 				}
 			default:

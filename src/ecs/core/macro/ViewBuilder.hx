@@ -91,7 +91,7 @@ class ViewBuilder {
 			var addViewToViewsOfComponent = components.map(function(c) {
 				var viewsOfComponentName = getViewsOfComponent(c.ct).toString();
 				if (viewsOfComponentName == null) {
-					Context.reportError('Couldn\'t get view of component ${viewsOfComponentName}', pos);
+					Context.error('Couldn\'t get view of component ${viewsOfComponentName}', pos);
 				} else {
 					// Context.warning('viewsOfComponentName ${viewsOfComponentName}', pos);
 				}

@@ -263,9 +263,7 @@ public static function build(debug:Bool = false) {
 									Context.warning('Something in denmark2 ${view}', Context.currentPos());
 								}
 								
-							} else {
-								Context.warning('Something in denmark ${view}', Context.currentPos());
-							}
+							} 
 						}
 					}
 				}

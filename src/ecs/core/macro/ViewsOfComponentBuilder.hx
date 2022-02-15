@@ -75,7 +75,7 @@ class ViewsOfComponentBuilder {
 			viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
 
 			if (viewsOfComponentType == null) {
-				Context.reportError('Could not find or create view of component type', Context.currentPos());
+				Context.error('Could not find or create view of component type', Context.currentPos());
 				return null;
 			}
 			errorStage = "caching";
