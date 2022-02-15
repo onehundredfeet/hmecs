@@ -87,7 +87,6 @@ class ViewSpec {
 		var mm = field.meta.toMap();
 
 		var excludes = [];
-		return excludes;
 		if (mm.exists(":not")) {
 			var exs = mm.get(":not");
 			for (ex in exs) {
@@ -109,6 +108,7 @@ class ViewSpec {
 			}
 		}
 		excludes.sort(compareViewTypes);
+
 		return excludes;
 	}
 
