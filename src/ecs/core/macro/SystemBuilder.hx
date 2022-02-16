@@ -253,6 +253,7 @@ public static function build(debug:Bool = false) {
 							var view = definedViews.find(function(v) return v.view.spec.name == vs.name);
 
 							if (view == null || view.varname != vs.name.toLowerCase()) {
+
 								var vr = ViewBuilder.getViewRec(vs, field.pos);
 
 								if (vr != null) {
@@ -262,15 +263,16 @@ public static function build(debug:Bool = false) {
 								} else {
 									Context.warning('Something in denmark2 ${view}', Context.currentPos());
 								}
-								
-							} 
+							} else {
+								//Context.warning('Re-using view ${view.varname}', Context.currentPos());
+							}
 						}
 					}
 				}
 			default:
 		}
 	});
-
+	
 	var ufuncs = fields.filter(MetaTools.notSkipped)
 		.filter((x) -> return MetaTools.containsMeta(x, MetaTools.UPD_META))
 		.map(procMetaFunc)

@@ -4,6 +4,7 @@ package ecs.core.macro;
 import ecs.core.macro.MacroTools.*;
 import haxe.macro.Expr.ComplexType;
 import haxe.macro.Printer;
+import ecs.utils.Const;
 
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
@@ -62,7 +63,7 @@ class ViewsOfComponentBuilder {
 
 			errorStage = "calling define";
 
-			def.defineTypeSafe(VIEW_OF_NAMESPACE);
+			def.defineTypeSafe(VIEW_OF_NAMESPACE, Const.ROOT_MODULE);
 
 			#if false
 			trace('ViewType: ${def.name}');

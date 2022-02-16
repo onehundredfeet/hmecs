@@ -2,6 +2,7 @@ package ecs.core.macro;
 #if macro
 import haxe.macro.Type;
 import haxe.macro.Expr;
+import ecs.utils.Const;
 
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
@@ -48,8 +49,9 @@ class Global {
 
 	public macro static function setup():Expr {
 		//trace ('now!');
-		defineLateCalls().defineTypeSafe("ecs");
+		defineLateCalls().defineTypeSafe("ecs", Const.ROOT_MODULE);
 
+		//ViewBuilder.createAllViewType();
 		var x = macro {
 			trace('setting remove all function'); 
 			@:privateAccess Workflow.removeAllFunction = ecs.LateCalls.removeAllComponents; 

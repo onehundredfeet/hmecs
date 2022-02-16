@@ -1,5 +1,6 @@
 package ecs.core.macro;
 
+import ecs.utils.Const;
 #if macro
 import ecs.core.macro.MacroTools.*;
 import haxe.macro.Type;
@@ -181,7 +182,7 @@ class StorageInfo {
 					return $existsExpr;
 				};
 
-			def.defineTypeSafe(STORAGE_NAMESPACE);
+			def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
 		}
 
 		if (containerType == null) {

@@ -83,16 +83,23 @@ class MacroTools {
 		if (c == null)
 			return null;
 
+		#if false
+		var x = c.toType(Context.currentPos());
+
+		if (x.isSuccess()) {
+			return x.sure();
+		}
+		#else
 		try {
 			return Context.resolveType(c, Context.currentPos());
-		} catch (e) {
-			switch (c) {
-				case TPath(p):
-					throw 'Could not resolve type ${p.pack}.${p.sub}.${p.name}<${p.params}>';
-				default:
-					throw 'Could not resolve type ${c}';
+		} catch (e:Dynamic) {
+			if (Std.isOfType(e, String)) {
+				return null;
 			}
 		}
+		#end
+		return null;
+	
 	}
 
 	static public function typeNotFoundError(c:ComplexType, doThrow:Bool = false) {
@@ -113,12 +120,21 @@ class MacroTools {
 		}
 	}
 
-	static public function defineTypeSafe(def:TypeDefinition, namespace:String) {
+	static public function defineTypeSafe(def:TypeDefinition, namespace:String, dependency:String = "ecs.View") {
 		if (namespace.length > 0) {
 			def.pack = namespace.split(".");
 		}
+		#if false
 		// Context.getLocalImports()
 		Context.defineModule(namespace + "." + def.name, [def]);
+		#else
+		try {
+		Context.defineType( def, dependency );
+		}
+		catch(e:Dynamic) {
+			Context.warning('Error defining type ${e}', Context.currentPos());
+		}
+		#end
 	}
 
 	static public function toTypeOrNull(c:ComplexType, doFollow:Bool = true, pos:Position):Null<haxe.macro.Type> {
@@ -129,33 +145,38 @@ class MacroTools {
 			return null;
 		}
 
-		#if true
+		#if false
 		var yy = c.toType(pos);
 		if (yy.isSuccess()) {
 			x = yy.sure();
 		}
 
 		#else
-		try {
-			var t = Context.resolveType(c, pos);
-			if (t != null) {
-				x = doFollow ? t.follow() : t;
-			}
-		} catch (e:String) {}
-
-		if (x == null && false) {
+		if (x == null) {
 			try {
 				var t = Context.getType(c.toString());
-				Context.warning('Get ${t}', pos);
 
 				if (t != null) {
 					x = doFollow ? t.follow() : t;
+					//Context.warning('Get ${x}', pos);
+
 				}
 			} catch (e:String) {}
 		}
 
 		if (x == null) {
-			Context.warning('no type ${c.toString()}', pos);
+		try {
+			var t = Context.resolveType(c, pos);
+			if (t != null) {
+				x = doFollow ? t.follow() : t;
+				//Context.warning('Resolved ${x}', pos);
+
+			}
+		} catch (e:String) {}
+	}
+		
+		if (x == null) {
+			//Context.warning('no type ${c.toString()}', pos);
 		}
 		#end
 	return x;

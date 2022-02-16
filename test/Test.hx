@@ -1,12 +1,13 @@
 package;
+
 import ecs.core.macro.Global;
 import ecs.Workflow;
 import ecs.View;
 import ecs.Entity;
 import TestComponents;
 import TestWorlds;
-import TestSystems;
 import TestSystemY;
+import TestSystemZ;
 
 
 
@@ -14,9 +15,9 @@ class Test {
     public final TESTWORLD = 5;
     public static function main() {
         #if !macro ecsSetup(); #end
-        Workflow.addSystem(new SystemX());
         Workflow.addSystem(new TestSystemY());
- 
+        Workflow.addSystem(new TestSystemZ());
+  
         // only works with static views - factories don't work atm.
        //var factory = ecs.Workflow.createFactory(1, X, Y);
         //trace(factory);
@@ -29,10 +30,10 @@ class Test {
         var xxx = new X();
                 
         xxx.a;
-
+        
         Workflow.update(1.);
  
-         
+          
     }
     static function ecsSetup() {
         Global.setup();

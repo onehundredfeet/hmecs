@@ -9,6 +9,7 @@ import haxe.macro.Expr;
  * @author https://github.com/deepcake
  */
 @:forward(length)
+@:generic
 abstract Signal<T>(LinkedList<T>) {
 
 

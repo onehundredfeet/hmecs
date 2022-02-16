@@ -15,4 +15,4 @@ class Z {
 
 class K {
     public function new () {}
-}
+} 

@@ -2,12 +2,12 @@ package;
 
 import TestComponents;
 
-class SystemX extends ecs.System {
-    @:not(Y)
-    var x:View<X>;
+class TestSystemsB extends ecs.System {
+//    @:not(Y)
+//    var x:View<X>;
      
-    var xz:View<X,Z>;
-    var xy:View<X,Y,Z>;
+  //  var xz:View<X,Z>;
+    //var xy:View<X,Y,Z>;
 
     @:not(Y)
     @:u  function updateA(ix:X) { 
