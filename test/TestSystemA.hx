@@ -2,12 +2,23 @@ package;
 
 import TestComponents;
 
-class TestSystemsA extends ecs.System {
+class TestSystemA extends ecs.System {
     @:not(Y)
     var x:View<X>;
      
     var xz:View<X,Z>;
     var xy:View<X,Y,Z>;
+
+
+    @:added
+    function added(ix:X) {
+
+    }
+
+    @:removed
+    function removed(ix:X) {
+
+    }
 
     @:not(Y)
     @:u  function updateA(ix:X) { 

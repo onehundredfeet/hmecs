@@ -225,6 +225,7 @@ public static function build(debug:Bool = false) {
 										// init
 										var x = vr.spec.typePath().asTypeIdent(Context.currentPos());
 										field.kind = FVar(vr.ct, macro $x.inst());
+//										trace('defining: ${field.name.toLowerCase()} from field');
 										definedViews.push({view: vr, varname: field.name});
 									}
 								} else {
@@ -243,27 +244,32 @@ public static function build(debug:Bool = false) {
 		switch (field.kind) {
 			case FFun(func):
 				{
+					//trace ('Function ${field.name}');
 					var components = func.args.map(metaFuncArgToComponentDef).filter(notNull);
 					var worlds = metaFieldToWorlds(field);
 
 					if (components != null && components.length > 0) {
 						var vs = ViewSpec.fromField(field, func);
 						if (vs != null) {
+							var lcName = vs.name.toLowerCase();
 							
-							var view = definedViews.find(function(v) return v.view.spec.name == vs.name);
-
-							if (view == null || view.varname != vs.name.toLowerCase()) {
-
+							var view = definedViews.find(function(v) return v.varname == lcName);
+					
+							if (view == null || view.varname != lcName) {
+								if (view != null) trace('? vs ${view.varname} vs ${lcName}');
 								var vr = ViewBuilder.getViewRec(vs, field.pos);
 
 								if (vr != null) {
-									definedViews.push({view: vr, varname: vs.name.toLowerCase()});
+//									trace('defining: ${lcName} from function');
+
+									definedViews.push({view: vr, varname: lcName});
 									var tp = vs.typePath().asTypeIdent(Context.currentPos());
-									fields.push(fvar([], [], vs.name.toLowerCase(), vr.ct, macro $tp.inst(), Context.currentPos()));
+									fields.push(fvar([], [], lcName, vr.ct, macro $tp.inst(), Context.currentPos()));
 								} else {
 									Context.warning('Something in denmark2 ${view}', Context.currentPos());
 								}
 							} else {
+//								trace('reusing: ${lcName} from function');
 								//Context.warning('Re-using view ${view.varname}', Context.currentPos());
 							}
 						}
@@ -455,8 +461,9 @@ public static function build(debug:Bool = false) {
 				}
 		}
 	}
+
 	#if false
-	if (Context.getLocalType().toComplex().toString() == "Test.SystemY") {
+	if (Context.getLocalType().toComplex().toString() == "TestSystemA") {
 		trace('Type: ${Context.getLocalType().toComplex().toString()}');
 		for (f in fields) {
 			trace(_printer.printField(f));

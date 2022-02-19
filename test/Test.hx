@@ -8,7 +8,7 @@ import TestComponents;
 import TestWorlds;
 import TestSystemY;
 import TestSystemZ;
-
+import TestSystemA;
 
 
 class Test {
@@ -17,15 +17,16 @@ class Test {
         #if !macro ecsSetup(); #end
         Workflow.addSystem(new TestSystemY());
         Workflow.addSystem(new TestSystemZ());
+        Workflow.addSystem(new TestSystemA());
   
         // only works with static views - factories don't work atm.
        //var factory = ecs.Workflow.createFactory(1, X, Y);
         //trace(factory);
   
-        //var e = new Entity();
-        //e.add( new K() );
+        var e = new Entity();
+        e.add( new K() );
         
-        //e.remove( K );
+        e.remove( K );
 
         var xxx = new X();
                 

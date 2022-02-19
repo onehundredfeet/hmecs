@@ -48,7 +48,7 @@ class PoolBuilder {
 			var factoryField = fields.find((x) -> x.meta.toMap().exists(":pool_factory"));
 			var newCall = factoryField != null ? macro $i{factoryField.name}() : macro new $tp();
 			var allocBody = macro return (__pool.length == 0) ? $newCall : __pool.pop();
-			fields.push(ffun(null, [APublic, AStatic], "rent", null, ct, allocBody, Context.currentPos()));
+			fields.push(ffun(null, [APublic, AStatic, AInline], "rent", null, ct, allocBody, Context.currentPos()));
 		}
 
 		// Retire
