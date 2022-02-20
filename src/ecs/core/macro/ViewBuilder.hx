@@ -104,8 +104,10 @@ class ViewBuilder {
 			Context.onAfterTyping(afterTypingCallback);
 			callbackEstablished = true;
 		}
+		var pos = Context.currentPos();
+
 		var t = Context.getLocalType().follow();
-		var vs = ViewSpec.fromViewType(t);
+		var vs = ViewSpec.fromViewType(t, pos);
 
 		return createViewType(vs, Context.currentPos());
 	}
@@ -135,11 +137,11 @@ class ViewBuilder {
 		var signalTypePath = tpath(['ecs', 'utils'], 'Signal', [TPType(signalTypeParamComplexType)]);
 
 		// signal args for dispatch() call
-		var signalArgs = [macro id].concat(components.map(function(c) return getLookup(c.ct, macro id)));
+		var signalArgs = [macro id].concat(components.map(function(c) return getLookup(c.ct, macro id, pos)));
 
 		// component related views
 		var addViewToViewsOfComponent = components.map(function(c) {
-			var viewsOfComponentName = getViewsOfComponent(c.ct).toString();
+			var viewsOfComponentName = getViewsOfComponent(c.ct, pos).toString();
 			if (viewsOfComponentName == null) {
 				Context.error('Couldn\'t get view of component ${viewsOfComponentName}', pos);
 			} else {
@@ -189,7 +191,7 @@ class ViewBuilder {
 		// iter
 		{
 			var funcComplexType = TFunction([macro:ecs.Entity].concat(components.map(function(c) return c.ct)), macro:Void);
-			var funcCallArgs = [macro __entity__].concat(components.map(function(c) return getComponentContainerInfo(c.ct).getGetExpr(macro __entity__)));
+			var funcCallArgs = [macro __entity__].concat(components.map(function(c) return getComponentContainerInfo(c.ct, pos).getGetExpr(macro __entity__)));
 			var body = macro {
 				for (__entity__ in entities) {
 					f($a{funcCallArgs});
@@ -200,8 +202,8 @@ class ViewBuilder {
 
 		// isMatched
 		{
-			var checksIncludes = components.map(function(c) return getComponentContainerInfo(c.ct).getExistsExpr(macro id));
-			var checksExcludes = vi.excludes.map(function(c) return macro !${getComponentContainerInfo(c.ct).getExistsExpr(macro id)});
+			var checksIncludes = components.map(function(c) return getComponentContainerInfo(c.ct, pos).getExistsExpr(macro id));
+			var checksExcludes = vi.excludes.map(function(c) return macro !${getComponentContainerInfo(c.ct, pos).getExistsExpr(macro id)});
 			var totalChecks = checksIncludes.concat(checksExcludes);
 
 			var cond = totalChecks.slice(1).fold(function(check1, check2) return macro $check1 && $check2, totalChecks[0]);
@@ -244,7 +246,7 @@ class ViewBuilder {
 
 		// toString
 		{
-			var componentNames = components.map(function(c) return c.ct.typeValidShortName()).join(', ');
+			var componentNames = components.map(function(c) return c.ct.typeValidShortName(pos)).join(', ');
 			var body = macro return $v{componentNames};
 			def.fields.push(ffun([AOverride, APublic], 'toString', null, macro:String, body, Context.currentPos()));
 		}

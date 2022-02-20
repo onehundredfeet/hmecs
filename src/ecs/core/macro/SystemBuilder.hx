@@ -46,8 +46,8 @@ class SystemBuilder {
 
 	static var _printer = new Printer();
 
-	static function metaFuncArgToComponentDef(a:FunctionArg) {
-		return switch (a.type.followComplexType()) {
+	static function metaFuncArgToComponentDef(a:FunctionArg, pos) {
+		return switch (a.type.followComplexType(pos)) {
 			case macro: StdTypes.Float
 			:null;
 			case macro: StdTypes.Int
@@ -56,7 +56,7 @@ class SystemBuilder {
 			:null;
 			default:
 				var mm = a.meta.toMap();
-				mm.exists(":local") ? null : {cls: a.type.followComplexType()};
+				mm.exists(":local") ? null : {cls: a.type.followComplexType(pos)};
 		}
 	}
 
@@ -64,8 +64,8 @@ class SystemBuilder {
 		return e != null;
 
 	// @meta f(a:T1, b:T2, deltatime:Float) --> a, b, __dt__
-	static function metaFuncArgToCallArg(a:FunctionArg) {
-		return switch (a.type.followComplexType()) {
+	static function metaFuncArgToCallArg(a:FunctionArg, pos) {
+		return switch (a.type.followComplexType(pos)) {
 			case macro: StdTypes.Float
 			:macro __dt__;
 			case macro: StdTypes.Int
@@ -76,8 +76,8 @@ class SystemBuilder {
 		}
 	}
 
-	static function metaFuncArgIsEntity(a:FunctionArg) {
-		return switch (a.type.followComplexType()) {
+	static function metaFuncArgIsEntity(a:FunctionArg,pos) {
+		return switch (a.type.followComplexType(pos)) {
 			case macro: StdTypes.Int
 			,
 		macro:ecs.Entity:true;
@@ -86,13 +86,13 @@ class SystemBuilder {
 	}
 }
 
-static function refComponentDefToFuncArg(cls:ComplexType, args:Array<FunctionArg>) {
-	var copmonentClsName = cls.followName();
-	var a = args.find(function(a) return a.type.followName() == copmonentClsName);
+static function refComponentDefToFuncArg(cls:ComplexType, args:Array<FunctionArg>,pos) {
+	var copmonentClsName = cls.followName(pos);
+	var a = args.find(function(a) return a.type.followName(pos) == copmonentClsName);
 	if (a != null) {
 		return arg(a.name, a.type);
 	} else {
-		return arg(cls.typeFullName().toLowerCase(), cls);
+		return arg(cls.typeFullName(pos).toLowerCase(), cls);
 	}
 }
 
@@ -102,8 +102,8 @@ static function procMetaFunc(field:Field):UpdateRec {
 		case FFun(func): {
 				// Context.warning('Found function meta for ${field.name}', field.pos);
 				var funcName = field.name;
-				var funcCallArgs = func.args.map(metaFuncArgToCallArg).filter(notNull);
-				var components = func.args.map(metaFuncArgToComponentDef).filter(notNull);
+				var funcCallArgs = func.args.map((x) -> metaFuncArgToCallArg(x,field.pos)).filter(notNull);
+				var components = func.args.map((x) -> metaFuncArgToComponentDef(x,field.pos)).filter(notNull);
 				var worlds = metaFieldToWorlds(field);
 
 				if (components.length > 0) {
@@ -120,7 +120,7 @@ static function procMetaFunc(field:Field):UpdateRec {
 					}
 					// Context.warning('View Rec from field ${vr.name}', field.pos);
 
-					var viewArgs = [arg('__entity__', macro:ecs.Entity)].concat(vi.includes.map((x) -> refComponentDefToFuncArg(x.ct, func.args)));
+					var viewArgs = [arg('__entity__', macro:ecs.Entity)].concat(vi.includes.map((x) -> refComponentDefToFuncArg(x.ct, func.args, field.pos)));
 
 					// Context.warning('View args from field ${viewArgs}', field.pos);
 					{
@@ -134,7 +134,7 @@ static function procMetaFunc(field:Field):UpdateRec {
 					};
 				} else {
 					// Context.warning('No components', field.pos);
-					if (func.args.exists(metaFuncArgIsEntity)) {
+					if (func.args.exists((x) -> metaFuncArgIsEntity(x, field.pos))) {
 						// every entity iterate
 						Context.warning("Are you sure you want to iterate over all the entities? If not, you should add some components or remove the Entity / Int argument",
 							field.pos);
@@ -170,6 +170,7 @@ static function procMetaFunc(field:Field):UpdateRec {
 public static function build(debug:Bool = false) {
 	var fields = Context.getBuildFields();
 	var ct = Context.getLocalType().toComplexType();
+	var pos = Context.currentPos();
 	// trace('Building ${ct.toString()}');
 
 	// define new() if not exists (just for comfort)
@@ -211,13 +212,13 @@ public static function build(debug:Bool = false) {
 								for (p in path.params) {
 									switch (p) {
 										case TPType(tpt): {
-												components.push(tpt.followComplexType());
+												components.push(tpt.followComplexType(pos));
 											}
 										case TPExpr(e): throw "unsupported";
 									}
 								}
 
-								var vs = ViewSpec.fromComponents(components);
+								var vs = ViewSpec.fromComponents(components, pos);
 								var vr = ViewBuilder.getViewRec(vs, field.pos);
 
 								if (vr != null) {
@@ -245,7 +246,7 @@ public static function build(debug:Bool = false) {
 			case FFun(func):
 				{
 					//trace ('Function ${field.name}');
-					var components = func.args.map(metaFuncArgToComponentDef).filter(notNull);
+					var components = func.args.map((x) -> metaFuncArgToComponentDef(x,field.pos)).filter(notNull);
 					var worlds = metaFieldToWorlds(field);
 
 					if (components != null && components.length > 0) {
@@ -331,16 +332,16 @@ public static function build(debug:Bool = false) {
 
 					var callTypeMap = new Map<String, Expr>();
 					var callNameMap = new Map<String, Expr>();
-					callTypeMap["Float".asComplexType().followComplexType().typeFullName()] = macro __dt__;
-					callTypeMap["ecs.Entity".asComplexType().followComplexType().typeFullName()] = macro __entity__;
+					callTypeMap["Float".asComplexType().followComplexType(pos).typeFullName(pos)] = macro __dt__;
+					callTypeMap["ecs.Entity".asComplexType().followComplexType(pos).typeFullName(pos)] = macro __entity__;
 					for (c in f.view.spec.includes) {
-						var ct = c.ct.typeFullName();
-						var info = getComponentContainerInfo(c.ct);
+						var ct = c.ct.typeFullName(pos);
+						var info = getComponentContainerInfo(c.ct, pos);
 						callTypeMap[ct] = info.getGetExpr(macro __entity__, info.fullName + "_inst");
 					}
 
 					var cache = f.view.spec.includes.map(function(c) {
-						var info = getComponentContainerInfo(c.ct);
+						var info = getComponentContainerInfo(c.ct, pos);
 						return info.getCacheExpr(info.fullName + "_inst");
 					});
 
@@ -354,7 +355,7 @@ public static function build(debug:Bool = false) {
 					}
 
 					var remappedArgs = f.rawargs.map((x) -> {
-						var ctn = x.type.followComplexType().typeFullName();
+						var ctn = x.type.followComplexType(pos).typeFullName(pos);
 						if (callNameMap.exists(x.name)) {
 							return callNameMap[x.name];
 						}
@@ -438,7 +439,7 @@ public static function build(debug:Bool = false) {
 	fields.push(ffun([APublic, AOverride], '__deactivate__', [], null, macro {$dexpr;}, Context.currentPos()));
 
 	// toString
-	fields.push(ffun([AOverride, APublic], 'toString', null, macro:String, macro return $v{ct.followName()}, Context.currentPos()));
+	fields.push(ffun([AOverride, APublic], 'toString', null, macro:String, macro return $v{ct.followName(pos)}, Context.currentPos()));
 
 	var clsType = Context.getLocalClass().get();
 

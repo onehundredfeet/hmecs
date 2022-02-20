@@ -52,9 +52,9 @@ class ViewSpec {
 		return c;
 	}
 
-	function addArg(a:FunctionArg):ViewTypeRef {
+	function addArg(a:FunctionArg, pos):ViewTypeRef {
 		var mm = a.meta.toMap();
-		var ct = a.type.followComplexType();
+		var ct = a.type.followComplexType(pos);
 
 		var x:ViewTypeRef = switch (ct) {
 			case macro: StdTypes.Float
@@ -71,8 +71,8 @@ class ViewSpec {
 					var vt = {
 						ct: ct,
 						ex: false,
-						name: ct.typeFullName(),
-						lcname: ct.typeFullName().toLowerCase()
+						name: ct.typeFullName(pos),
+						lcname: ct.typeFullName(pos).toLowerCase()
 					};
 					includes.push(vt);
 
@@ -93,13 +93,13 @@ class ViewSpec {
 				for (te in ex) {
 					var tn = te.getStringValue();
 					var ct:ComplexType = TPath(exprOfClassToTypePath(cast te, null, field.pos));
-					ct = ct.followComplexType();
+					ct = ct.followComplexType(field.pos);
 
 					var vt = {
 						ct: ct,
 						ex: true,
-						name: ct.typeFullName(),
-						lcname: ct.typeFullName().toLowerCase(),
+						name: ct.typeFullName(field.pos),
+						lcname: ct.typeFullName(field.pos).toLowerCase(),
 						fun: null,
 						local: null
 					};
@@ -116,7 +116,7 @@ class ViewSpec {
 		var vi = new ViewSpec();
 
 		// Context.warning('from field ${field.name}', Context.currentPos());
-		var components = func.args.map(vi.addArg).filter(notNull);
+		var components = func.args.map((x) -> vi.addArg(x, field.pos)).filter(notNull);
 		vi.worlds = metaFieldToWorlds(field);
 
 		vi.includes.sort(compareViewTypes);
@@ -128,7 +128,7 @@ class ViewSpec {
 
 	public static function fromVar(field:Field, ct:ComplexType):ViewSpec {
 		trace('attemping to resolve from var ${field.name} with ${ct.toString()}');
-		var vs = fromViewCT(ct);
+		var vs = fromViewCT(ct, field.pos);
 		vs.worlds = metaFieldToWorlds(field);
 		vs.excludes = getExcludesFromField(field);
 		vs.generateName();
@@ -136,14 +136,14 @@ class ViewSpec {
 		return vs;
 	}
 
-	public static function fromComponents(includes:Array<ComplexType>):ViewSpec {
+	public static function fromComponents(includes:Array<ComplexType>, pos):ViewSpec {
 		var vi = new ViewSpec();
 		vi.includes = includes.map(function(ct) {
 			var vt = {
 				ct: ct,
 				ex: false,
-				name: ct.typeFullName(),
-				lcname: ct.typeFullName().toLowerCase()
+				name: ct.typeFullName(pos),
+				lcname: ct.typeFullName(pos).toLowerCase()
 			};
 			return vt;
 		});
@@ -156,7 +156,7 @@ class ViewSpec {
 		return vi;
 	}
 
-	public static function fromViewCT(ct:ComplexType):ViewSpec {
+	public static function fromViewCT(ct:ComplexType, pos):ViewSpec {
 		if (ct == null) {
 			Context.error('Can\'t turn null into view spec', Context.currentPos());
 			throw 'Can\'t turn null into view spec';
@@ -166,10 +166,10 @@ class ViewSpec {
 			Context.error('Can\'t find type ${ct.toString()}', Context.currentPos());
 			throw 'Can\'t find type ${ct.toString()}';
 		}
-		return fromViewType(t);
+		return fromViewType(t, pos);
 	}
 
-	public static function fromViewType(t:haxe.macro.Type):ViewSpec {
+	public static function fromViewType(t:haxe.macro.Type, pos):ViewSpec {
 		return switch (t) {
 			case TInst(c, types):
 				if (c.get().name != "View") {
@@ -182,8 +182,8 @@ class ViewSpec {
 					var vt = {
 						ct: ct,
 						ex: false,
-						name: ct.typeFullName(),
-						lcname: ct.typeFullName().toLowerCase()
+						name: ct.typeFullName(pos),
+						lcname: ct.typeFullName(pos).toLowerCase()
 					};
 					return vt;
 				});

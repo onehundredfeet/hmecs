@@ -84,10 +84,10 @@ class StorageInfo {
 		return false;
 	}
 
-	public function new(ct:ComplexType, i:Int) {
+	public function new(ct:ComplexType, i:Int, pos) {
 		// trace ('Generating storage for ${ct.toString()}');
 		givenCT = ct;
-		followedCT = ct.followComplexType();
+		followedCT = ct.followComplexType(pos);
 		followedT = followedCT.toTypeOrNull(Context.currentPos());
 		if (followedT == null) {
 			Context.error('Could not find type for ${ct}', Context.currentPos());
@@ -128,7 +128,7 @@ class StorageInfo {
 
 		//		followedMeta.exists(":empty") ? followedMeta.get(":empty")[0][0] : macro null;
 
-		fullName = followedCT.followComplexType().typeFullName();
+		fullName = followedCT.followComplexType(pos).typeFullName(pos);
 		storageType = StorageType.getStorageType(followedMeta);
 		//		isPooled = getPooled(followedMeta);
 		isPooled = false;
@@ -306,26 +306,26 @@ class ComponentBuilder {
 		return componentContainerTypeCache[s];
 	}
 
-	public static function getComponentContainerInfo(componentComplexType:ComplexType):StorageInfo {
-		var name = componentComplexType.followName();
+	public static function getComponentContainerInfo(componentComplexType:ComplexType, pos):StorageInfo {
+		var name = componentComplexType.followName(pos);
 
 		var info = componentContainerTypeCache.get(name);
 		if (info != null) {
 			return info;
 		}
 
-		info = new StorageInfo(componentComplexType, ++componentIndex);
+		info = new StorageInfo(componentComplexType, ++componentIndex, pos);
 		componentContainerTypeCache[name] = info;
 
 		return info;
 	}
 
-	public static function getLookup(ct:ComplexType, entityVarName:Expr):Expr {
-		return getComponentContainerInfo(ct).getGetExpr(entityVarName);
+	public static function getLookup(ct:ComplexType, entityVarName:Expr, pos):Expr {
+		return getComponentContainerInfo(ct, pos).getGetExpr(entityVarName);
 	}
 
-	public static function getComponentId(componentComplexType:ComplexType):Int {
-		return getComponentContainerInfo(componentComplexType).componentIndex;
+	public static function getComponentId(componentComplexType:ComplexType, pos):Int {
+		return getComponentContainerInfo(componentComplexType, pos).componentIndex;
 	}
 }
 #end

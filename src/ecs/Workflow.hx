@@ -270,7 +270,7 @@ class Workflow {
 		var addComponentsToContainersExprs = components.map((c) -> {
 			// trace("parsetname|" + c.parseClassName().getType().toComplexType());
 			var ct = c.parseClassName().getType().follow().toComplexType();
-			var info = ct.getComponentContainerInfo();
+			var info = ct.getComponentContainerInfo(pos);
 
 			//trace('add and alloc ${c}');
 			var alloc = {expr: ENew(ct.toString().asTypePath(), []), pos: Context.currentPos()};

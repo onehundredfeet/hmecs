@@ -118,16 +118,18 @@ abstract Entity(Int) from Int to Int {
 	 * @return `Entity`
 	 */
 	macro public function add(self:Expr, components:Array<ExprOf<Any>>):ExprOf<ecs.Entity> {
+		var pos = Context.currentPos();
+
 		if (components.length == 0) {
-			Context.error('Required one or more Components', Context.currentPos());
+			Context.error('Required one or more Components', pos);
 		}
 
 		var addComponentsToContainersExprs = components.map(function(c) {
 			var to = c.typeof();
 			if (!to.isSuccess()) {
-				Context.error('Can not find type for ${c}', Context.currentPos());
+				Context.error('Can not find type for ${c}', pos);
 			}
-			var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
+			var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo(pos);
 			return info.getAddExpr(macro __entity__, c);
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
@@ -152,9 +154,10 @@ abstract Entity(Int) from Int to Int {
 	 * @return `Entity`
 	 */
 	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var pos = Context.currentPos();
 		var errorStage = "";
 		if (types.length == 0) {
-			Context.error('Required one or more Component Types', Context.currentPos());
+			Context.error('Required one or more Component Types', pos);
 		}
 		errorStage = "starting";
 		var cts = types.map(function(type) {
@@ -163,13 +166,13 @@ abstract Entity(Int) from Int to Int {
 
 		errorStage = "found types";
 		var removeComponentsFromContainersExprs = cts.map(function(ct) {
-			var info = ct.getComponentContainerInfo();
+			var info = ct.getComponentContainerInfo(pos);
 			return info.getRemoveExpr(macro __entity__);
 		});
 		errorStage = "got remove expression";
 
 		var removeEntityFromRelatedViewsExprs = cts.map(function(ct) {
-			return ct.getViewsOfComponent().followName();
+			return ct.getViewsOfComponent(pos).followName(pos);
 		}).map(function(viewsOfComponentClassName) {
 			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
 			return macro @:privateAccess $x.inst().removeIfMatched(__entity__);
@@ -241,7 +244,8 @@ var addComponentsToContainersExprs = components.map(function(c) {
 	 * @return `T:Any` component instance
 	 */
 	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 
 		return info.getGetExpr(self);
 	}
@@ -252,12 +256,14 @@ var addComponentsToContainersExprs = components.map(function(c) {
 	 * @return `Bool`
 	 */
 	macro public function exists(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 		return info.getExistsExpr(self);
 }
 
 	macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 
 		return info.getExistsExpr(self);
 }

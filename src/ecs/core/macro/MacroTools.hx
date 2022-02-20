@@ -187,12 +187,16 @@ class MacroTools {
 			return x; */
 	}
 
-	public static function followComplexType(ct:ComplexType):ComplexType {
-		return mtToType(ct).follow().toComplexType();
+	public static function followComplexType(ct:ComplexType, pos):ComplexType {
+		var x = toTypeOrNull(ct,true, pos);
+		if (x == null) {
+			Context.error('Could not find type: ${ct.toString()}', pos);
+		}
+		return x.toComplexType();
 	}
 
-	public static function followName(ct:ComplexType):String {
-		return new Printer().printComplexType(followComplexType(ct));
+	public static function followName(ct:ComplexType, pos):String {
+		return new Printer().printComplexType(followComplexType(ct, pos));
 	}
 
 	public static function parseClassName(e:Expr) {
@@ -227,11 +231,11 @@ class MacroTools {
 		}
 	}
 
-	public static function typeValidShortName(ct:ComplexType):String {
-		return switch (followComplexType(ct)) {
+	public static function typeValidShortName(ct:ComplexType, pos):String {
+		return switch (followComplexType(ct, pos)) {
 			case TPath(t): {
 					(t.sub != null ? t.sub : t.name)
-						+ ((t.params != null && t.params.length > 0) ? '<' + t.params.map(typeParamName.bind(_, typeValidShortName)).join(',') + '>' : '');
+						+ ((t.params != null && t.params.length > 0) ? '<' + t.params.map(typeParamName.bind(_, (x) -> typeValidShortName(x,pos))).join(',') + '>' : '');
 				}
 			case x: {
 					#if (haxe_ver < 4)
@@ -243,13 +247,13 @@ class MacroTools {
 		}
 	}
 
-	public static function typeFullName(ct:ComplexType):String {
-		return switch (followComplexType(ct)) {
+	public static function typeFullName(ct:ComplexType, pos):String {
+		return switch (followComplexType(ct, pos)) {
 			case TPath(t): {
 					(t.pack.length > 0 ? t.pack.map(capitalize).join('') : '')
 						+ t.name
 						+ (t.sub != null ? t.sub : '')
-						+ ((t.params != null && t.params.length > 0) ? t.params.map(typeParamName.bind(_, typeFullName)).join('') : '');
+						+ ((t.params != null && t.params.length > 0) ? t.params.map(typeParamName.bind(_, (x) -> typeFullName(x,pos) )).join('') : '');
 				}
 			case x: {
 					#if (haxe_ver < 4)
@@ -267,8 +271,8 @@ class MacroTools {
 		return (a < b) ? -1 : (a > b) ? 1 : 0;
 	}
 
-	public static function joinFullName(types:Array<ComplexType>, sep:String) {
-		var typeNames = types.map(typeFullName);
+	public static function joinFullName(types:Array<ComplexType>, sep:String, pos) {
+		var typeNames = types.map((x) -> typeFullName(x,pos));
 		typeNames.sort(compareStrings);
 		return typeNames.join(sep);
 	}
@@ -525,7 +529,7 @@ class MacroTools {
 	public static function exprOfClassToFullTypeName(e:Expr, ns:String = null, pos:Position):String {
 		var x = exprOfClassToCT(e, ns, pos);
 
-		return typeFullName(x);
+		return typeFullName(x, pos);
 	}
 
 	public static function exprOfClassToTypePath(e:Expr, ns:String = null, pos:Position):TypePath {

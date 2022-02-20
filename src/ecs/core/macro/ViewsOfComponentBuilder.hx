@@ -16,11 +16,11 @@ class ViewsOfComponentBuilder {
 	public static final VIEW_OF_NAMESPACE = "ecs.viewsof";
 
 	// viewsOfComponentTypeName / viewsOfComponentType
-	public static function createViewsOfComponentType(componentComplexType:ComplexType):haxe.macro.Type {
+	public static function createViewsOfComponentType(componentComplexType:ComplexType, pos):haxe.macro.Type {
 		//		Context.warning('Making view of component ${componentComplexType.toString()}', Context.currentPos());
 		var errorStage = "";
-		var componentTypeName = componentComplexType.followName();
-		var viewsOfComponentTypeName = 'ViewsOfComponent' + componentComplexType.typeFullName();
+		var componentTypeName = componentComplexType.followName(pos);
+		var viewsOfComponentTypeName = 'ViewsOfComponent' + componentComplexType.typeFullName(pos);
 		var viewsOfComponentTypePath = VIEW_OF_NAMESPACE + "." + viewsOfComponentTypeName;
 		var viewsOfComponentCT = viewsOfComponentTypePath.asComplexType();
 		var viewsOfComponentType = viewsOfComponentCT.toTypeOrNull(Context.currentPos());
@@ -85,8 +85,8 @@ class ViewsOfComponentBuilder {
 		return viewsOfComponentType;
 	}
 
-	public static function getViewsOfComponent(componentComplexType:ComplexType):ComplexType {
-		return createViewsOfComponentType(componentComplexType).toComplexType();
+	public static function getViewsOfComponent(componentComplexType:ComplexType, pos):ComplexType {
+		return createViewsOfComponentType(componentComplexType, pos).toComplexType();
 	}
 }
 #end
