@@ -68,6 +68,12 @@ class SmallComponent {
 
     }
 
+      @:pool_retire  // callback when retiring
+    function onRetireE(e : Entity) {
+
+    }
+
+
     // Implicitly added by the pool builder
     // static function rent() : SmallComponent 
     // function retire()
@@ -83,7 +89,7 @@ class HeavyComponent {
       // Custom logic when a component is added from an entity
 //    }
 
-  @:on_remove
+  @:ecs_remove
     function onRemove() {
       // Custom logic when a component is removed from an entity
     }

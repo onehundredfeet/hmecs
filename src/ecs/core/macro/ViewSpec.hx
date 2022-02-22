@@ -56,6 +56,10 @@ class ViewSpec {
 		var mm = a.meta.toMap();
 		var ct = a.type.followComplexType(pos);
 
+		if (ct == null) {
+			Context.error('Can not find type ${a.type.toString()} for argument ${a.name} ',pos);
+		}
+
 		var x:ViewTypeRef = switch (ct) {
 			case macro: StdTypes.Float
 			:needsDT = true;

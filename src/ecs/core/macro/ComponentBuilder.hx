@@ -40,7 +40,9 @@ typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 						case "COMPACT": COMPACT;
 						case "SINGLETON": SINGLETON;
 						case "TAG": FAST;
-						default: FAST;
+						default: 
+							Context.warning('Unknown storage type ${s}', Context.currentPos());
+							FAST;
 					}
 				default: FAST;
 			}
@@ -182,6 +184,7 @@ class StorageInfo {
 					return $existsExpr;
 				};
 
+//			trace(_printer.printTypeDefinition(def));
 			def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
 		}
 
@@ -249,12 +252,37 @@ class StorageInfo {
 		}
 
 		if (followedClass != null) {
-			var cfs = followedClass.statics.get().concat(followedClass.fields.get());
+			var cfs_statics = followedClass.statics.get().map((x) -> {cf : x, stat : true});
+			var cfs_non_statics = followedClass.fields.get().map((x) -> {cf : x, stat : false});
 
-			for (cf in cfs) {
-				if (cf.meta.has(":on_remove") && cf.kind.match(FMethod(_))) {
-					var fname = $i{cf.name};
-					retireExprs.push(macro @:privateAccess $accessExpr.$fname());
+			var cfs = cfs_statics.concat(cfs_non_statics);
+
+			for (cfx in cfs) {
+				var cf = cfx.cf;
+				if (cf.meta.has(":ecs_remove")) {
+					switch(cf.kind) {
+						case FMethod(k):
+							var te = cf.expr();
+							switch(te.expr) {
+								case TFunction(tfunc): 
+									var fname = $i{cf.name};
+									var needsEntity = false;
+									for( a in tfunc.args) {
+										if (a.v.t.toComplexType().toString() == (macro : ecs.Entity).toString()) {
+											needsEntity = true;
+											break;
+										}
+									}
+									if (needsEntity) {
+										retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
+									} else {
+										//trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
+										retireExprs.push(macro @:privateAccess $accessExpr.$fname());
+									}
+								default:
+							}
+						default:
+					}
 				}
 			}
 		}
