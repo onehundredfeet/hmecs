@@ -30,6 +30,12 @@ import ecs.core.RestrictedLinkedList;
 
 
 class Workflow {
+	#if ecs_max_flags
+	static inline final MAX_TAGS : Int = Std.parseInt(haxe.macro.Context.definedValue("ecs_max_tags"));
+	#else
+	static inline final MAX_TAGS : Int = 32;
+	#end
+	static inline final TAG_STRIDE : Int = Std.int(MAX_TAGS / 32);
 	@:allow(ecs.Entity) static inline final INVALID_ID = 0;
 
 	static var nextId = INVALID_ID + 1;
@@ -37,6 +43,7 @@ class Workflow {
 	static var idPool = new Array<Int>();
 
 	static var statuses = new Array<Status>();
+	static var tags = new Array<Int>();
 
 	static var worldFlags = new Array<Int>();
 
@@ -135,9 +142,11 @@ class Workflow {
 			c.reset();
 		}
 
-		idPool.splice(0, idPool.length);
-		statuses.splice(0, statuses.length);
-		worldFlags.splice(0, worldFlags.length);
+		// [RC] why splice and not resize?
+		idPool.resize(0);
+		statuses.resize(0);
+		worldFlags.resize(0);
+		tags.resize(0);
 
 		nextId = INVALID_ID + 1;
 	}
@@ -191,17 +200,18 @@ class Workflow {
 			statuses[id] = Inactive;
 		}
 		worldFlags[id] = worlds;
+		tags[id] = 0;
 		return id;
 	}
 
-	public static function worlds(id:Int) {
+	public inline static function worlds(id:Int) {
 		if (status(id) == Active) {
 			return worldFlags[id];
 		}
 		return 0;
 	}
 
-	public static function worldEntity(idx:Int) {
+	public inline static function worldEntity(idx:Int) {
 		if (!_worldSingletons[idx].isValid()) {
 			_worldSingletons[idx] = new Entity();
 		}
@@ -393,6 +403,31 @@ class Workflow {
 
 	@:allow(ecs.Entity) static inline function resumeAdding(id:Int) {
 		
+	}
+
+
+	@:allow(ecs.Entity) static inline function getTag( id:Int, tag: Int) {
+		final offset = Std.int(tag / 32);
+		final bitOffset = tag - offset * 32;
+		final tagField = tags[id * TAG_STRIDE + offset];
+		return tagField & (1 << bitOffset) != 0;
+	}
+
+
+	@:allow(ecs.Entity) static inline function setTag( id:Int, tag: Int) {
+		final offset = Std.int(tag / 32);
+		final bitOffset = tag - offset * 32;
+		final idx = id * TAG_STRIDE + offset;
+		final tagField = tags[id * TAG_STRIDE + offset];
+		tags[id * TAG_STRIDE + offset] = tagField & ~(1 << bitOffset);
+	}
+
+	@:allow(ecs.Entity) static inline function clearTag( id:Int, tag: Int) {
+		final offset = Std.int(tag / 32);
+		final bitOffset = tag - offset * 32;
+		final idx = id * TAG_STRIDE + offset;
+		final tagField = tags[id * TAG_STRIDE + offset];
+		tags[id * TAG_STRIDE + offset] = tagField | (1 << bitOffset);
 	}
 
 	static var removeAllFunction : (ecs.Entity) -> Void = null;

@@ -337,13 +337,14 @@ public static function build(debug:Bool = false) {
 					for (c in f.view.spec.includes) {
 						var ct = c.ct.typeFullName(pos);
 						var info = getComponentContainerInfo(c.ct, pos);
-						callTypeMap[ct] = info.getGetExpr(macro __entity__, info.fullName + "_inst");
+						callTypeMap[ct] = info.requiresStorage() ? info.getGetExpr(macro __entity__, info.fullName + "_inst") : info.getGetExpr(macro __entity__);
 					}
 
 					var cache = f.view.spec.includes.map(function(c) {
 						var info = getComponentContainerInfo(c.ct, pos);
+						if (!info.requiresStorage()) return null;
 						return info.getCacheExpr(info.fullName + "_inst");
-					});
+					}).filter( (x) -> x != null) ;
 
 					for (a in f.rawargs) {
 						var am = a.meta.toMap();

@@ -39,8 +39,8 @@ typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 						case "FAST": FAST;
 						case "COMPACT": COMPACT;
 						case "SINGLETON": SINGLETON;
-						case "TAG": FAST;
-						default: 
+						case "TAG": TAG;
+						default:
 							Context.warning('Unknown storage type ${s}', Context.currentPos());
 							FAST;
 					}
@@ -54,6 +54,8 @@ typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 var _printer = new Printer();
 @:persistent var createdModule = false;
 final modulePrefix = "__ecs__storage";
+@:persistent var tagMap = new Map<String, Int>();
+@:persistent var tagCount = 0;
 
 function getModulePath():String {
 	if (!createdModule) {
@@ -138,74 +140,81 @@ class StorageInfo {
 			case FAST: tpath([], "Array", [TPType(followedCT)]);
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
 			case SINGLETON: followedCT.toString().asTypePath();
-			case TAG: tpath([], "Array", [TPType(followedCT)]); // TODO [RC] - Optimize tag path
+			case TAG: null;
+				// case TAG: tpath([], "Array", [TPType(followedCT)]); // TODO [RC] - Optimize tag path
 		});
 
-		storageCT = TPath(tp);
-
-		containerTypeName = 'StorageOf' + fullName;
-		containerFullName = STORAGE_NAMESPACE + "." + containerTypeName;
-
-		containerFullNameExpr = containerFullName.asTypeIdent(Context.currentPos());
-		// trace ('Container name ${containerFullName}');
-		//		containerTypeNameExpr = macro $i{containerTypeName};
 		componentIndex = i;
 
-		/*
-			var tc = TypeTools.getClass(followedT);
-			var moduleDependecy = null;
-			if (tc != null) {
-				def.pack = followedT.pack();
+		if (tp != null) {
+			storageCT = TPath(tp);
 
-				trace('Pack is ${def.pack} for ${givenCT.toString()}');
-			}
-			else {
-				Context.error("Component is not a class.", Context.currentPos());
-			}
-		 */
+			containerTypeName = 'StorageOf' + fullName;
+			containerFullName = STORAGE_NAMESPACE + "." + containerTypeName;
 
-		// def.
- 
-		//		Context.registerModuleDependency()
-		containerCT = containerFullName.asComplexType();
-		containerType = containerCT.toTypeOrNull(Context.currentPos());
+			containerFullNameExpr = containerFullName.asTypeIdent(Context.currentPos());
 
-		if (containerType == null) {
-			var existsExpr = getExistsExpr(macro id);
-			var removeExpr = getRemoveExpr(macro id);
-
-			var def = (storageType == SINGLETON) ? macro class $containerTypeName {
-				public static var storage:$storageCT;
-				public static var owner:Int = 0;
-			} : macro class $containerTypeName {
-				public static var storage:$storageCT = new $tp();
-
-				public function exists(id:Int)
-					return $existsExpr;
-				};
-
-//			trace(_printer.printTypeDefinition(def));
-			def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
-		}
-
-		if (containerType == null) {
+			//		Context.registerModuleDependency()
+			containerCT = containerFullName.asComplexType();
 			containerType = containerCT.toTypeOrNull(Context.currentPos());
+
+			if (containerType == null) {
+				var existsExpr = getExistsExpr(macro id);
+				var removeExpr = getRemoveExpr(macro id);
+
+				var def = (storageType == SINGLETON) ? macro class $containerTypeName {
+					public static var storage:$storageCT;
+					public static var owner:Int = 0;
+				} : macro class $containerTypeName {
+					public static var storage:$storageCT = new $tp();
+
+					public function exists(id:Int)
+						return $existsExpr;
+					};
+
+				//			trace(_printer.printTypeDefinition(def));
+				def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
+			}
+
+			if (containerType == null) {
+				containerType = containerCT.toTypeOrNull(Context.currentPos());
+			}
+		} else {
+			containerCT = null;
+			containerType = null;
+			containerTypeName = null;
+			containerFullName = null;
+			containerFullNameExpr = null;
 		}
+		
 	}
 
+	public inline function requiresStorage() : Bool {
+		return (storageType != TAG);
+	}
+	function tagExpr() : Expr {
+		if (!tagMap.exists(fullName)) {
+			tagMap.set(fullName, tagCount++);
+		}
+
+		return EConst(CInt(Std.string(tagMap.get(fullName)))).at();
+	}
 	public function getGetExpr(entityExpr:Expr, cachedVarName:String = null):Expr {
 		if (cachedVarName != null)
 			return switch (storageType) {
 				case FAST: macro $i{cachedVarName}[$entityExpr];
 				case COMPACT: macro $i{cachedVarName}.get($entityExpr);
 				case SINGLETON: macro $i{cachedVarName};
-				case TAG: macro $i{cachedVarName}[$entityExpr];
+				case TAG: 
+				var te = tagExpr();	
+				  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? 1 : 0;
 			};
 		return switch (storageType) {
 			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
 			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
 			case SINGLETON: macro $containerFullNameExpr.storage;
-			case TAG: macro $containerFullNameExpr.storage[$entityExpr];
+			case TAG: var te = tagExpr();	
+			  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? 1 : 0;
 		};
 	}
 
@@ -214,7 +223,9 @@ class StorageInfo {
 			case FAST: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
 			case COMPACT: macro $containerFullNameExpr.storage.exists($entityVar);
 			case SINGLETON: macro $containerFullNameExpr.owner == $entityVar;
-			case TAG: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
+			case TAG: 
+				var te = tagExpr();	
+				macro  @:privateAccess ecs.Workflow.getTag($entityVar, $te);
 		};
 	}
 
@@ -232,16 +243,23 @@ class StorageInfo {
 					$containerFullNameExpr.storage = $componentExpr;
 					$containerFullNameExpr.owner = $entityVarExpr;
 				};
-			case TAG: macro $containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+			case TAG:var te = tagExpr();	
+			macro @:privateAccess  ecs.Workflow.setTag($te, $te);
 		};
 	}
 
 	public function getRemoveExpr(entityVarExpr:Expr):Expr {
+		if (storageType == TAG) {
+			var te = tagExpr();	
+			return  macro @:privateAccess ecs.Workflow.clearTag($te, $te);	
+		}
+
 		var accessExpr = switch (storageType) {
 			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
 			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.get($entityVarExpr);
 			case SINGLETON: macro($containerFullNameExpr.owner == $entityVarExpr ? $containerFullNameExpr.storage : null);
-			case TAG: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
+			case TAG: var te = tagExpr();	
+			@:privateAccess  macro ecs.Workflow.getTag($te, $te);
 		};
 
 		var hasExpr = getExistsExpr(entityVarExpr);
@@ -252,23 +270,23 @@ class StorageInfo {
 		}
 
 		if (followedClass != null) {
-			var cfs_statics = followedClass.statics.get().map((x) -> {cf : x, stat : true});
-			var cfs_non_statics = followedClass.fields.get().map((x) -> {cf : x, stat : false});
+			var cfs_statics = followedClass.statics.get().map((x) -> {cf: x, stat: true});
+			var cfs_non_statics = followedClass.fields.get().map((x) -> {cf: x, stat: false});
 
 			var cfs = cfs_statics.concat(cfs_non_statics);
 
 			for (cfx in cfs) {
 				var cf = cfx.cf;
 				if (cf.meta.has(":ecs_remove")) {
-					switch(cf.kind) {
+					switch (cf.kind) {
 						case FMethod(k):
 							var te = cf.expr();
-							switch(te.expr) {
-								case TFunction(tfunc): 
+							switch (te.expr) {
+								case TFunction(tfunc):
 									var fname = $i{cf.name};
 									var needsEntity = false;
-									for( a in tfunc.args) {
-										if (a.v.t.toComplexType().toString() == (macro : ecs.Entity).toString()) {
+									for (a in tfunc.args) {
+										if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
 											needsEntity = true;
 											break;
 										}
@@ -276,7 +294,7 @@ class StorageInfo {
 									if (needsEntity) {
 										retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
 									} else {
-										//trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
+										// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
 										retireExprs.push(macro @:privateAccess $accessExpr.$fname());
 									}
 								default:
@@ -298,9 +316,9 @@ class StorageInfo {
 					$b{retireExprs} $containerFullNameExpr.storage = $emptyExpr;
 					$containerFullNameExpr.owner = 0;
 				}
-			case TAG: macro if ($hasExpr) {
-					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
-				}
+			case TAG: 
+				var te = tagExpr();	
+				@:privateAccess  macro ecs.Workflow.clearTag($te, $te);	
 		};
 	}
 

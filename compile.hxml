@@ -4,3 +4,4 @@
 --library tink_macro
 -hl bin/test.hl
 --main Test
+-D ecs_max_tags=64

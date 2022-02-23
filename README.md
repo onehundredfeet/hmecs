@@ -68,7 +68,7 @@ class SmallComponent {
 
     }
 
-      @:pool_retire  // callback when retiring
+    @:pool_retire  // callback when retiring
     function onRetireE(e : Entity) {
 
     }
