@@ -20,7 +20,13 @@ class K {
 } 
 
 @:storage(TAG)
-@:enum abstract TestTag(Int) from Int to Int {
+@:enum abstract TagA(Int) from Int to Int {
+    var INVALID = 0;
+    var VALID = 1;
+}
+
+@:storage(TAG)
+@:enum abstract TagB(Int) from Int to Int {
     var INVALID = 0;
     var VALID = 1;
 }

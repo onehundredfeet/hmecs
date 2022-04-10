@@ -244,7 +244,7 @@ class StorageInfo {
 					$containerFullNameExpr.owner = $entityVarExpr;
 				};
 			case TAG:var te = tagExpr();	
-			macro @:privateAccess  ecs.Workflow.setTag($te, $te);
+			macro @:privateAccess  ecs.Workflow.setTag($entityVarExpr, $te);
 		};
 	}
 

@@ -415,11 +415,12 @@ class Workflow {
 
 
 	@:allow(ecs.Entity) static inline function setTag( id:Int, tag: Int) {
+//		trace('Setting tag  ${tag} on ${id}');
 		final offset = Std.int(tag / 32);
 		final bitOffset = tag - offset * 32;
 		final idx = id * TAG_STRIDE + offset;
 		final tagField = tags[id * TAG_STRIDE + offset];
-		tags[id * TAG_STRIDE + offset] = tagField & ~(1 << bitOffset);
+		tags[id * TAG_STRIDE + offset] = tagField | (1 << bitOffset);
 	}
 
 	@:allow(ecs.Entity) static inline function clearTag( id:Int, tag: Int) {
@@ -427,7 +428,7 @@ class Workflow {
 		final bitOffset = tag - offset * 32;
 		final idx = id * TAG_STRIDE + offset;
 		final tagField = tags[id * TAG_STRIDE + offset];
-		tags[id * TAG_STRIDE + offset] = tagField | (1 << bitOffset);
+		tags[id * TAG_STRIDE + offset] = tagField & ~(1 << bitOffset);
 	}
 
 	static var removeAllFunction : (ecs.Entity) -> Void = null;

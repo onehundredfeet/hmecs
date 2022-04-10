@@ -30,13 +30,13 @@ class Test {
 
         var xxx = new X();
                 
-        e.add( TestTag.VALID );
-        e.remove(TestTag);
-        if (e.has(TestTag)) {
-
-        }
-
-        xxx.a;
+        e.add( TagA.VALID );
+        e.add( TagB.VALID );
+//        e.remove(TagB);
+        e.add(xxx);
+        e.add(new Y() );
+        trace ('E has tag a ${e.has(TagA)} b ${e.has(TagB)}');
+//        xxx.a;
         
         Workflow.update(1.);
  
