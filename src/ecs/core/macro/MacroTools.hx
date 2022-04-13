@@ -172,13 +172,17 @@ class MacroTools {
 				//Context.warning('Resolved ${x}', pos);
 
 			}
-		} catch (e:String) {}
+		} 
+		catch (e:String) {}
+		catch (d:Dynamic) {
+		}
 	}
 		
 		if (x == null) {
 			//Context.warning('no type ${c.toString()}', pos);
 		}
 		#end
+
 	return x;
 
 		/*
