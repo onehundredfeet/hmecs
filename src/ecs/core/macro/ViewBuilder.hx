@@ -9,6 +9,7 @@ import haxe.macro.Expr;
 import haxe.macro.Type.ModuleType;
 import ecs.core.macro.ViewSpec;
 import ecs.utils.Const;
+import ecs.utils.Signal;
 
 using ecs.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
@@ -135,6 +136,8 @@ class ViewBuilder {
 		// signals
 		var signalTypeParamComplexType = TFunction([macro:ecs.Entity].concat(components.map(function(c) return c.ct)), macro:Void);
 		var signalTypePath = tpath(['ecs', 'utils'], 'Signal', [TPType(signalTypeParamComplexType)]);
+    
+		//trace( 'path ${signalTypePath}');
 
 		// signal args for dispatch() call
 		var signalArgs = [macro id].concat(components.map(function(c) return getLookup(c.ct, macro id, pos)));
