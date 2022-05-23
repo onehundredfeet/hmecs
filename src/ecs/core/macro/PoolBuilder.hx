@@ -47,12 +47,20 @@ class PoolBuilder {
 			var tp = ct.toString().asTypePath();
 			var factoryField = fields.find((x) -> x.meta.toMap().exists(":pool_factory"));
 			var newCall = factoryField != null ? macro $i{factoryField.name}() : macro new $tp();
-			var allocBody = macro return (__pool.length == 0) ? $newCall : __pool.pop();
 			var rentCalls = fields.filter((x) -> x.meta.toMap().exists(":pool_rent")).map((x) -> 
 			switch(x.kind) {
-				case FFun(fun): macro $i{x.name}();
+				case FFun(fun): 
+					var ne = x.name;
+					var ve = macro x;
+					macro $ve.$ne();
 				default: null;				
 			}).filter((x)-> x != null);
+
+			var allocBody = macro {
+				var x = (__pool.length == 0) ? $newCall : __pool.pop();
+				$b{rentCalls}
+				return x;
+			}
 
 			fields.push(ffun(null, [APublic, AStatic, AInline], "rent", null, ct, allocBody, Context.currentPos()));
 		}
