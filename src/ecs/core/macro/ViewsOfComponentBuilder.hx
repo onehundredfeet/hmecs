@@ -51,8 +51,16 @@ class ViewsOfComponentBuilder {
 				public inline function addRelatedView(v:ecs.core.AbstractView) {
 					views.push(v);
 				}
+				
+				public inline function addIfMatched(id:Int) {
+					for (v in views) {
+						if (v.isActive()) {
+							@:privateAccess v.addIfMatched(id);
+						}
+					}
+				}
 
-				public inline function removeIfMatched(id:Int) {
+				public inline function removeIfExists(id:Int) {
 					for (v in views) {
 						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
 							@:privateAccess v.removeIfExists(id);

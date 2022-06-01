@@ -124,23 +124,30 @@ abstract Entity(Int) from Int to Int {
 			Context.error('Required one or more Components', pos);
 		}
 
-		var addComponentsToContainersExprs = components.map(function(c) {
+		var complexTypes = components.map(function(c) {
 			var to = c.typeof();
 			if (!to.isSuccess()) {
 				Context.error('Can not find type for ${c}', pos);
 			}
-			var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo(pos);
+			return c.typeof().sure().follow().toComplexType();
+		});
+
+		var addComponentsToContainersExprs = [for(i => c in components) {
+			var info = complexTypes[i].getComponentContainerInfo(pos);
 			return info.getAddExpr(macro __entity__, c);
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+		}];
+
+		var addEntityToRelatedViewsExprs = complexTypes.map(function(ct) {
+			return ct.getViewsOfComponent(pos).followName(pos);
+		}).map(function(viewsOfComponentClassName) {
+			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
+			return macro @:privateAccess $x.inst().addIfMatched(__entity__);
 		});
 
 		var body = [].concat(addComponentsToContainersExprs).concat([
-			macro if (__entity__.isActive()) {
-				for (v in ecs.Workflow.views) {
-					@:privateAccess v.addIfMatched(__entity__);
-				}
-			}
+			macro if (__entity__.isActive()) $b{ addEntityToRelatedViewsExprs }
 		]).concat([macro return __entity__]);
 
 		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
@@ -175,7 +182,7 @@ abstract Entity(Int) from Int to Int {
 			return ct.getViewsOfComponent(pos).followName(pos);
 		}).map(function(viewsOfComponentClassName) {
 			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
-			return macro @:privateAccess $x.inst().removeIfMatched(__entity__);
+			return macro @:privateAccess $x.inst().removeIfExists(__entity__);
 		});
 		errorStage = "got views of components";
 
