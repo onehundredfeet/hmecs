@@ -107,6 +107,24 @@ abstract MicroComponent(Int) from Int to Int {
   }
 }
 
+//Tag types must be abstract ints.  1 is assumed to be this entity has this tag and 0 is that they don't.
+//Tags are stored in a compacted data representation that make it cheap to add many tags
+//This API seems overly boiler plate and will be simplified in the future
+@:storage(TAG)
+@:enum abstract TagYouIt(Int) from Int to Int {
+    var INVALID = 0;
+    var VALID = 1;
+}
+
+//API Proposal: Associating static expressions with tags
+// This would configure the tag to pass the expression 'MyClass.instance' instead of 0|1 into the system's function
+@:storage(TAG, MyClass.instance)
+@:enum abstract TagB(Int) from Int to Int {
+    var INVALID = 0;
+    var VALID = 1;
+}
+
+
 // Abstracts allow adding multiple components of the same underlying type to an entity 
 // When using abstracts, be careful not to assume the underlaying type in the system function definitions
 @:forward
@@ -138,7 +156,7 @@ class Example {
     trace(jack.get(Position).x); // 5
     jack.remove(Position); // oh no!
     jack.add(new Position(1, 1)); // okay
-
+    jack.add(TagYouIt.VALID); // Jack is now tagged
     // THIS IS TWO FEATURES 
     // - the singleton() entity on workflow is a global entity across all worlds & systems.
     // - the SingletonComponent is a component where only one instance will ever exist and must only ever be added to one entity
@@ -179,6 +197,11 @@ class Movement extends ecs.System {
   @:worlds(WORLDS_FOREST) // These are bit flags.  The string is evaulate as an expression
   @update function inForest(name:Name) {
     trace('${name} is in the forest'); // Will display Jack
+  }
+
+  //Can narrow the scope of the update to only entities that have the tag TagYouIt
+  @update function isIt(name:Name, tag:TagYouIt) {
+    trace('${name} is it'); // Will display Jack
   }
 
   // Worlds can be strings or constant string expressions if using compiler only @:
