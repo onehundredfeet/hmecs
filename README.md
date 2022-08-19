@@ -26,9 +26,10 @@ The first version of this will primarily target HashLink, but may be extended to
  * `View<T1, T2, TN>` is a collection of entities containing all components of the required types `T1, T2, TN`. Views are placed in Systems. 
  * `System` is a place for processing a certain set of data represented by views. 
  * To organize systems in phases can be used the `SystemList`. 
-* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view.
+* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view. `NOTE: Worlds will be deprecated in favour of a new tag system`
 * `Pool` a pool is a static container that can be used to speed up allocations using a rent/retire paradigm. Call a static rent to get a new instance and then retire on that instance to return it to the pool
 * `Workflow` a global class used to access common features such as a singleton
+* `Tag` is an abstract int with the @:storage(TAG) metadata that changes the behaviour from being stored as an individual component, to a simple flag set that makes storing many tags compact and fast.
 
 #### Note: Currently requires running a macro as the last line in your main file. Add this function to the bottom of your root hx file, i.e. Main.hx.  Then call the function as your first function call.
 
@@ -116,13 +117,16 @@ abstract MicroComponent(Int) from Int to Int {
     var VALID = 1;
 }
 
-//API Proposal: Associating static expressions with tags
-// This would configure the tag to pass the expression 'MyClass.instance' instead of 0|1 into the system's function
-@:storage(TAG, MyClass.instance)
-@:enum abstract TagB(Int) from Int to Int {
-    var INVALID = 0;
-    var VALID = 1;
+// API Proposal: Associating static expressions with tags, Tags 2.0
+// This would remove the need for worlds & singletons
+// This would implicitely create a singleton for the tag that would be implicitely added
+@:storage(TAG)
+class TagB {
+  //Either one of these is available
+  public TagB() {} // option 1
+  @:factory static function makeTag() { return new TagB(); } // option 2
 }
+
 
 
 // Abstracts allow adding multiple components of the same underlying type to an entity 
@@ -157,6 +161,9 @@ class Example {
     jack.remove(Position); // oh no!
     jack.add(new Position(1, 1)); // okay
     jack.add(TagYouIt.VALID); // Jack is now tagged
+    // NEW API - Not implemented yet
+    jack.add(TagB);  // Jack is now tagged with TagB
+
     // THIS IS TWO FEATURES 
     // - the singleton() entity on workflow is a global entity across all worlds & systems.
     // - the SingletonComponent is a component where only one instance will ever exist and must only ever be added to one entity
@@ -191,6 +198,14 @@ class Movement extends ecs.System {
   @:update function updateBody(pos:Position, vel:Velocity, dt:Float, entity:Entity) {
     pos.x += vel.x * dt;
     pos.y += vel.y * dt;
+  }
+
+  @:update function updateTagBWithInstance( tagGlobal : TagB ) {
+    // tagGlobal is a single instance that will be passed into any update of an entity tagged with TagB
+  }
+
+  @:update(TagB) function updateTagBWithoutInstance() {
+    // This will update only entities with TagB, but does not require acess to the instance
   }
 
   //Can narrow the scope of the update to only entities that are present in a world set
