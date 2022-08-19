@@ -316,13 +316,12 @@ class MacroTools {
 			cf = TypeTools.findField(Context.getLocalClass().get(), n, false);
 		if (cf == null) {
 			for (f in Context.getBuildFields()) {
-				if (f.name == n)
-					switch (f.kind) {
-						case FVar(t, e):
-							return e;
-						default:
-							return null;
-					}
+				switch (f) {
+					case { name: name, kind: FVar(_, e) } if(name == n):
+						return e;
+					default:
+						return null;
+				}
 			}
 		}
 		if (cf == null) {
@@ -355,25 +354,22 @@ class MacroTools {
 	public static function getTypeNumericValue(typedExpr:haxe.macro.Type.TypedExpr, valueDefault:Dynamic, pos:Position):Dynamic {
 
 		switch (typedExpr.expr) {
-			case TConst(c):
-				switch (c) {
-					case TInt(i): return i;
-					default: Context.warning('found constant ${c}', pos);
-				}
-				case TBinop(op, e1, e2):
-					var a = getTypeNumericValue(e1, valueDefault, pos);
-					var b = getTypeNumericValue(e2, valueDefault, pos);
-					if (a != null && b != null)
-						switch (op) {
-							case OpShl: return getTypeNumericValue(e1, valueDefault, pos) << getTypeNumericValue(e2, valueDefault, pos);
-							case OpShr: return getTypeNumericValue(e1, valueDefault, pos) >> getTypeNumericValue(e2, valueDefault, pos);
-							case OpAdd: return getTypeNumericValue(e1, valueDefault, pos) + getTypeNumericValue(e2, valueDefault, pos);
-							case OpMult: return getTypeNumericValue(e1, valueDefault, pos) * getTypeNumericValue(e2, valueDefault, pos);
-							case OpOr: return getTypeNumericValue(e1, valueDefault, pos) | getTypeNumericValue(e2, valueDefault, pos);
-							case OpAnd: return getTypeNumericValue(e1, valueDefault, pos) & getTypeNumericValue(e2, valueDefault, pos);
-	
-							default: trace('Unknown op: ${op}');
-						}
+			case TConst(TInt(i)): return i;
+			case TConst(c): Context.warning('found constant ${c}', pos);
+			case TBinop(op, e1, e2):
+				var a = getTypeNumericValue(e1, valueDefault, pos);
+				var b = getTypeNumericValue(e2, valueDefault, pos);
+				if (a != null && b != null)
+					switch (op) {
+						case OpShl: return getTypeNumericValue(e1, valueDefault, pos) << getTypeNumericValue(e2, valueDefault, pos);
+						case OpShr: return getTypeNumericValue(e1, valueDefault, pos) >> getTypeNumericValue(e2, valueDefault, pos);
+						case OpAdd: return getTypeNumericValue(e1, valueDefault, pos) + getTypeNumericValue(e2, valueDefault, pos);
+						case OpMult: return getTypeNumericValue(e1, valueDefault, pos) * getTypeNumericValue(e2, valueDefault, pos);
+						case OpOr: return getTypeNumericValue(e1, valueDefault, pos) | getTypeNumericValue(e2, valueDefault, pos);
+						case OpAnd: return getTypeNumericValue(e1, valueDefault, pos) & getTypeNumericValue(e2, valueDefault, pos);
+
+						default: trace('Unknown op: ${op}');
+					}
 			default:
 		}
 		return valueDefault;
@@ -381,28 +377,25 @@ class MacroTools {
 
 	public static function getNumericValue(e:Expr, valueDefault:Dynamic, pos:Position):Dynamic {
 		switch (e.expr) {
-			case EConst(c):
-				switch (c) {
-					case CInt(v):
-						return Std.parseInt(v);
-					case CFloat(f):
-						return Std.parseFloat(f);
-					case CString(s, kind):
-						var v = getNumericValueStr(s, valueDefault, pos);
-						if (v == null) {
-							Context.error('Could not find string id ${s}', pos);
-							return valueDefault;
-						}
-						return v;
-					case CIdent(s):
-						var v = getNumericValueStr(s, valueDefault, pos);
-						if (v == null) {
-							Context.error('Could not find id ${s}', pos);
-							return valueDefault;
-						}
-						return v;
-					default:
+			case EConst(CInt(v)):
+				return Std.parseInt(v);
+			case EConst(CFloat(f)):
+				return Std.parseFloat(f);
+			case EConst(CString(s, _)):
+				var v = getNumericValueStr(s, valueDefault, pos);
+				if (v == null) {
+					Context.error('Could not find string id ${s}', pos);
+					return valueDefault;
 				}
+				return v;
+			case EConst(CIdent(s)):
+				var v = getNumericValueStr(s, valueDefault, pos);
+				if (v == null) {
+					Context.error('Could not find id ${s}', pos);
+					return valueDefault;
+				}
+				return v;
+
 			case EField(ee, f):
 				var path = parseClassName(ee);
 
@@ -485,14 +478,10 @@ class MacroTools {
 		if (str.isSuccess())
 			return str.sure();
 		switch (e.expr) {
-			case EConst(c):
-				switch (c) {
-					case CString(s, kind): return s;
-					case CIdent(s): return s;
-					case CFloat(f): return f;
-					case CInt(v): return v;
-					default:
-				}
+			case EConst(CString(s, _)): return s;
+			case EConst(CIdent(s)): return s;
+			case EConst(CFloat(f)): return f;
+			case EConst(CInt(v)): return v;
 			default:
 		}
 		return null;
@@ -508,7 +497,7 @@ class MacroTools {
 			return c.pack;
 
 		switch (t) {
-			case TAbstract(at, params):
+			case TAbstract(_, _):
 				Context.error('No abstract component support for ${t.getName()}', Context.currentPos());
 			default:
 		}

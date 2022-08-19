@@ -73,14 +73,9 @@ class StorageInfo {
 		if (bb != null) {
 			for (b in bb) {
 				switch (b[0].expr) {
-					case ECall(e, p):
-						switch (e.expr) {
-							case EField(fe, field):
-								if (fe.toString() == "ecs.core.macro.PoolBuilder") {
-									return true;
-								}
-							default:
-						}
+					case ECall({ expr: EField(fe, _) }, _)
+						if (fe.toString() == "ecs.core.macro.PoolBuilder"):
+						return true;
 					default:
 				}
 			}
@@ -118,14 +113,9 @@ class StorageInfo {
 		var rt = followedT.followWithAbstracts();
 
 		emptyExpr = switch (rt) {
-			case TInst(t, params): macro null;
-			case TAbstract(t, params):
-				if (t.get().name == "Int") {
-					macro 0;
-				} else {
-					macro null;
-				}
-
+			case TInst(_, _): macro null;
+			case TAbstract(_.get() => { name: "Int" }, _):
+				macro 0;
 			default: macro null;
 		}
 		//		trace('Underlaying type is ${rt} with empty ${_printer.printExpr(emptyExpr)}');
@@ -200,20 +190,12 @@ class StorageInfo {
 		return EConst(CInt(Std.string(tagMap.get(fullName)))).at();
 	}
 	public function getGetExpr(entityExpr:Expr, cachedVarName:String = null):Expr {
-		if (cachedVarName != null)
-			return switch (storageType) {
-				case FAST: macro $i{cachedVarName}[$entityExpr];
-				case COMPACT: macro $i{cachedVarName}.get($entityExpr);
-				case SINGLETON: macro $i{cachedVarName};
-				case TAG: 
-				var te = tagExpr();	
-				  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? 1 : 0;
-			};
+		var container = cachedVarName != null ? macro $i{cachedVarName} : macro $containerFullNameExpr.storage;
 		return switch (storageType) {
-			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
-			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
-			case SINGLETON: macro $containerFullNameExpr.storage;
-			case TAG: var te = tagExpr();	
+			case FAST: macro $container[$entityExpr];
+			case COMPACT: macro $container.get($entityExpr);
+			case SINGLETON: macro $container;
+			case TAG: var te = tagExpr();
 			  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? 1 : 0;
 		};
 	}
@@ -276,31 +258,24 @@ class StorageInfo {
 			var cfs = cfs_statics.concat(cfs_non_statics);
 
 			for (cfx in cfs) {
-				var cf = cfx.cf;
-				if (cf.meta.has(":ecs_remove")) {
-					switch (cf.kind) {
-						case FMethod(k):
-							var te = cf.expr();
-							switch (te.expr) {
-								case TFunction(tfunc):
-									var fname = $i{cf.name};
-									var needsEntity = false;
-									for (a in tfunc.args) {
-										if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
-											needsEntity = true;
-											break;
-										}
-									}
-									if (needsEntity) {
-										retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
-									} else {
-										// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
-										retireExprs.push(macro @:privateAccess $accessExpr.$fname());
-									}
-								default:
+				switch (cfx.cf) {
+					case { name: name, kind: FMethod(_), meta: meta,
+						expr: _().expr => TFunction(tfunc) }
+						if (meta.has(":ecs_remove")):
+						var needsEntity = false;
+						for (a in tfunc.args) {
+							if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
+								needsEntity = true;
+								break;
 							}
-						default:
-					}
+						}
+						if (needsEntity) {
+							retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
+						} else {
+							// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
+							retireExprs.push(macro @:privateAccess $accessExpr.$fname());
+						}
+					default:
 				}
 			}
 		}
@@ -316,7 +291,7 @@ class StorageInfo {
 					$b{retireExprs} $containerFullNameExpr.storage = $emptyExpr;
 					$containerFullNameExpr.owner = 0;
 				}
-			case TAG: 
+			case TAG:
 				var te = tagExpr();	
 				@:privateAccess  macro ecs.Workflow.clearTag($te, $te);	
 		};

@@ -182,17 +182,13 @@ public static function build(debug:Bool = false) {
 
 	// prevent wrong override
 	for (field in fields) {
-		switch (field.kind) {
-			case FFun(func):
-				switch (field.name) {
-					case '__update__':
-						Context.error('Do not override the `__update__` function! Use `@:update` meta instead! More info at README example', field.pos);
-					case '__activate__':
-						Context.error('Do not override the `__activate__` function! `onactivate` can be overridden instead!', field.pos);
-					case '__deactivate__':
-						Context.error('Do not override the `__deactivate__` function! `ondeactivate` can be overridden instead!', field.pos);
-					default:
-				}
+		switch (field) {
+			case { kind: FFun(_), name: '__update__' }:
+				Context.error('Do not override the `__update__` function! Use `@:update` meta instead! More info at README example', field.pos);
+			case { kind: FFun(_), name: '__activate__' }:
+				Context.error('Do not override the `__activate__` function! `onactivate` can be overridden instead!', field.pos);
+			case { kind: FFun(_), name: '__deactivate__' }:
+				Context.error('Do not override the `__deactivate__` function! `ondeactivate` can be overridden instead!', field.pos);
 			default:
 		}
 	}
@@ -201,40 +197,31 @@ public static function build(debug:Bool = false) {
 	// find and init manually defined views
 	fields.filter(MetaTools.notSkipped).iter(function(field) {
 		switch (field.kind) {
-			// defined var only
-			case FVar(clsCT, _) if (clsCT != null):
-				{
-					switch (clsCT) {
-						case TPath(path):
-							if (path.name == "View") {
-								var components = [];
+			case FVar(TPath(path), _) if (path.name == "View"):
+				var components = [];
 
-								for (p in path.params) {
-									switch (p) {
-										case TPType(tpt): {
-												components.push(tpt.followComplexType(pos));
-											}
-										case TPExpr(e): throw "unsupported";
-									}
-								}
-
-								var vs = ViewSpec.fromComponents(components, pos);
-								var vr = ViewBuilder.getViewRec(vs, field.pos);
-
-								if (vr != null) {
-									if (definedViews.find(function(v) return v.view.spec.name == vr.spec.name) == null) {
-										// init
-										var x = vr.spec.typePath().asTypeIdent(Context.currentPos());
-										field.kind = FVar(vr.ct, macro $x.inst());
-//										trace('defining: ${field.name.toLowerCase()} from field');
-										definedViews.push({view: vr, varname: field.name});
-									}
-								} else {
-									Context.warning('View Rec is null', field.pos);
-								}
+				for (p in path.params) {
+					switch (p) {
+						case TPType(tpt): {
+								components.push(tpt.followComplexType(pos));
 							}
-						default:
+						case TPExpr(e): throw "unsupported";
 					}
+				}
+
+				var vs = ViewSpec.fromComponents(components, pos);
+				var vr = ViewBuilder.getViewRec(vs, field.pos);
+
+				if (vr != null) {
+					if (definedViews.find(function(v) return v.view.spec.name == vr.spec.name) == null) {
+						// init
+						var x = vr.spec.typePath().asTypeIdent(Context.currentPos());
+						field.kind = FVar(vr.ct, macro $x.inst());
+//										trace('defining: ${field.name.toLowerCase()} from field');
+						definedViews.push({view: vr, varname: field.name});
+					}
+				} else {
+					Context.warning('View Rec is null', field.pos);
 				}
 			default:
 		}
@@ -244,35 +231,33 @@ public static function build(debug:Bool = false) {
 	fields.filter(MetaTools.notSkipped).filter((x) -> MetaTools.containsMeta(x, MetaTools.VIEW_FUNC_META)).iter(function(field) {
 		switch (field.kind) {
 			case FFun(func):
-				{
-					//trace ('Function ${field.name}');
-					var components = func.args.map((x) -> metaFuncArgToComponentDef(x,field.pos)).filter(notNull);
-					var worlds = metaFieldToWorlds(field);
+				//trace ('Function ${field.name}');
+				var components = func.args.map((x) -> metaFuncArgToComponentDef(x,field.pos)).filter(notNull);
+				var worlds = metaFieldToWorlds(field);
 
-					if (components != null && components.length > 0) {
-						var vs = ViewSpec.fromField(field, func);
-						if (vs != null) {
-							var lcName = vs.name.toLowerCase();
-							
-							var view = definedViews.find(function(v) return v.varname == lcName);
-					
-							if (view == null || view.varname != lcName) {
-								if (view != null) trace('? vs ${view.varname} vs ${lcName}');
-								var vr = ViewBuilder.getViewRec(vs, field.pos);
+				if (components != null && components.length > 0) {
+					var vs = ViewSpec.fromField(field, func);
+					if (vs != null) {
+						var lcName = vs.name.toLowerCase();
+						
+						var view = definedViews.find(function(v) return v.varname == lcName);
+				
+						if (view == null || view.varname != lcName) {
+							if (view != null) trace('? vs ${view.varname} vs ${lcName}');
+							var vr = ViewBuilder.getViewRec(vs, field.pos);
 
-								if (vr != null) {
+							if (vr != null) {
 //									trace('defining: ${lcName} from function');
 
-									definedViews.push({view: vr, varname: lcName});
-									var tp = vs.typePath().asTypeIdent(Context.currentPos());
-									fields.push(fvar([], [], lcName, vr.ct, macro $tp.inst(), Context.currentPos()));
-								} else {
-									Context.warning('Something in denmark2 ${view}', Context.currentPos());
-								}
+								definedViews.push({view: vr, varname: lcName});
+								var tp = vs.typePath().asTypeIdent(Context.currentPos());
+								fields.push(fvar([], [], lcName, vr.ct, macro $tp.inst(), Context.currentPos()));
 							} else {
-//								trace('reusing: ${lcName} from function');
-								//Context.warning('Re-using view ${view.varname}', Context.currentPos());
+								Context.warning('Something in denmark2 ${view}', Context.currentPos());
 							}
+						} else {
+//								trace('reusing: ${lcName} from function');
+							//Context.warning('Re-using view ${view.varname}', Context.currentPos());
 						}
 					}
 				}
@@ -447,20 +432,16 @@ public static function build(debug:Bool = false) {
 	if (debug || MetaTools.PRINT_META.exists(function(m) return clsType.meta.has(m))) {
 		switch (Context.getLocalType().toComplexType()) {
 			case TPath(p):
-				{
-					var td:TypeDefinition = {
-						pack: p.pack,
-						name: p.name,
-						pos: clsType.pos,
-						kind: TDClass(tpath("ecs", "System")),
-						fields: fields
-					}
-					trace(new Printer().printTypeDefinition(td));
+				var td:TypeDefinition = {
+					pack: p.pack,
+					name: p.name,
+					pos: clsType.pos,
+					kind: TDClass(tpath("ecs", "System")),
+					fields: fields
 				}
+				trace(new Printer().printTypeDefinition(td));
 			default:
-				{
-					Context.warning("Fail @print", clsType.pos);
-				}
+				Context.warning("Fail @print", clsType.pos);
 		}
 	}
 
