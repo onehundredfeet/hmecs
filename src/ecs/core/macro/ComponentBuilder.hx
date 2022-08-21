@@ -197,10 +197,6 @@ class StorageInfo {
 		
 	}
 
-	public inline function requiresStorage() : Bool {
-		//return (storageType != TAG);
-		return true;
-	}
 	function tagExpr() : Expr {
 		if (!tagMap.exists(fullName)) {
 			tagMap.set(fullName, tagCount++);
@@ -208,21 +204,24 @@ class StorageInfo {
 
 		return EConst(CInt(Std.string(tagMap.get(fullName)))).at();
 	}
-	public function getGetExpr(entityExpr:Expr, cachedVarName:String = null):Expr {
-		if (cachedVarName != null)
-			return switch (storageType) {
-				case FAST: macro $i{cachedVarName}[$entityExpr];
-				case COMPACT: macro $i{cachedVarName}.get($entityExpr);
-				case SINGLETON: macro $i{cachedVarName};
-				case TAG: 
-				  macro @:privateAccess $i{cachedVarName};
-			};
+	public function getGetExprCached(entityExpr:Expr, cachedVarName:String):Expr {
+		return switch (storageType) {
+			case FAST: macro $i{cachedVarName}[$entityExpr];
+			case COMPACT: macro $i{cachedVarName}.get($entityExpr);
+			case SINGLETON: macro $i{cachedVarName};
+			case TAG: macro @:privateAccess $i{cachedVarName};
+		};
+	}
+
+	public function getGetExpr(entityExpr:Expr, sure:Bool = false):Expr {
 		return switch (storageType) {
 			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
 			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
 			case SINGLETON: macro $containerFullNameExpr.storage;
 			case TAG: var te = tagExpr();	
-			  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? $containerFullNameExpr.storage : null;
+			sure ? 
+				macro $containerFullNameExpr.storage :
+			  	macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? $containerFullNameExpr.storage : null;
 		};
 	}
 
