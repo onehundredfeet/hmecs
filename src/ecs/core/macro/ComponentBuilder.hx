@@ -89,7 +89,7 @@ class StorageInfo {
 	}
 
 	public function new(ct:ComplexType, i:Int, pos) {
-		// trace ('Generating storage for ${ct.toString()}');
+		//trace ('Generating storage for ${ct.toString()}');
 		givenCT = ct;
 		followedCT = ct.followComplexType(pos);
 		followedT = followedCT.toTypeOrNull(Context.currentPos());
@@ -106,7 +106,7 @@ class StorageInfo {
 					if (x != null) {
 						followedClass = x.get();
 					} else {
-						Context.warning('abstract not implemented ${followedCT.toString()}', Context.currentPos());
+						Context.warning('abstract not implemented ${at} ${followedCT.toString()}', Context.currentPos());
 					}
 				default:
 					Context.warning('Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
@@ -139,8 +139,8 @@ class StorageInfo {
 		var tp = (switch (storageType) {
 			case FAST: tpath([], "Array", [TPType(followedCT)]);
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
+			case TAG: followedCT.toString().asTypePath();
 			case SINGLETON: followedCT.toString().asTypePath();
-			case TAG: null;
 				// case TAG: tpath([], "Array", [TPType(followedCT)]); // TODO [RC] - Optimize tag path
 		});
 
@@ -162,17 +162,25 @@ class StorageInfo {
 				var existsExpr = getExistsExpr(macro id);
 				var removeExpr = getRemoveExpr(macro id);
 
-				var def = (storageType == SINGLETON) ? macro class $containerTypeName {
-					public static var storage:$storageCT;
-					public static var owner:Int = 0;
-				} : macro class $containerTypeName {
-					public static var storage:$storageCT = new $tp();
+				var def = 
+				switch(storageType) {
+					case TAG:  macro class $containerTypeName {
+						public static var storage:$storageCT = @:privateAccess new $tp();
+					}
+					case SINGLETON: macro class $containerTypeName {
+						public static var storage:$storageCT;
+						public static var owner:Int = 0;
+					}
+					default:macro class $containerTypeName {
+						public static var storage:$storageCT = @:privateAccess new $tp();
+	
+						public function exists(id:Int)
+							return $existsExpr;
+						};
+				}
 
-					public function exists(id:Int)
-						return $existsExpr;
-					};
 
-				//			trace(_printer.printTypeDefinition(def));
+				//trace(_printer.printTypeDefinition(def));
 				def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
 			}
 
@@ -190,7 +198,8 @@ class StorageInfo {
 	}
 
 	public inline function requiresStorage() : Bool {
-		return (storageType != TAG);
+		//return (storageType != TAG);
+		return true;
 	}
 	function tagExpr() : Expr {
 		if (!tagMap.exists(fullName)) {
@@ -206,15 +215,14 @@ class StorageInfo {
 				case COMPACT: macro $i{cachedVarName}.get($entityExpr);
 				case SINGLETON: macro $i{cachedVarName};
 				case TAG: 
-				var te = tagExpr();	
-				  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? 1 : 0;
+				  macro @:privateAccess $i{cachedVarName};
 			};
 		return switch (storageType) {
 			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
 			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
 			case SINGLETON: macro $containerFullNameExpr.storage;
 			case TAG: var te = tagExpr();	
-			  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? 1 : 0;
+			  macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? $containerFullNameExpr.storage : null;
 		};
 	}
 

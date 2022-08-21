@@ -13,7 +13,7 @@ class TestSystemA extends ecs.System {
     @:added
     function added(ix:X, e:ecs.Entity) {
         trace ("Added TestSystemA X");
-        e.add( TagA.VALID );
+        e.add( TagA );
         e.remove(TagA);
     }
 
@@ -33,7 +33,7 @@ class TestSystemA extends ecs.System {
     }
 
     @:u  function updateC(f : TagA, iy:Y) { 
-        trace("SystemA|updateC");
+        trace('SystemA|updateC tag ${f.test}');
          
         
     }
