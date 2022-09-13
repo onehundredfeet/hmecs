@@ -34,7 +34,7 @@ The first version of this will primarily target HashLink, but may be extended to
 ## WARNING & INSTRUCTIONS
 ### Due to the heavily macro based approach of the system, there are some nuances that require some concessions.
 
-1. To get all the features working, you will need to create a very lean, or even proxy, main file.
+1. To get all the features working, you will need to create a very lean, or even proxy, main file and use it as your entry point when compiling.
 
 ```haxe
 import your.MainClass;
@@ -61,7 +61,7 @@ class ProxyMain {
 }
 ```
 
-#### Example
+## Examples
 ```haxe
 import ecs.SystemList;
 import ecs.Workflow;
