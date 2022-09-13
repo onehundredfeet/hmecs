@@ -31,12 +31,35 @@ The first version of this will primarily target HashLink, but may be extended to
 * `Workflow` a global class used to access common features such as a singleton
 * `Tag` is class with the @:storage(TAG) metadata that changes the behaviour from being specified as an instance to added as a type. A flag set keeps track of which entities are tagged, makeing storing many tags compact and fast.  When specified in a function, a single static instance of the class will be passed in to all calls, regardless of which entity is passed in.
 
-#### Note: Currently requires running a macro as the last line in your main file. Add this function to the bottom of your root hx file, i.e. Main.hx.  Then call the function as your first function call.
+## WARNING & INSTRUCTIONS
+### Due to the heavily macro based approach of the system, there are some nuances that require some concessions.
 
-function ecsSetup() {
-	ecs.core.macro.Global.setup();
+1. To get all the features working, you will need to create a very lean, or even proxy, main file.
+
+```haxe
+import your.MainClass;
+
+class ProxyMain {
+  public static function main() {
+    MainClass.main();
+  }
 }
+```
 
+2. You will need to add a call to initialize a variety of late binding mechanism.
+
+```haxe
+import your.MainClass;
+
+class ProxyMain {
+  public static function main() {
+    #if !macro
+  	ecs.core.macro.Global.setup();  // macro to generate all the global calls and then hook them up at runtime
+    #end
+    MainClass.main();
+  }
+}
+```
 
 #### Example
 ```haxe
