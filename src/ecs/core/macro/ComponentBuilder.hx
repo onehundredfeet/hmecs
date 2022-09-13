@@ -347,9 +347,140 @@ class StorageInfo {
 	public final isPooled:Bool;
 }
 
+// Not allowed to store types, should probably separate these structures
+class PersistentStorageInfo {
+	public final name : String;
+	public final fullName:String;
+	public final containerFullNameExpr:Expr;
+	public final containerFullName:String;
+	public final storageType:StorageType;
+	public final emptyExpr:Expr;
+	public final isPooled:Bool;
+	public final followedMeta:MetaMap;
+	public final followedClass:ClassType;
+
+	public function new(si : StorageInfo, name : String) {
+		containerFullNameExpr = si.containerFullNameExpr;
+		containerFullName = si.containerFullName;
+		storageType = si.storageType;
+		emptyExpr = si.emptyExpr;
+		fullName = si.fullName;
+		this.name = name;
+		isPooled = si.isPooled;
+		followedMeta = si.followedMeta;
+		followedClass = si.followedClass;
+	}
+
+	// My appologies for the code duplication, i need to figure out a better way to do this
+	public function getRemoveExpr(entityVarExpr:Expr):Expr {
+		if (storageType == TAG) {
+			var te = tagExpr();	
+			return  macro @:privateAccess ecs.Workflow.clearTag($te, $te);	
+		}
+
+		var accessExpr = switch (storageType) {
+			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
+			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.get($entityVarExpr);
+			case SINGLETON: macro($containerFullNameExpr.owner == $entityVarExpr ? $containerFullNameExpr.storage : null);
+			case TAG: var te = tagExpr();	
+			@:privateAccess  macro ecs.Workflow.getTag($te, $te);
+		};
+
+		var hasExpr = getExistsExpr(entityVarExpr);
+		var retireExprs = new Array<Expr>();
+		var autoRetire = isPooled && !followedMeta.exists(":no_auto_retire");
+		if (autoRetire) {
+			retireExprs.push(macro $accessExpr.retire());
+		}
+
+		if (followedClass != null) {
+			var cfs_statics = followedClass.statics.get().map((x) -> {cf: x, stat: true});
+			var cfs_non_statics = followedClass.fields.get().map((x) -> {cf: x, stat: false});
+
+			var cfs = cfs_statics.concat(cfs_non_statics);
+
+			for (cfx in cfs) {
+				var cf = cfx.cf;
+				if (cf.meta.has(":ecs_remove")) {
+					switch (cf.kind) {
+						case FMethod(k):
+							var te = cf.expr();
+							switch (te.expr) {
+								case TFunction(tfunc):
+									var fname = $i{cf.name};
+									var needsEntity = false;
+									for (a in tfunc.args) {
+										if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
+											needsEntity = true;
+											break;
+										}
+									}
+									if (needsEntity) {
+										retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
+									} else {
+										// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
+										retireExprs.push(macro @:privateAccess $accessExpr.$fname());
+									}
+								default:
+							}
+						default:
+					}
+				}
+			}
+		}
+
+		return switch (storageType) {
+			case FAST: macro if ($hasExpr) {
+					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
+				}
+			case COMPACT: macro if ($hasExpr) {
+					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage.remove($entityVarExpr);
+				}
+			case SINGLETON: macro if ($hasExpr) {
+					$b{retireExprs} $containerFullNameExpr.storage = $emptyExpr;
+					$containerFullNameExpr.owner = 0;
+				}
+			case TAG: 
+				var te = tagExpr();	
+				@:privateAccess  macro ecs.Workflow.clearTag($te, $te);	
+		};
+	}
+
+	// My appologies for the code duplication, i need to figure out a better way to do this
+	public function getExistsExpr(entityVar:Expr):Expr {
+		return switch (storageType) {
+			case FAST: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
+			case COMPACT: macro $containerFullNameExpr.storage.exists($entityVar);
+			case SINGLETON: macro $containerFullNameExpr.owner == $entityVar;
+			case TAG: 
+				var te = tagExpr();	
+				macro  @:privateAccess ecs.Workflow.getTag($entityVar, $te);
+		};
+	}
+
+	// could be made static
+	function tagExpr() : Expr {
+		if (!tagMap.exists(fullName)) {
+			tagMap.set(fullName, tagCount++);
+		}
+
+		return EConst(CInt(Std.string(tagMap.get(fullName)))).at();
+	}
+
+}
+
 class ComponentBuilder {
 	static var componentIndex = -1;
 	static var componentContainerTypeCache = new Map<String, StorageInfo>();
+	@:persistent static var componentInfoCache = new Map<String, PersistentStorageInfo>();
+	
+	public static function persistentComponentTypeNames() {
+		return componentInfoCache.keys();
+	}
+
+	public static function persistentContainerInfo(s:String) {
+		return componentInfoCache[s];
+	}
 
 	public static function containerNames() {
 		return componentContainerTypeCache.keys();
@@ -369,6 +500,7 @@ class ComponentBuilder {
 
 		info = new StorageInfo(componentComplexType, ++componentIndex, pos);
 		componentContainerTypeCache[name] = info;
+		componentInfoCache[name] = new PersistentStorageInfo(info, name);
 
 		return info;
 	}

@@ -48,7 +48,9 @@ class Workflow {
 	static var worldFlags = new Array<Int>();
 
 	// all of every defined component container
+	#if ecs_legacy_containers
 	static var definedContainers = new Array<ICleanableComponentContainer>();
+	#end
 	// all of every defined view
 	static var definedViews = new Array<AbstractView>();
 
@@ -107,6 +109,15 @@ class Workflow {
 		return ret;
 	}
 
+	public static function infoObj() {
+		return {
+			systems : systems.length,
+			views : views.length,
+			entities : entities.length,
+			ids : idPool.length
+
+		}
+	}
 	/**
 	 * Update 
 	 * @param dt deltatime
@@ -138,9 +149,11 @@ class Workflow {
 		for (v in definedViews) {
 			v.reset();
 		}
+		#if ecs_legacy_containers
 		for (c in definedContainers) {
 			c.reset();
 		}
+		#end
 
 		// [RC] why splice and not resize?
 		idPool.resize(0);
@@ -433,6 +446,11 @@ class Workflow {
 
 	static var removeAllFunction : (ecs.Entity) -> Void = null;
 
+	public static dynamic function numComponentTypes() { return 0; }	
+	public static dynamic function componentNames() {
+		return [];
+	}
+
 	macro static function removeAllComponents(e : Expr) : Expr {
 		return macro {
 			if (removeAllFunction == null) {
@@ -452,7 +470,7 @@ class Workflow {
 				v.removeIfExists(id);
 			}
 		}
-		#if ecs_legacy_remove
+		#if ecs_legacy_containers
 		for (c in definedContainers) {
 			c.remove(id);
 		}
@@ -461,13 +479,18 @@ class Workflow {
 		#end
 	}
 
+
+
 	@:allow(ecs.Entity) static inline function printAllComponentsOf(id:Int):String {
 		var ret = '#$id:';
+		#if ecs_legacy_containers
 		for (c in definedContainers) {
 			if (c.exists(id)) {
 				ret += '${c.print(id)},';
 			}
 		}
+		#end
+
 		return ret.substr(0, ret.length - 1);
 	}
 }
