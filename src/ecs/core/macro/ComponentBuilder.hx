@@ -90,31 +90,16 @@ class StorageInfo {
 
 	public function new(ct:ComplexType, i:Int, pos) {
 		//trace ('Generating storage for ${ct.toString()}');
+		// derived from parameters
 		givenCT = ct;
 		followedCT = ct.followComplexType(pos);
-		followedT = followedCT.toTypeOrNull(Context.currentPos());
-		if (followedT == null) {
-			Context.error('Could not find type for ${ct}', Context.currentPos());
-		}
-		followedClass = null;
-		try {
-			followedClass = followedT.getClass();
-		} catch (e) {
-			switch (followedT) {
-				case TAbstract(at, params):
-					var x = at.get().impl;
-					if (x != null) {
-						followedClass = x.get();
-					} else {
-						Context.warning('abstract not implemented ${at} ${followedCT.toString()}', Context.currentPos());
-					}
-				default:
-					Context.warning('Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
-			}
-		}
+		name = followedCT.toString();
+		fullName = followedCT.followComplexType(pos).typeFullName(pos);
+		componentIndex = i;
 
-		followedMeta = followedT.getMeta().flatMap((x) -> x.get()).toMap();
-
+		// Derived from the type
+		var followedT = getMacroType(followedCT);
+		followedClass = getFollowedClass(followedT);
 		var rt = followedT.followWithAbstracts();
 
 		emptyExpr = switch (rt) {
@@ -128,73 +113,10 @@ class StorageInfo {
 
 			default: macro null;
 		}
-		//		trace('Underlaying type is ${rt} with empty ${_printer.printExpr(emptyExpr)}');
 
-		//		followedMeta.exists(":empty") ? followedMeta.get(":empty")[0][0] : macro null;
-
-		fullName = followedCT.followComplexType(pos).typeFullName(pos);
-		storageType = StorageType.getStorageType(followedMeta);
-		//		isPooled = getPooled(followedMeta);
-		isPooled = false;
-		var tp = (switch (storageType) {
-			case FAST: tpath([], "Array", [TPType(followedCT)]);
-			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
-			case TAG: followedCT.toString().asTypePath();
-			case SINGLETON: followedCT.toString().asTypePath();
-				// case TAG: tpath([], "Array", [TPType(followedCT)]); // TODO [RC] - Optimize tag path
-		});
-
-		componentIndex = i;
-
-		if (tp != null) {
-			storageCT = TPath(tp);
-
-			containerTypeName = 'StorageOf' + fullName;
-			containerFullName = STORAGE_NAMESPACE + "." + containerTypeName;
-
-			containerFullNameExpr = containerFullName.asTypeIdent(Context.currentPos());
-
-			//		Context.registerModuleDependency()
-			containerCT = containerFullName.asComplexType();
-			containerType = containerCT.toTypeOrNull(Context.currentPos());
-
-			if (containerType == null) {
-				var existsExpr = getExistsExpr(macro id);
-				var removeExpr = getRemoveExpr(macro id);
-
-				var def = 
-				switch(storageType) {
-					case TAG:  macro class $containerTypeName {
-						public static var storage:$storageCT = @:privateAccess new $tp();
-					}
-					case SINGLETON: macro class $containerTypeName {
-						public static var storage:$storageCT;
-						public static var owner:Int = 0;
-					}
-					default:macro class $containerTypeName {
-						public static var storage:$storageCT = @:privateAccess new $tp();
-	
-						public function exists(id:Int)
-							return $existsExpr;
-						};
-				}
-
-
-				//trace(_printer.printTypeDefinition(def));
-				def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
-			}
-
-			if (containerType == null) {
-				containerType = containerCT.toTypeOrNull(Context.currentPos());
-			}
-		} else {
-			containerCT = null;
-			containerType = null;
-			containerTypeName = null;
-			containerFullName = null;
-			containerFullNameExpr = null;
-		}
-		
+		// dervied from the meta
+		updateMeta( followedT );
+		updateContainer();
 	}
 
 	function tagExpr() : Expr {
@@ -329,178 +251,166 @@ class StorageInfo {
 		};
 	}
 
-	public final givenCT:ComplexType;
-	public final followedT:haxe.macro.Type;
-	public final followedCT:ComplexType;
-	public final followedMeta:MetaMap;
-	public final followedClass:ClassType;
-	public final storageType:StorageType;
-	public final storageCT:ComplexType;
-	public final componentIndex:Int;
-	public final fullName:String;
-	public final containerCT:ComplexType;
-	public final containerType:haxe.macro.Type;
-	public final containerTypeName:String;
-	public final containerFullName:String;
-	public final containerFullNameExpr:Expr;
-	public final emptyExpr:Expr;
-	public final isPooled:Bool;
-}
-
-// Not allowed to store types, should probably separate these structures
-class PersistentStorageInfo {
-	public final name : String;
-	public final fullName:String;
-	public final containerFullNameExpr:Expr;
-	public final containerFullName:String;
-	public final storageType:StorageType;
-	public final emptyExpr:Expr;
-	public final isPooled:Bool;
-	public final followedMeta:MetaMap;
-	public final followedClass:ClassType;
-
-	public function new(si : StorageInfo, name : String) {
-		containerFullNameExpr = si.containerFullNameExpr;
-		containerFullName = si.containerFullName;
-		storageType = si.storageType;
-		emptyExpr = si.emptyExpr;
-		fullName = si.fullName;
-		this.name = name;
-		isPooled = si.isPooled;
-		followedMeta = si.followedMeta;
-		followedClass = si.followedClass;
+	function getMacroType(ct : ComplexType) {
+		var followedT = ct.toTypeOrNull(Context.currentPos());
+		if (followedT == null) {
+			Context.error('Could not find type for ${ct}', Context.currentPos());
+		}
+		return followedT;
 	}
-
-	// My appologies for the code duplication, i need to figure out a better way to do this
-	public function getRemoveExpr(entityVarExpr:Expr):Expr {
-		if (storageType == TAG) {
-			var te = tagExpr();	
-			return  macro @:privateAccess ecs.Workflow.clearTag($te, $te);	
-		}
-
-		var accessExpr = switch (storageType) {
-			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
-			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.get($entityVarExpr);
-			case SINGLETON: macro($containerFullNameExpr.owner == $entityVarExpr ? $containerFullNameExpr.storage : null);
-			case TAG: var te = tagExpr();	
-			@:privateAccess  macro ecs.Workflow.getTag($te, $te);
-		};
-
-		var hasExpr = getExistsExpr(entityVarExpr);
-		var retireExprs = new Array<Expr>();
-		var autoRetire = isPooled && !followedMeta.exists(":no_auto_retire");
-		if (autoRetire) {
-			retireExprs.push(macro $accessExpr.retire());
-		}
-
-		if (followedClass != null) {
-			var cfs_statics = followedClass.statics.get().map((x) -> {cf: x, stat: true});
-			var cfs_non_statics = followedClass.fields.get().map((x) -> {cf: x, stat: false});
-
-			var cfs = cfs_statics.concat(cfs_non_statics);
-
-			for (cfx in cfs) {
-				var cf = cfx.cf;
-				if (cf.meta.has(":ecs_remove")) {
-					switch (cf.kind) {
-						case FMethod(k):
-							var te = cf.expr();
-							switch (te.expr) {
-								case TFunction(tfunc):
-									var fname = $i{cf.name};
-									var needsEntity = false;
-									for (a in tfunc.args) {
-										if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
-											needsEntity = true;
-											break;
-										}
-									}
-									if (needsEntity) {
-										retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
-									} else {
-										// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
-										retireExprs.push(macro @:privateAccess $accessExpr.$fname());
-									}
-								default:
-							}
-						default:
+	function getFollowedClass(t : haxe.macro.Type) {
+		var fc = null;
+		try {
+			fc = t.getClass();
+		} catch (e) {
+			switch (t) {
+				case TAbstract(at, params):
+					var x = at.get().impl;
+					if (x != null) {
+						fc = x.get();
+					} else {
+						Context.warning('abstract not implemented ${at} ${followedCT.toString()}', Context.currentPos());
 					}
-				}
+				default:
+					Context.warning('Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
 			}
 		}
-
-		return switch (storageType) {
-			case FAST: macro if ($hasExpr) {
-					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
-				}
-			case COMPACT: macro if ($hasExpr) {
-					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage.remove($entityVarExpr);
-				}
-			case SINGLETON: macro if ($hasExpr) {
-					$b{retireExprs} $containerFullNameExpr.storage = $emptyExpr;
-					$containerFullNameExpr.owner = 0;
-				}
-			case TAG: 
-				var te = tagExpr();	
-				@:privateAccess  macro ecs.Workflow.clearTag($te, $te);	
-		};
+		return fc;
 	}
 
-	// My appologies for the code duplication, i need to figure out a better way to do this
-	public function getExistsExpr(entityVar:Expr):Expr {
-		return switch (storageType) {
-			case FAST: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
-			case COMPACT: macro $containerFullNameExpr.storage.exists($entityVar);
-			case SINGLETON: macro $containerFullNameExpr.owner == $entityVar;
-			case TAG: 
-				var te = tagExpr();	
-				macro  @:privateAccess ecs.Workflow.getTag($entityVar, $te);
-		};
+	public function update() {
+		var t = getMacroType(followedCT);
+		this.followedClass = getFollowedClass(t);
+		updateMeta(t);
+		updateContainer();
 	}
 
-	// could be made static
-	function tagExpr() : Expr {
-		if (!tagMap.exists(fullName)) {
-			tagMap.set(fullName, tagCount++);
+	function getTypeMetaMap(t : haxe.macro.Type) {
+		return t.getMeta().flatMap((x) -> x.get()).toMap();
+	}
+
+
+
+	function updateMeta(t : haxe.macro.Type) {
+		// dervied from the meta
+		followedMeta = getTypeMetaMap( t );
+		storageType = StorageType.getStorageType(followedMeta);
+		
+		//		isPooled = getPooled(followedMeta);
+		isPooled = false;
+		isImmutable = followedMeta.exists(":immutable");
+	}
+
+	function updateContainer() {
+		var tp = (switch (storageType) {
+			case FAST: tpath([], "Array", [TPType(followedCT)]);
+			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
+			case TAG: followedCT.toString().asTypePath();
+			case SINGLETON: followedCT.toString().asTypePath();
+			default: null;
+		});
+
+		if (tp != null) {
+			storageCT = TPath(tp);
+
+			containerTypeName = 'StorageOf' + fullName;
+			containerFullName = STORAGE_NAMESPACE + "." + containerTypeName;
+
+			containerFullNameExpr = containerFullName.asTypeIdent(Context.currentPos());
+
+			//		Context.registerModuleDependency()
+			containerCT = containerFullName.asComplexType();
+			var containerType = containerCT.toTypeOrNull(Context.currentPos());
+
+			if (containerType == null) {
+				var existsExpr = getExistsExpr(macro id);
+				var removeExpr = getRemoveExpr(macro id);
+
+				var def = 
+				switch(storageType) {
+					case TAG:  macro class $containerTypeName {
+						public static var storage:$storageCT = @:privateAccess new $tp();
+					}
+					case SINGLETON: macro class $containerTypeName {
+						public static var storage:$storageCT;
+						public static var owner:Int = 0;
+					}
+					default:macro class $containerTypeName {
+						public static var storage:$storageCT = @:privateAccess new $tp();
+	
+						public function exists(id:Int)
+							return $existsExpr;
+						};
+				}
+
+
+				//trace(_printer.printTypeDefinition(def));
+				def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
+			}
+
+			if (containerType == null) {
+				containerType = containerCT.toTypeOrNull(Context.currentPos());
+			}
+		} else {
+			containerCT = null;
+			containerTypeName = null;
+			containerFullName = null;
+			containerFullNameExpr = null;
 		}
-
-		return EConst(CInt(Std.string(tagMap.get(fullName)))).at();
 	}
 
+	public var name:String;
+	public var givenCT:ComplexType;
+	public var followedCT:ComplexType;
+	public var followedMeta:MetaMap;
+	public var followedClass:ClassType;
+	public var storageType:StorageType;
+	public var storageCT:ComplexType;
+	public var componentIndex:Int;
+	public var fullName:String;
+	public var containerCT:ComplexType;
+	public var containerTypeName:String;
+	public var containerFullName:String;
+	public var containerFullNameExpr:Expr;
+	public var emptyExpr:Expr;
+	public var isPooled:Bool;
+	public var isImmutable : Bool;
 }
 
 class ComponentBuilder {
 	static var componentIndex = -1;
-	static var componentContainerTypeCache = new Map<String, StorageInfo>();
-	@:persistent static var componentInfoCache = new Map<String, PersistentStorageInfo>();
-	
-	public static function persistentComponentTypeNames() {
-		return componentInfoCache.keys();
-	}
+	@:persistent static var componentContainerTypeCache = new Map<String, StorageInfo>();
+	static var currentComponentContainerTypeCache = new Map<String, StorageInfo>();
 
-	public static function persistentContainerInfo(s:String) {
-		return componentInfoCache[s];
-	}
-
-	public static function containerNames() {
+	public static function componentTypeNames() {
 		return componentContainerTypeCache.keys();
 	}
 
-	public static function getComponentContainerInfoByName(s:String) {
+	public static function containerInfo(s:String) {
 		return componentContainerTypeCache[s];
 	}
 
 	public static function getComponentContainerInfo(componentComplexType:ComplexType, pos):StorageInfo {
 		var name = componentComplexType.followName(pos);
 
-		var info = componentContainerTypeCache.get(name);
+		var info = currentComponentContainerTypeCache.get(name);
 		if (info != null) {
+			return info;
+		}
+
+		info = componentContainerTypeCache.get(name);
+		if (info != null) {
+			#if ecs_late_debug
+			trace('ECS: Updating type info on ${name}');
+			#end
+			info.update();
+			currentComponentContainerTypeCache.set(name, info);
 			return info;
 		}
 
 		info = new StorageInfo(componentComplexType, ++componentIndex, pos);
 		componentContainerTypeCache[name] = info;
-		componentInfoCache[name] = new PersistentStorageInfo(info, name);
+		currentComponentContainerTypeCache.set(name, info);
 
 		return info;
 	}

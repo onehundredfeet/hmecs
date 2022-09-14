@@ -19,7 +19,7 @@ class Global {
 	static var lateDef:TypeDefinition;
 
 	static function defineLateCalls():TypeDefinition {
-		var containerNames = [for (c in ComponentBuilder.persistentComponentTypeNames())  c];
+		var containerNames = [for (c in ComponentBuilder.componentTypeNames())  c];
 		var removeExprs = new Array<Expr>();
 		var nameExprs = containerNames.map( (x) -> EConst(CString(x)).at() );
   
@@ -33,7 +33,7 @@ class Global {
 		}
 		#end
 
-		var infos = containerNames.map( (x) -> ComponentBuilder.persistentContainerInfo(x) );
+		var infos = containerNames.map( (x) -> ComponentBuilder.containerInfo(x) );
 
 		for (info in infos) {
 			removeExprs.push(info.getRemoveExpr(macro e));
@@ -46,7 +46,7 @@ class Global {
 			return macro if ($testExpr) componentNames.push( $name );
 		});
 
-		var lateClass = macro class LateCalls {
+		var lateClass = macro class LateCalls  {
 			public static function removeAllComponents(e:ecs.Entity) {
 				$b{removeExprs}
 			}
