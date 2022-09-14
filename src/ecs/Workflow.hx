@@ -447,7 +447,10 @@ class Workflow {
 	static var removeAllFunction : (ecs.Entity) -> Void = null;
 
 	public static dynamic function numComponentTypes() { return 0; }	
-	public static dynamic function componentNames() {
+	public static dynamic function componentNames()  : Array<String> {
+		return [];
+	}
+	public static dynamic function entityComponentNames(e : ecs.Entity) : Array<String> {
 		return [];
 	}
 

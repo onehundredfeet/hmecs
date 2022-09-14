@@ -63,6 +63,7 @@ class Global {
 			public static function getComponentNames() : Array<String> {
 				return _componentNames;
 			}
+
 			public function getRemoveFunc():(ecs.Entity) -> Void {
 				return removeAllComponents;
 			}
@@ -88,6 +89,8 @@ class Global {
 			@:privateAccess Workflow.removeAllFunction = ecs.LateCalls.removeAllComponents; 
 			@:privateAccess Workflow.numComponentTypes = ecs.LateCalls.numComponentTypes;
 			@:privateAccess Workflow.componentNames = ecs.LateCalls.getComponentNames;
+			@:privateAccess Workflow.entityComponentNames = ecs.LateCalls.listComponents;
+			
 		}
 		return x;
 	}
