@@ -119,6 +119,15 @@ class SystemList implements ISystem {
         return systems.exists(s);
     }
 
+    @:generic
+    public function getOp<T>(c : Class<T>) : T {
+        for (x in systems) {
+            if (Std.isOfType(x, c)) {
+                return cast x;
+            }
+        }
+        return null;
+    }
 
     public function toString():String return 'SystemList';
 

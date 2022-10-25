@@ -12,7 +12,7 @@ class AbstractView {
     /** List of matched entities */
     public var entities(default, null) = new RestrictedLinkedList<Entity>();
 
-    var collected = new Array<Bool>();
+    var collected = new Array<Bool>();  // Membership is already being stored
 
     var activations = 0;
 
