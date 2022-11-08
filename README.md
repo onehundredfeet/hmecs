@@ -46,7 +46,7 @@ class ProxyMain {
 }
 ```
 
-2. You will need to add a call to initialize a variety of late binding mechanism.
+2. You will need to add a call to initialize a variety of late binding mechanisms.
 
 ```haxe
 import your.MainClass;
@@ -60,6 +60,25 @@ class ProxyMain {
   }
 }
 ```
+
+## Usage
+
+### Component Storage
+Each component type can have its own storage specification.  They are specified using the @:storage metadata on the component type.  You can use abstract types to wrap basic types to apply the metadata.
+
+#### @:storage(FAST)
+This is the default. It is an array the length of the total number of entities. Any entities with the component will have a non-zero allocated object in the array corresponding to the entity id.  Obviously this can waste a lot of memory if overused with a large number of entities.
+
+#### @:storage(COMPACT)
+This is the typical secondary value.  It specifies an IntMap to be used for the storage backend.  This will slightly increase the lookup time for get, but it will significantly reduce the amount of memory required.
+
+#### @:storage(FLAG)
+This is says that this type is a bit flag on the flags storage for the entity.  It takes a single bit per entity, much smaller than using an array.  It is slightly slower than the fast storage but not by much.
+
+A side benefit is that a single instance of the tagged class is available in views that require this flag.
+
+#### @:storage(SINGLETON)
+There can only be one instance of this class and only one entity can own it. It is very limited, but very fast.
 
 ## Examples
 ```haxe
