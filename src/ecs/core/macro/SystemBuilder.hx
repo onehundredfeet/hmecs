@@ -300,8 +300,8 @@ public static function build(debug:Bool = false) {
 	});
 
 	var uexprs = []
-	#if echoes_profiling.concat
-	([macro var __timestamp__ = Date.now().getTime()])
+	#if ecs_profiling
+	.concat([macro var __timestamp__ = haxe.Timer.stamp()])
 	#end
 	.concat(ufuncs.map(function(f) {
 		return switch (f.type) {
@@ -379,7 +379,10 @@ public static function build(debug:Bool = false) {
 				}
 		}
 	}))
-	#if echoes_profiling.concat ([macro this.__updateTime__ = Std.int(Date.now().getTime() - __timestamp__)]) #end;
+	#if ecs_profiling
+	.concat ([macro this.__updateTime__ = (haxe.Timer.stamp() - __timestamp__) * 1000.]) 
+	#end
+	;
 
 	var aexpr = macro if (!activated)
 		$b{

@@ -81,14 +81,14 @@ class Workflow {
 	 */
 	public static var systems(default, null) = new RestrictedLinkedList<ISystem>();
 
-	#if echoes_profiling
+	#if ecs_profiling
 	static var updateTime = .0;
 	#end
 
 	/**
 	 * Returns the workflow statistics:  
 	 * _( systems count ) { views count } [ entities count | entity cache size ]_  
-	 * With `echoes_profiling` flag additionaly returns:  
+	 * With `ecs_profiling` flag additionaly returns:  
 	 * _( system name ) : time for update ms_  
 	 * _{ view name } [ collected entities count ]_  
 	 * @return String
@@ -96,7 +96,7 @@ class Workflow {
 	public static function info():String {
 		var ret = '# ( ${systems.length} ) { ${views.length} } [ ${entities.length} | ${idPool.length} ]'; // TODO version or something
 
-		#if echoes_profiling
+		#if ecs_profiling
 		ret += ' : $updateTime ms'; // total
 		for (s in systems) {
 			ret += '\n${s.info('    ', 1)}';
@@ -123,7 +123,7 @@ class Workflow {
 	 * @param dt deltatime
 	 */
 	public static function update(dt:Float) {
-		#if echoes_profiling
+		#if ecs_profiling
 		var timestamp = Date.now().getTime();
 		#end
 
@@ -131,7 +131,7 @@ class Workflow {
 			s.__update__(dt);
 		}
 
-		#if echoes_profiling
+		#if ecs_profiling
 		updateTime = Std.int(Date.now().getTime() - timestamp);
 		#end
 	}

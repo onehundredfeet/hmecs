@@ -33,7 +33,7 @@ package ecs;
 class System implements ecs.core.ISystem {
 
 
-    #if echoes_profiling
+    #if ecs_profiling
     var __updateTime__ = .0;
     #end
 
@@ -60,7 +60,7 @@ class System implements ecs.core.ISystem {
     public function info(indent = '    ', level = 0):String {
         var span = StringTools.rpad('', indent, indent.length * level);
 
-        #if echoes_profiling
+        #if ecs_profiling
         return '$span$this : $__updateTime__ ms';
         #else
         return '$span$this';
