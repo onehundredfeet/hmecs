@@ -212,7 +212,7 @@ class StorageInfo {
 							var te = cf.expr();
 							switch (te.expr) {
 								case TFunction(tfunc):
-									var fname = $i{cf.name};
+									var fname = cf.name;
 									var needsEntity = false;
 									for (a in tfunc.args) {
 										if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
