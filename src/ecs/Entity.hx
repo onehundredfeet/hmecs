@@ -9,6 +9,8 @@ using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
 using tink.MacroApi;
+using StringTools;
+
 #end
 
 /**
@@ -131,10 +133,19 @@ abstract Entity(Int) from Int to Int {
 			}
 			var info = switch (to.sure()) {
 				case TType(tref, args):
-					// class is specified instead of an expression
-					var tt = c.parseClassName().getType().follow().toComplexType();
-					tt.getComponentContainerInfo(pos);
-				default: (to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
+					if (tref.get().name.contains("Class<")) {
+						var cn = c.parseClassName();
+						var clt = cn.getType();
+						var tt = clt.follow();
+						var compt = tt.toComplexType();
+						compt.getComponentContainerInfo(pos);
+					} else {
+						// Typedef
+						(to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
+					}
+				// class is specified instead of an expression					
+				default: 
+					(to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
 			}
 
 			return info.getAddExpr(macro __entity__, c);
