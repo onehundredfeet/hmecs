@@ -70,16 +70,19 @@ class StorageInfo {
 	static function getPooled(mm:MetaMap) {
 		var bb = mm.get(":build");
 
-		if (bb != null) {
-			for (b in bb) {
-				switch (b[0].expr) {
-					case ECall({ expr: EField(fe, _) }, _)
-						if (fe.toString() == "ecs.core.macro.PoolBuilder"):
-						return true;
-					default:
-				}
+		if (bb == null) {
+			return false;
+		}
+		
+		for (b in bb) {
+			switch (b[0].expr) {
+				case ECall(_.expr => EField(fe, _), _)
+					if (fe.toString() == "ecs.core.macro.PoolBuilder"):
+					return true;
+				default:
 			}
 		}
+		
 		return false;
 	}
 
@@ -201,7 +204,7 @@ class StorageInfo {
 						if (meta.has(":ecs_remove")):
 						var needsEntity = false;
 						for (a in tfunc.args) {
-							if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
+							if (a.v.t.toComplexType().toString() == "ecs.Entity") {
 								needsEntity = true;
 								break;
 							}
