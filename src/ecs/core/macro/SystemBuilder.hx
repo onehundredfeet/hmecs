@@ -182,12 +182,12 @@ public static function build(debug:Bool = false) {
 
 	// prevent wrong override
 	for (field in fields) {
-		switch (field) {
-			case { kind: FFun(_), name: '__update__' }:
+		switch (field.name) {
+			case '__update__':
 				Context.error('Do not override the `__update__` function! Use `@:update` meta instead! More info at README example', field.pos);
-			case { kind: FFun(_), name: '__activate__' }:
+			case '__activate__':
 				Context.error('Do not override the `__activate__` function! `onactivate` can be overridden instead!', field.pos);
-			case { kind: FFun(_), name: '__deactivate__' }:
+			case '__deactivate__':
 				Context.error('Do not override the `__deactivate__` function! `ondeactivate` can be overridden instead!', field.pos);
 			default:
 		}
