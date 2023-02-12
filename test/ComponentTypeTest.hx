@@ -33,7 +33,7 @@ class ComponentTypeTest extends buddy.BuddySuite {
 
                 describe("Then get Workflow info", {
                     var str = "\\# \\( 1 \\) \\{ 9 \\} \\[ 1 \\| 0 \\]";
-                    #if echoes_profiling
+                    #if ecs_profiling
                     str += " : \\d ms";
                     str += "\n    ComponentTypeTest.ComponentTypeSystem : \\d ms";
                     str += "\n    \\{ObjectComponent\\} \\[0\\]";

@@ -48,7 +48,9 @@ class Workflow {
 	static var worldFlags = new Array<Int>();
 
 	// all of every defined component container
+	#if ecs_legacy_containers
 	static var definedContainers = new Array<ICleanableComponentContainer>();
+	#end
 	// all of every defined view
 	static var definedViews = new Array<AbstractView>();
 
@@ -79,14 +81,14 @@ class Workflow {
 	 */
 	public static var systems(default, null) = new RestrictedLinkedList<ISystem>();
 
-	#if echoes_profiling
+	#if ecs_profiling
 	static var updateTime = .0;
 	#end
 
 	/**
 	 * Returns the workflow statistics:  
 	 * _( systems count ) { views count } [ entities count | entity cache size ]_  
-	 * With `echoes_profiling` flag additionaly returns:  
+	 * With `ecs_profiling` flag additionaly returns:  
 	 * _( system name ) : time for update ms_  
 	 * _{ view name } [ collected entities count ]_  
 	 * @return String
@@ -94,7 +96,7 @@ class Workflow {
 	public static function info():String {
 		var ret = '# ( ${systems.length} ) { ${views.length} } [ ${entities.length} | ${idPool.length} ]'; // TODO version or something
 
-		#if echoes_profiling
+		#if ecs_profiling
 		ret += ' : $updateTime ms'; // total
 		for (s in systems) {
 			ret += '\n${s.info('    ', 1)}';
@@ -107,12 +109,21 @@ class Workflow {
 		return ret;
 	}
 
+	public static function infoObj() {
+		return {
+			systems : systems.length,
+			views : views.length,
+			entities : entities.length,
+			ids : idPool.length
+
+		}
+	}
 	/**
 	 * Update 
 	 * @param dt deltatime
 	 */
 	public static function update(dt:Float) {
-		#if echoes_profiling
+		#if ecs_profiling
 		var timestamp = Date.now().getTime();
 		#end
 
@@ -120,7 +131,7 @@ class Workflow {
 			s.__update__(dt);
 		}
 
-		#if echoes_profiling
+		#if ecs_profiling
 		updateTime = Std.int(Date.now().getTime() - timestamp);
 		#end
 	}
@@ -138,9 +149,11 @@ class Workflow {
 		for (v in definedViews) {
 			v.reset();
 		}
+		#if ecs_legacy_containers
 		for (c in definedContainers) {
 			c.reset();
 		}
+		#end
 
 		// [RC] why splice and not resize?
 		idPool.resize(0);
@@ -433,6 +446,14 @@ class Workflow {
 
 	static var removeAllFunction : (ecs.Entity) -> Void = null;
 
+	public static dynamic function numComponentTypes() { return 0; }	
+	public static dynamic function componentNames()  : Array<String> {
+		return [];
+	}
+	public static dynamic function entityComponentNames(e : ecs.Entity) : Array<String> {
+		return [];
+	}
+
 	macro static function removeAllComponents(e : Expr) : Expr {
 		return macro {
 			if (removeAllFunction == null) {
@@ -452,7 +473,7 @@ class Workflow {
 				v.removeIfExists(id);
 			}
 		}
-		#if ecs_legacy_remove
+		#if ecs_legacy_containers
 		for (c in definedContainers) {
 			c.remove(id);
 		}
@@ -461,13 +482,18 @@ class Workflow {
 		#end
 	}
 
+
+
 	@:allow(ecs.Entity) static inline function printAllComponentsOf(id:Int):String {
 		var ret = '#$id:';
+		#if ecs_legacy_containers
 		for (c in definedContainers) {
 			if (c.exists(id)) {
 				ret += '${c.print(id)},';
 			}
 		}
+		#end
+
 		return ret.substr(0, ret.length - 1);
 	}
 }

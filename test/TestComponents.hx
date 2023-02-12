@@ -20,13 +20,15 @@ class K {
 } 
 
 @:storage(TAG)
-@:enum abstract TagA(Int) from Int to Int {
-    var INVALID = 0;
-    var VALID = 1;
+class TagA {
+     function new () {}
+
+    public var test = 0;
+
 }
 
 @:storage(TAG)
-@:enum abstract TagB(Int) from Int to Int {
-    var INVALID = 0;
-    var VALID = 1;
+class TagB {
+     function new () {}
+    public var test = "hi";
 }

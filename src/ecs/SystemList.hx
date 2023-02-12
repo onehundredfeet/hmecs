@@ -19,7 +19,7 @@ import ecs.utils.LinkedList;
 class SystemList implements ISystem {
 
 
-    #if echoes_profiling
+    #if ecs_profiling
     var __updateTime__ = .0;
     #end
 
@@ -59,16 +59,16 @@ class SystemList implements ISystem {
     }
 
     @:noCompletion @:final public function __update__(dt:Float) {
-        #if echoes_profiling
-        var __timestamp__ = Date.now().getTime();
+        #if ecs_profiling
+        var __timestamp__ = haxe.Timer.stamp();
         #end
 
         for (s in systems) {
             s.__update__(dt);
         }
 
-        #if echoes_profiling
-        __updateTime__ = Std.int(Date.now().getTime() - __timestamp__);
+        #if ecs_profiling
+        __updateTime__ = (haxe.Timer.stamp() - __timestamp__) * 1000.;
         #end
     }
 
@@ -81,7 +81,7 @@ class SystemList implements ISystem {
 
         var ret = '$span$name';
 
-        #if echoes_profiling
+        #if ecs_profiling
         ret += ' : $__updateTime__ ms';
         #end
 
@@ -119,6 +119,15 @@ class SystemList implements ISystem {
         return systems.exists(s);
     }
 
+    @:generic
+    public function getOp<T>(c : Class<T>) : T {
+        for (x in systems) {
+            if (Std.isOfType(x, c)) {
+                return cast x;
+            }
+        }
+        return null;
+    }
 
     public function toString():String return 'SystemList';
 

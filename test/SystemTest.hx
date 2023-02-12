@@ -111,7 +111,7 @@ class SystemTest extends buddy.BuddySuite {
     
                         describe("Then info", {
                             var str = "\\# \\( 2 \\) \\{ 3 \\} \\[ 0 \\| 0 \\]";
-                            #if echoes_profiling
+                            #if ecs_profiling
                             str += " : \\d ms";
                             str += "\n    SystemTest.SystemX : \\d ms";
                             str += "\n    SystemTest.SystemY : \\d ms";
@@ -243,7 +243,7 @@ class SystemTest extends buddy.BuddySuite {
 
                         describe("Then info", {
                             var str = "\\# \\( 1 \\) \\{ 3 \\} \\[ 0 \\| 0 \\]";
-                            #if echoes_profiling
+                            #if ecs_profiling
                             str += " : \\d ms";
                             str += "\n    list : \\d ms";
                             str += "\n        SystemTest.SystemX : \\d ms";
@@ -295,7 +295,7 @@ class SystemTest extends buddy.BuddySuite {
 
                             describe("Then info", {
                                 var str = "\\# \\( 1 \\) \\{ 3 \\} \\[ 0 \\| 0 \\]";
-                                #if echoes_profiling
+                                #if ecs_profiling
                                 str += " : \\d ms";
                                 str += "\n    parent : \\d ms";
                                 str += "\n        list : \\d ms";

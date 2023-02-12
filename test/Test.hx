@@ -24,18 +24,27 @@ class Test {
         //trace(factory);
   
         var e = new Entity();
+        var e2 = new Entity();
         e.add( new K() );
         
         e.remove( K );
 
         var xxx = new X();
                 
-        e.add( TagA.VALID );
-        e.add( TagB.VALID );
+//        e.add( TagA.VALID );
+//        e.add( TagB.VALID );
+        e.add( TagA );
+        e.add( TagB );
 //        e.remove(TagB);
-        e.add(xxx);
-        e.add(new Y() );
-        trace ('E has tag a ${e.has(TagA)} b ${e.has(TagB)}');
+        e.add( xxx );
+        e.add( new Y() );
+        trace( 'e.TagA.test is ${e.get(TagA).test}');
+        e.get(TagA).test = 1;
+        trace( 'e.TagA.test is ${e.get(TagA).test}');
+        e2.add( TagA );
+        trace( 'e2.TagA.test is ${e.get(TagA).test}');
+        
+        trace ('E has tag a ${e.has(TagA)} b ${e.has(TagB)} a.test is ${e.get(TagA).test}');
 //        xxx.a;
         
         Workflow.update(1.);

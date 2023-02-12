@@ -9,6 +9,8 @@ using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
 using tink.MacroApi;
+using StringTools;
+
 #end
 
 /**
@@ -117,7 +119,7 @@ abstract Entity(Int) from Int to Int {
 	 * @param components comma separated list of components of `Any` type
 	 * @return `Entity`
 	 */
-	macro public function add(self:Expr, components:Array<ExprOf<Any>>):ExprOf<ecs.Entity> {
+	macro public function add(self:Expr, components:Array<Expr>):ExprOf<ecs.Entity> {
 		var pos = Context.currentPos();
 
 		if (components.length == 0) {
@@ -127,9 +129,25 @@ abstract Entity(Int) from Int to Int {
 		var addComponentsToContainersExprs = components.map(function(c) {
 			var to = c.typeof();
 			if (!to.isSuccess()) {
-				Context.error('Can not find type for ${c}', pos);
+				Context.error('Can not find type for ${c} ', pos);
 			}
-			var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo(pos);
+			var info = switch (to.sure()) {
+				case TType(tref, args):
+					if (tref.get().name.contains("Class<")) {
+						var cn = c.parseClassName();
+						var clt = cn.getType();
+						var tt = clt.follow();
+						var compt = tt.toComplexType();
+						compt.getComponentContainerInfo(pos);
+					} else {
+						// Typedef
+						(to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
+					}
+				// class is specified instead of an expression					
+				default: 
+					(to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
+			}
+
 			return info.getAddExpr(macro __entity__, c);
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
@@ -192,50 +210,48 @@ abstract Entity(Int) from Int to Int {
 
 		return ret;
 	}
-	#if bored_and_want_to_fix 
 
-		/**
+	#if bored_and_want_to_fix
+	/**
 	 * Returns a component of this entity of specified type.  
 	 * If a component with specified type is not added to this entity, `null` will be returned 
 	 * @param type `Class<T:Any>` type of component
 	 * @return `T:Any` component instance
 	 */
-	 macro public function getOrAdd<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
+	macro public function getOrAdd<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
 		var exists = info.getExistsExpr(self);
 		var get = info.getGetExpr(self);
 
-
-		return macro if ($exists) { return $get; } else {
-
+		return macro if ($exists) {
+			return $get;
+		} else {
 			/*
-var addComponentsToContainersExprs = components.map(function(c) {
-			var to = c.typeof();
-			if (!to.isSuccess()) {
-				Context.error('Can not find type for ${c}', Context.currentPos());
-			}
-			var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
-			return info.getAddExpr(macro __entity__, c);
-			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
-			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
-		});
+				var addComponentsToContainersExprs = components.map(function(c) {
+					var to = c.typeof();
+					if (!to.isSuccess()) {
+						Context.error('Can not find type for ${c}', Context.currentPos());
+					}
+					var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
+					return info.getAddExpr(macro __entity__, c);
+					// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
+					// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+				});
 
-		var body = [].concat(addComponentsToContainersExprs).concat([
-			macro if (__entity__.isActive()) {
-				for (v in ecs.Workflow.views) {
-					@:privateAccess v.addIfMatched(__entity__);
-				}
-			}
-		]).concat([macro return __entity__]);
+				var body = [].concat(addComponentsToContainersExprs).concat([
+					macro if (__entity__.isActive()) {
+						for (v in ecs.Workflow.views) {
+							@:privateAccess v.addIfMatched(__entity__);
+						}
+					}
+				]).concat([macro return __entity__]);
 
-		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
+				var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
 
-			*/
-
+			 */
 		};
-
 	}
-#end
+	#end
 
 	/**
 	 * Returns a component of this entity of specified type.  
@@ -259,14 +275,14 @@ var addComponentsToContainersExprs = components.map(function(c) {
 		var pos = Context.currentPos();
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 		return info.getExistsExpr(self);
-}
+	}
 
 	macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
 		var pos = Context.currentPos();
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 
 		return info.getExistsExpr(self);
-}
+	}
 }
 
 @:enum abstract Status(Int) {

@@ -26,18 +26,61 @@ The first version of this will primarily target HashLink, but may be extended to
  * `View<T1, T2, TN>` is a collection of entities containing all components of the required types `T1, T2, TN`. Views are placed in Systems. 
  * `System` is a place for processing a certain set of data represented by views. 
  * To organize systems in phases can be used the `SystemList`. 
-* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view.
+* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view. `NOTE: Worlds will be deprecated in favour of a new tag system`
 * `Pool` a pool is a static container that can be used to speed up allocations using a rent/retire paradigm. Call a static rent to get a new instance and then retire on that instance to return it to the pool
 * `Workflow` a global class used to access common features such as a singleton
+* `Tag` is class with the @:storage(TAG) metadata that changes the behaviour from being specified as an instance to added as a type. A flag set keeps track of which entities are tagged, makeing storing many tags compact and fast.  When specified in a function, a single static instance of the class will be passed in to all calls, regardless of which entity is passed in.
 
-#### Note: Currently requires running a macro as the last line in your main file. Add this function to the bottom of your root hx file, i.e. Main.hx.  Then call the function as your first function call.
+## WARNING & INSTRUCTIONS
+### Due to the heavily macro based approach of the system, there are some nuances that require some concessions.
 
-function ecsSetup() {
-	ecs.core.macro.Global.setup();
+1. To get all the features working, you will need to create a very lean, or even proxy, main file and use it as your entry point when compiling.
+
+```haxe
+import your.MainClass;
+
+class ProxyMain {
+  public static function main() {
+    MainClass.main();
+  }
 }
+```
 
+2. You will need to add a call to initialize a variety of late binding mechanisms.
 
-#### Example
+```haxe
+import your.MainClass;
+
+class ProxyMain {
+  public static function main() {
+    #if !macro
+  	ecs.core.macro.Global.setup();  // macro to generate all the global calls and then hook them up at runtime
+    #end
+    MainClass.main();
+  }
+}
+```
+
+## Usage
+
+### Component Storage
+Each component type can have its own storage specification.  They are specified using the @:storage metadata on the component type.  You can use abstract types to wrap basic types to apply the metadata.
+
+#### @:storage(FAST)
+This is the default. It is an array the length of the total number of entities. Any entities with the component will have a non-zero allocated object in the array corresponding to the entity id.  Obviously this can waste a lot of memory if overused with a large number of entities.
+
+#### @:storage(COMPACT)
+This is the typical secondary value.  It specifies an IntMap to be used for the storage backend.  This will slightly increase the lookup time for get, but it will significantly reduce the amount of memory required.
+
+#### @:storage(FLAG)
+This is says that this type is a bit flag on the flags storage for the entity.  It takes a single bit per entity, much smaller than using an array.  It is slightly slower than the fast storage but not by much.
+
+A side benefit is that a single instance of the tagged class is available in views that require this flag.
+
+#### @:storage(SINGLETON)
+There can only be one instance of this class and only one entity can own it. It is very limited, but very fast.
+
+## Examples
 ```haxe
 import ecs.SystemList;
 import ecs.Workflow;
@@ -107,22 +150,16 @@ abstract MicroComponent(Int) from Int to Int {
   }
 }
 
-//Tag types must be abstract ints.  1 is assumed to be this entity has this tag and 0 is that they don't.
-//Tags are stored in a compacted data representation that make it cheap to add many tags
-//This API seems overly boiler plate and will be simplified in the future
+// Speciies a type that is added as a type, not a value
+// This 'marks' entities with this type, but all refer to the same single static instance value
+// This would implicitely create a single instance for the tag that would be implicitely added
 @:storage(TAG)
-@:enum abstract TagYouIt(Int) from Int to Int {
-    var INVALID = 0;
-    var VALID = 1;
+class TagYouIt {
+   TagYouIt() {} // requires a constructor with no parameters, public or private
+
+  public var example = "it";
 }
 
-//API Proposal: Associating static expressions with tags
-// This would configure the tag to pass the expression 'MyClass.instance' instead of 0|1 into the system's function
-@:storage(TAG, MyClass.instance)
-@:enum abstract TagB(Int) from Int to Int {
-    var INVALID = 0;
-    var VALID = 1;
-}
 
 
 // Abstracts allow adding multiple components of the same underlying type to an entity 
@@ -156,7 +193,9 @@ class Example {
     trace(jack.get(Position).x); // 5
     jack.remove(Position); // oh no!
     jack.add(new Position(1, 1)); // okay
-    jack.add(TagYouIt.VALID); // Jack is now tagged
+    jack.add(TagYouIt); // Jack is now tagged
+
+
     // THIS IS TWO FEATURES 
     // - the singleton() entity on workflow is a global entity across all worlds & systems.
     // - the SingletonComponent is a component where only one instance will ever exist and must only ever be added to one entity
@@ -193,6 +232,7 @@ class Movement extends ecs.System {
     pos.y += vel.y * dt;
   }
 
+
   //Can narrow the scope of the update to only entities that are present in a world set
   @:worlds(WORLDS_FOREST) // These are bit flags.  The string is evaulate as an expression
   @update function inForest(name:Name) {
@@ -201,7 +241,7 @@ class Movement extends ecs.System {
 
   //Can narrow the scope of the update to only entities that have the tag TagYouIt
   @update function isIt(name:Name, tag:TagYouIt) {
-    trace('${name} is it'); // Will display Jack
+    trace('${name} is ${tag.example}'); // Will display Jack is it
   }
 
   // Worlds can be strings or constant string expressions if using compiler only @:
