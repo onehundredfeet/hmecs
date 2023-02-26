@@ -420,8 +420,8 @@ class Workflow {
 
 
 	@:allow(ecs.Entity) static inline function getTag( id:Int, tag: Int) {
-		final offset = Std.int(tag / 32);
-		final bitOffset = tag - offset * 32;
+		final offset = tag >> 5;
+		final bitOffset = tag - (offset << 5);
 		final tagField = tags[id * TAG_STRIDE + offset];
 		return tagField & (1 << bitOffset) != 0;
 	}
@@ -429,16 +429,16 @@ class Workflow {
 
 	@:allow(ecs.Entity) static inline function setTag( id:Int, tag: Int) {
 //		trace('Setting tag  ${tag} on ${id}');
-		final offset = Std.int(tag / 32);
-		final bitOffset = tag - offset * 32;
+		final offset = tag >> 5;
+		final bitOffset = tag - (offset << 5);
 		final idx = id * TAG_STRIDE + offset;
 		final tagField = tags[id * TAG_STRIDE + offset];
 		tags[id * TAG_STRIDE + offset] = tagField | (1 << bitOffset);
 	}
 
 	@:allow(ecs.Entity) static inline function clearTag( id:Int, tag: Int) {
-		final offset = Std.int(tag / 32);
-		final bitOffset = tag - offset * 32;
+		final offset = tag >> 5;
+		final bitOffset = tag - (offset << 5);
 		final idx = id * TAG_STRIDE + offset;
 		final tagField = tags[id * TAG_STRIDE + offset];
 		tags[id * TAG_STRIDE + offset] = tagField & ~(1 << bitOffset);

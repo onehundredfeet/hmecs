@@ -59,6 +59,13 @@ class ViewsOfComponentBuilder {
 						}
 					}
 				}
+				public inline function addIfMatched(id:Int) {
+					for (v in views) {
+						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
+							@:privateAccess v.addIfMatched(id);
+						}
+					}
+				}
 			}
 
 			errorStage = "calling define";

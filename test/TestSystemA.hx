@@ -13,8 +13,6 @@ class TestSystemA extends ecs.System {
     @:added
     function added(ix:X, e:ecs.Entity) {
         trace ("Added TestSystemA X");
-        e.add( TagA );
-        e.remove(TagA);
     }
 
     @:removed

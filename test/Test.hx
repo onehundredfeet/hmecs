@@ -13,9 +13,12 @@ import TestSystemA;
 
 class Test {
     public final TESTWORLD = 5;
+
+
     public static function main() {
         #if !macro ecsSetup(); #end
-        Workflow.addSystem(new TestSystemY());
+        var ysystem = new TestSystemY();
+        Workflow.addSystem(ysystem);
         Workflow.addSystem(new TestSystemZ());
         Workflow.addSystem(new TestSystemA());
   
@@ -34,10 +37,17 @@ class Test {
 //        e.add( TagA.VALID );
 //        e.add( TagB.VALID );
         e.add( TagA );
+        trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
         e.add( TagB );
+        trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
+        e.remove(TagA);
+        trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
+        e.add(TagA);
 //        e.remove(TagB);
         e.add( xxx );
         e.add( new Y() );
+        trace('y view count ${ysystem.ycount()}');
+        trace( 'e.TagA is ${e.get(TagA)}');
         trace( 'e.TagA.test is ${e.get(TagA).test}');
         e.get(TagA).test = 1;
         trace( 'e.TagA.test is ${e.get(TagA).test}');
@@ -45,6 +55,14 @@ class Test {
         trace( 'e2.TagA.test is ${e.get(TagA).test}');
         
         trace ('E has tag a ${e.has(TagA)} b ${e.has(TagB)} a.test is ${e.get(TagA).test}');
+        trace ('E has tag Y ${e.has(Y)}');
+        trace('PRE SHELVE y view count ${ysystem.ycount()}');
+        e.shelve(Y);
+        trace('POST SHELVE y view count ${ysystem.ycount()}');
+        trace ('E has tag Y ${e.has(Y)}');
+        e.unshelve(Y);
+        trace('POST UNSHELVE y view count ${ysystem.ycount()}');
+        trace ('E has tag Y ${e.has(Y)}');
 //        xxx.a;
         
         Workflow.update(1.);

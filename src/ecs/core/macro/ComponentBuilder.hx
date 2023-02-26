@@ -126,6 +126,16 @@ class StorageInfo {
 
 		return EConst(CInt(Std.string(tagMap.get(fullName)))).at();
 	}
+	function clearTagExpr(entityVarExpr : Expr ) : Expr {
+		var te = tagExpr();	
+		return  macro @:privateAccess ecs.Workflow.clearTag($entityVarExpr, $te);	
+	}
+
+	function setTagExpr(entityVarExpr : Expr ) : Expr {
+		var te = tagExpr();	
+		return  macro @:privateAccess ecs.Workflow.setTag($entityVarExpr, $te);	
+	}
+	
 	public function getGetExprCached(entityExpr:Expr, cachedVarName:String):Expr {
 		return switch (storageType) {
 			case FAST: macro $i{cachedVarName}[$entityExpr];
@@ -179,10 +189,15 @@ class StorageInfo {
 
 	public function getRemoveExpr(entityVarExpr:Expr):Expr {
 		if (storageType == TAG) {
-			var te = tagExpr();	
-			return  macro @:privateAccess ecs.Workflow.clearTag($te, $te);	
+			return  clearTagExpr(entityVarExpr);
 		}
 
+		var retireExprs = getRetireExpr(entityVarExpr);
+
+		return storageRemovePreambleExpr(entityVarExpr, retireExprs);
+	}
+
+	public function getRetireExpr(entityVarExpr:Expr):Array<Expr> {
 		var accessExpr = switch (storageType) {
 			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
 			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.get($entityVarExpr);
@@ -191,7 +206,6 @@ class StorageInfo {
 			@:privateAccess  macro ecs.Workflow.getTag($te, $te);
 		};
 
-		var hasExpr = getExistsExpr(entityVarExpr);
 		var retireExprs = new Array<Expr>();
 		var autoRetire = isPooled && !followedMeta.exists(":no_auto_retire");
 		if (autoRetire) {
@@ -233,22 +247,50 @@ class StorageInfo {
 				}
 			}
 		}
-
+		return retireExprs;
+	}
+	
+	function storageRemoveExpr(entityVarExpr:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro if ($hasExpr) {
-					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
-				}
-			case COMPACT: macro if ($hasExpr) {
-					$b{retireExprs} @:privateAccess $containerFullNameExpr.storage.remove($entityVarExpr);
-				}
-			case SINGLETON: macro if ($hasExpr) {
-					$b{retireExprs} $containerFullNameExpr.storage = $emptyExpr;
+			case FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.remove($entityVarExpr);
+			case TAG: clearTagExpr(entityVarExpr);
+		}
+		/*
+		var hasExpr = getExistsExpr(entityVarExpr);
+		return switch (storageType) {
+			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr] = $emptyExpr;
+			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.remove($entityVarExpr);
+			case SINGLETON: macro {
+					$containerFullNameExpr.storage = $emptyExpr;
 					$containerFullNameExpr.owner = 0;
 				}
 			case TAG: 
 				var te = tagExpr();	
 				@:privateAccess  macro ecs.Workflow.clearTag($te, $te);	
-		};
+		};*/
+	}
+
+	function storageRemovePreambleExpr(entityVarExpr:Expr, preamble:Array<Expr>):Expr {
+		var hasExpr = getExistsExpr(entityVarExpr);
+		var removeExpr = storageRemoveExpr(entityVarExpr);
+		return macro if ($hasExpr) { $b{preamble} $removeExpr; };
+	}
+
+	public function getShelveExpr(entityVarExpr:Expr, pos:Position):Expr {
+		var shelfCall = switch (storageType) {
+			case FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.shelve($entityVarExpr);
+			case TAG: Context.fatalError("Cannot shelve a tag",pos);
+		}
+
+		shelfCall.pos = pos;
+		return shelfCall;
+	}
+
+	public function getUnshelveExpr(entityVarExpr:Expr, pos:Position):Expr {
+		return switch (storageType) {
+			case FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.unshelve($entityVarExpr);
+			case TAG: Context.fatalError("Cannot unshelve a tag",pos);
+		}
 	}
 
 	function getMacroType(ct : ComplexType) {
@@ -330,17 +372,92 @@ class StorageInfo {
 				switch(storageType) {
 					case TAG:  macro class $containerTypeName {
 						public static var storage:$storageCT = @:privateAccess new $tp();
+						
 					}
 					case SINGLETON: macro class $containerTypeName {
 						public static var storage:$storageCT;
 						public static var owner:Int = 0;
+						public static var _shelved :$storageCT = $emptyExpr;
+						public static inline function shelved(id:Int) {
+							return _shelved != $emptyExpr;
+						}
+						public static inline function exists(id:Int) {
+							return storage != $emptyExpr;
+						}
+						public inline static function shelve(id:Int) {
+							_shelved = storage;
+							storage = $emptyExpr;
+						}
+						public inline static function unshelve(id:Int) : $followedCT {
+							storage = _shelved;
+							_shelved = $emptyExpr;
+							return _shelved;
+						}
+						public inline static function remove(id:Int) {
+							storage = $emptyExpr;
+							_shelved = $emptyExpr;
+							owner = 0;
+						}
 					}
-					default:macro class $containerTypeName {
-						public static var storage:$storageCT = @:privateAccess new $tp();
+					case FAST:
+						macro class $containerTypeName {
+							public static var storage = new Array<$followedCT>();
+							public static var _shelved = new Map<Int,$followedCT>();
+		
+							public inline function exists(id:Int)  {
+								return storage[id] != $emptyExpr;
+							}
+							public inline static function shelved(id:Int) {
+								return _shelved.exists(id);
+							}
+							public inline static function shelve(id:Int) {
+								_shelved.set(id, storage[id]);
+								storage[id] = $emptyExpr;
+							}
+							public inline static function unshelve(id:Int) : $followedCT{
+								var x = _shelved.get(id);
+								storage[id] = x;
+								_shelved.remove(id);
+								return x;
+							}
+							public inline static function remove(id) {
+								storage[id] = $emptyExpr;
+							}
+							public inline static function add(id, item : $followedCT) {
+								storage[id] = item;
+							}
+						}
+					case COMPACT: 
+					macro class $containerTypeName {
+						//public static var storage:$storageCT = @:privateAccess new $tp();
+						public static var storage = new Map<Int,$followedCT>();
+						public static var _shelved = new Map<Int,$followedCT>();
 	
-						public function exists(id:Int)
-							return $existsExpr;
-						};
+						public inline function exists(id:Int)  {
+							return storage.exists(id);
+						}
+						public inline static function shelved(id:Int) {
+							return _shelved.exists(id);
+						}
+						public inline static function shelve(id:Int) {
+							// This will fail if nothing is shelved
+							var x = storage.get(id);
+							_shelved.set(id, x);
+							storage.remove(id);
+						}
+						public inline static function unshelve(id:Int) : $followedCT{
+							var x = _shelved.get(id);
+							storage.set(id, x);
+							_shelved.remove(id);
+							return x;
+						}
+						public inline static function remove(id) {
+							storage.remove(id);
+						}
+						public inline static function add(id, item : $followedCT) {
+							storage.set(id,item);
+						}
+					}
 				}
 
 

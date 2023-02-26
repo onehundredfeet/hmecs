@@ -113,6 +113,33 @@ abstract Entity(Int) from Int to Int {
 		return Workflow.printAllComponentsOf(this);
 	}
 
+	#if macro
+	static function getComponentContainerInfo(c: haxe.macro.Expr, pos:haxe.macro.Expr.Position) {
+		var to = c.typeof();
+		if (!to.isSuccess()) {
+			Context.error('Can not find type for ${c} ', pos);
+		}
+		var type = to.sure();
+
+		return switch (type) {
+			case TType(tref, args):
+				if (tref.get().name.contains("Class<")) {
+					var cn = c.parseClassName();
+					var clt = cn.getType();
+					var tt = clt.follow();
+					var compt = tt.toComplexType();
+					compt.getComponentContainerInfo(pos);
+				} else {
+					// Typedef
+					(type.follow().toComplexType()).getComponentContainerInfo(pos);
+				}
+			// class is specified instead of an expression					
+			default: 
+				(type.follow().toComplexType()).getComponentContainerInfo(pos);
+		}
+	}
+	#end
+
 	/**
 	 * Adds a specified components to this entity.  
 	 * If a component with the same type is already added - it will be replaced 
@@ -127,26 +154,7 @@ abstract Entity(Int) from Int to Int {
 		}
 
 		var addComponentsToContainersExprs = components.map(function(c) {
-			var to = c.typeof();
-			if (!to.isSuccess()) {
-				Context.error('Can not find type for ${c} ', pos);
-			}
-			var info = switch (to.sure()) {
-				case TType(tref, args):
-					if (tref.get().name.contains("Class<")) {
-						var cn = c.parseClassName();
-						var clt = cn.getType();
-						var tt = clt.follow();
-						var compt = tt.toComplexType();
-						compt.getComponentContainerInfo(pos);
-					} else {
-						// Typedef
-						(to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
-					}
-				// class is specified instead of an expression					
-				default: 
-					(to.sure().follow().toComplexType()).getComponentContainerInfo(pos);
-			}
+			var info = getComponentContainerInfo(c, pos);
 
 			return info.getAddExpr(macro __entity__, c);
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
@@ -166,11 +174,99 @@ abstract Entity(Int) from Int to Int {
 		return ret;
 	}
 
+	#if macro
+	static function ecsActionByClass(self : Expr, types:Array<ExprOf<Class<Any>>>, pos : Position, storageAction: (info: StorageInfo, entityExpr:Expr, pos:Position) -> Expr, viewAction:(viewExpr: Expr, entityExpr:Expr, pos:Position)->Expr):ExprOf<ecs.Entity> {
+		var errorStage = "";
+		if (types.length == 0) {
+			Context.error('Required one or more Component Types', pos);
+		}
+		errorStage = "starting";
+		var cts = types.map(function(type) {
+			return type.parseClassName().getType().follow().toComplexType();
+		});
+
+		errorStage = "found types";
+		var actionExprs = cts.map(function(ct) {
+			var info = ct.getComponentContainerInfo(pos);
+			return storageAction(info, macro __entity__, pos);
+		});
+		errorStage = "got action expression";
+
+
+		var viewActionExpr = cts.map(function(ct) {
+			return ct.getViewsOfComponent(pos).followName(pos);
+		}).map(function(viewsOfComponentClassName) {
+			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
+			return viewAction(macro $x.inst(), macro __entity__, pos);
+		});
+		errorStage = "got views of components";
+
+		var body = [
+			[
+				macro if (__entity__.isActive())
+					$b{viewActionExpr}
+			],
+			actionExprs,
+			[macro return __entity__]
+		].flatten();
+
+		/*
+		var body = [].concat([
+			macro if (__entity__.isActive())
+				$b{removeEntityFromRelatedViewsExprs}
+		]).concat(removeComponentsFromContainersExprs).concat([macro return __entity__]);
+*/
+		errorStage = "made body";
+
+		var ret = macro inline(function(__entity__:ecs.Entity) $b{body})($self);
+
+		errorStage = "returning";
+
+		return ret;
+	}
+	#end
+	
+	//
+	// By class functions
+	//
 	/**
 	 * Removes a component from this entity with specified type  
 	 * @param types comma separated `Class<Any>` types of components that should be removed
 	 * @return `Entity`
 	 */
+	 macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info: StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getRemoveExpr(entityExpr);
+		}
+		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.removeIfMatched($entityExpr);
+		}
+		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
+	 }
+
+	 macro public function shelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info: StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getShelveExpr(entityExpr,pos);
+		}
+		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.removeIfMatched($entityExpr);
+		}
+		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
+	}
+	
+
+	macro public function unshelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info: StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getUnshelveExpr(entityExpr,pos);
+		}
+		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.addIfMatched($entityExpr);
+		}
+		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
+	}
+
+
+	#if the_old_way_is_better
 	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
 		var pos = Context.currentPos();
 		var errorStage = "";
@@ -210,6 +306,7 @@ abstract Entity(Int) from Int to Int {
 
 		return ret;
 	}
+	#end
 
 	#if bored_and_want_to_fix
 	/**
