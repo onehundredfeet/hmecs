@@ -213,7 +213,6 @@ class Example {
     jack.unshelve(Position): // Re-attaches the corresponding shelved component.  
     trace(jack.exists(Position)); // true
 
-
     // THIS IS TWO FEATURES 
     // - the singleton() entity on workflow is a global entity across all worlds & systems.
     // - the SingletonComponent is a component where only one instance will ever exist and must only ever be added to one entity
@@ -284,7 +283,7 @@ class NamePrinter extends ecs.System {
   // All of necessary for meta-functions views will be defined and initialized under the hood, 
   // but it is also possible to define the View manually (initialization is still not required) 
   // for additional features such as counting and sorting entities;
-  // Note: Does not support @:worlds atm
+  // Note: Does not support @:worlds 
   var named:View<Name>;
 
   @:update function sortAndPrint() {
@@ -309,7 +308,7 @@ class Render extends ecs.System {
     trace('Oh My God! They removed ${ e.exists(Name) ? e.get(Name) : "Unknown Sprite" }!');
   }
 
-  // PARALLEL API NOT IMPLEMENTED YET
+  //PLANNED PARALLEL API NOT IMPLEMENTED YET
   @:parallel(FULL) // | @:p(FULL) - Valid values FULL | DOUBLE | HALF | # - Will create threads to call this function in parallel according to the number specifed in the parameters.  Will collect all threads before continuing.
   @:bucket(5) // | @:b(5) Specifies the parallel bucketing size valid values MAX | # - Max will take total / threads
   @:fork(SPRITE_UPDATE) // - Named synchronization - Will split off this update in another thread and continue processing other updates, can be combined with @:parallel
