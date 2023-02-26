@@ -78,7 +78,7 @@ This is says that this type is a bit flag on the flags storage for the entity.  
 A side benefit is that a single instance of the tagged class is available in views that require this flag.
 
 #### @:storage(SINGLETON)
-There can only be one instance of this class and only one entity can own it. It is very limited, but very fast.
+There can only be one instance of this class and only one entity can own it. It is very limited, but very fast and uses little memory.
 
 ## Examples
 ```haxe
@@ -92,26 +92,45 @@ class MediumComponent {
 
 }
 
-@:storage(FAST) // Sepcifies the flavour of storage to use. FAST is the default.
+// Can use vanilla abstracts to create a new component type
+abstract AbstractComponent(MediumComponent) from MediumComponent to MediumComponent {
+
+}
+
+// Abstracts allow adding multiple components of the same underlying type to an entity 
+// When using abstracts, be careful not to assume the underlaying type when adding 
+@:forward
+abstract Name(String) from String to String {
+  public function new(name:String) this = name;
+}
+
+// 0 is assumed to mean 'empty' with Int abstracts. This may mean that with some cases it is not possible to use this approach.
+abstract IDComponent(Int) from Int to Int {
+
+}
+
+
+@:storage(FAST) // Sepcifies the flavour of storage to use. FAST is the default. Uses more memory (Array Storage)
 #if !macro @:build(ecs.core.macro.PoolBuilder.arrayPool()) #end // Implicitly adds rent & retire
 //@:no_autoretire  // turns off automatically using the attached pool.  Unless this is added, the ECS will automatically return the object to the pool on being removed from the entity
 class SmallComponent {
-    
-    function new() {
+    var value = 0;
 
+    function new(v : Int) {
+      value = v;
     }
 
-    @:pool_factory  // overrides the default 'new' 
+    @:pool_factory  // optional: overrides the default 'new', not necessary if you provide a parameterless constructor
     static function factory() : SmallComponent{
-      return new SmallComponent();  // Example - This is identical to the generated default factory
+      return new SmallComponent(5);  
     }
 
-    @:pool_retire  // callback when retiring
+    @:pool_retire  // optional: callback when retiring
     function onRetire() {
 
     }
 
-    @:pool_retire  // callback when retiring
+    @:pool_retire  // optional: callback when retiring
     function onRetireE(e : Entity) {
 
     }
@@ -123,14 +142,9 @@ class SmallComponent {
 
 }
 
-@:storage(COMPACT)
+@:storage(COMPACT) // Uses less memory, but operations are slightly slower than fast (Map storage)
 class HeavyComponent {
   public function new(){}
-
-//  @:onadd // UNIMPLEMENTED
-//    function onAdd() {
-      // Custom logic when a component is added from an entity
-//    }
 
   @:ecs_remove
     function onRemove() {
@@ -143,33 +157,28 @@ class SingletonComponent {
   public function new(){}
 }
 
-// 0 is assumed to mean 'empty' with Int abstracts. This may mean that with some cases it is not possible to use this approach.
-abstract MicroComponent(Int) from Int to Int {
-  public function new(x : Int) {
-    this = x;
-  }
-}
-
-// Speciies a type that is added as a type, not a value
-// This 'marks' entities with this type, but all refer to the same single static instance value
-// This would implicitely create a single instance for the tag that would be implicitely added
-@:storage(TAG)
+// This 'marks' entities with this component type, but will providethe same single static instance value as a parameter in updates
+// Specifies a type that is added as a type, not a value
+@:storage(TAG) // Uses very little memory and is fast to look up (Bitfield)
 class TagYouIt {
    TagYouIt() {} // requires a constructor with no parameters, public or private
 
   public var example = "it";
 }
 
-
-
-// Abstracts allow adding multiple components of the same underlying type to an entity 
-// When using abstracts, be careful not to assume the underlaying type in the system function definitions
-@:forward
-abstract Name(String) from String to String {
-  public function new(name:String) this = name;
+@:shelvable // PLANNED: Adds extra storage and behaviour to allow this component to be shelved.  Has a small performance impact on some actions.
+// At the moment all components are shelvable.
+class Position {
+  public var x : Float;
+  public var y : Float
+  public function new( x : Float, y : Float) {
+    this.x = x;
+    this.y = y;
+  }
 }
-
-
+//
+// Example program
+//
 class Example {
   final FIELDS = 1;
   final FOREST = 2;
@@ -194,6 +203,15 @@ class Example {
     jack.remove(Position); // oh no!
     jack.add(new Position(1, 1)); // okay
     jack.add(TagYouIt); // Jack is now tagged
+
+    //
+    // Shelving - Retaining reference to component, but officially detatching it from the entity
+    // Can only hold ONE component at a time. 
+    // Do not add a new component when there is already one shelved, the result is undefined.
+    jack.shelve(Position); // Retains the component in storage, but removes it from being attached to the entity
+    trace(jack.exists(Position)); // false
+    jack.unshelve(Position): // Re-attaches the corresponding shelved component.  
+    trace(jack.exists(Position)); // true
 
 
     // THIS IS TWO FEATURES 
@@ -266,6 +284,7 @@ class NamePrinter extends ecs.System {
   // All of necessary for meta-functions views will be defined and initialized under the hood, 
   // but it is also possible to define the View manually (initialization is still not required) 
   // for additional features such as counting and sorting entities;
+  // Note: Does not support @:worlds atm
   var named:View<Name>;
 
   @:update function sortAndPrint() {
