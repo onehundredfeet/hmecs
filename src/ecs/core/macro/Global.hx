@@ -6,11 +6,12 @@ import haxe.macro.Expr;
 import ecs.utils.Const;
 
 using ecs.core.macro.MacroTools;
+using ecs.core.macro.Extensions;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using Lambda;
-using tink.MacroApi;
+
 #end
 
 class Global {

@@ -10,13 +10,13 @@ import haxe.macro.Type.ModuleType;
 import ecs.core.macro.ViewSpec;
 import ecs.utils.Const;
 import ecs.utils.Signal;
-
+using ecs.core.macro.Extensions;
 using ecs.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using Lambda;
 using haxe.ds.ArraySort;
-using tink.MacroApi;
+
 using haxe.macro.PositionTools;
 
 typedef ViewRec = {name:String, spec:ViewSpec, ct:ComplexType};

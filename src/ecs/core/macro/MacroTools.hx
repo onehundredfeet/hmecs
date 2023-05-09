@@ -13,8 +13,7 @@ import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.Type.ClassField;
 import haxe.macro.Type;
-
-using tink.MacroApi;
+using ecs.core.macro.Extensions;
 using haxe.macro.Context;
 using Lambda;
 
@@ -347,7 +346,7 @@ class MacroTools {
 			var f = splits.pop();
 			var tps = splits.join(".");
 
-			var tp = Types.asComplexType(tps);
+			var tp = tps.asComplexType();
 			if (tp != null) {
 				return getNumericValue({expr: EField({expr: EConst(CIdent(tps)), pos: Context.currentPos()}, f), pos: pos}, valueDefault, pos);
 			}
@@ -433,7 +432,7 @@ class MacroTools {
 					Context.error('Type not a class ${path}', e.pos);
 					return valueDefault;
 				}
-				var cf = TypeTools.findField(c, f, true);
+				var cf : ClassField = TypeTools.findField(c, f, true);
 				if (cf == null)
 					cf = TypeTools.findField(c, f, false);
 				if (cf != null) {
@@ -491,8 +490,8 @@ class MacroTools {
 
 	public static function getStringValue(e:Expr):String {
 		var str = e.getString();
-		if (str.isSuccess())
-			return str.sure();
+		if (str != null)
+			return str;
 		switch (e.expr) {
 			case EConst(c):
 				switch (c) {

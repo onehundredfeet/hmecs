@@ -17,7 +17,7 @@ using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using haxe.macro.Expr;
 using haxe.macro.TypeTools;
-using tink.MacroApi;
+using ecs.core.macro.Extensions;
 
 
 #end

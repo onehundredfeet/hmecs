@@ -10,7 +10,7 @@ using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
-using tink.MacroApi;
+using ecs.core.macro.Extensions;
 
 class ViewsOfComponentBuilder {
 	public static final VIEW_OF_NAMESPACE = "ecs.viewsof";

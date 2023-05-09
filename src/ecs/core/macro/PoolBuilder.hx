@@ -4,12 +4,13 @@ package ecs.core.macro;
 import haxe.macro.Printer;
 import haxe.macro.Expr;
 
-using tink.MacroApi;
+
 
 import ecs.core.macro.MacroTools.*;
 
 using StringTools;
 using Lambda;
+using ecs.core.macro.Extensions;
 
 import haxe.macro.Context;
 
@@ -76,6 +77,7 @@ class PoolBuilder {
 			fields.push(ffun(null, [APublic, AInline], "retire", [], null, macro $b{retireCalls}, Context.currentPos()));
 		}
 
+		/*
 		var cb = new ClassBuilder(fields);
 
 		// In the case it doesn't already have a constructor, make a private default one
@@ -86,12 +88,14 @@ class PoolBuilder {
 		}
 
 		return cb.export();
+		*/
+		return fields;
 	}
 
 	public static function linkedPool(debug:Bool = false) {
 		var fields = Context.getBuildFields();
 
-		var ct = Context.getLocalType().toComplex();
+		var ct = Context.getLocalType().toComplexType();
 
 		var body = macro {};
 		fields.push(ffun(null, [APublic, AStatic, AInline], "rent", null, ct, body, Context.currentPos()));

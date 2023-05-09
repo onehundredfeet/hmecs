@@ -9,11 +9,12 @@ import haxe.macro.Expr;
 import haxe.macro.Printer;
 import ecs.core.macro.ViewSpec;
 
+using ecs.core.macro.Extensions;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
 using ecs.core.macro.MacroTools;
-using tink.MacroApi;
+
 using StringTools;
 using Lambda;
 

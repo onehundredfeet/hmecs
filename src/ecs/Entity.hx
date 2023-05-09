@@ -8,7 +8,7 @@ using ecs.core.macro.ViewsOfComponentBuilder;
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
-using tink.MacroApi;
+
 using StringTools;
 
 #end
@@ -116,10 +116,10 @@ abstract Entity(Int) from Int to Int {
 	#if macro
 	static function getComponentContainerInfo(c: haxe.macro.Expr, pos:haxe.macro.Expr.Position) {
 		var to = c.typeof();
-		if (!to.isSuccess()) {
-			Context.error('Can not find type for ${c} ', pos);
+		if (to == null) {
+			Context.fatalError('Can not find type for ${c} ', pos);
 		}
-		var type = to.sure();
+		var type = to;
 
 		return switch (type) {
 			case TType(tref, args):

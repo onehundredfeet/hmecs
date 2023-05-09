@@ -9,11 +9,12 @@ import haxe.macro.Expr;
 
 using ecs.core.macro.MacroTools;
 using Lambda;
-using tink.MacroApi;
+
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
 using haxe.ds.ArraySort;
+using ecs.core.macro.Extensions;
 
 typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 
