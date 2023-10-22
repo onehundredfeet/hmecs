@@ -1,12 +1,12 @@
 package ecs.core;
 
 import ecs.Entity;
+import ecs.utils.FastEntitySet;
 /**
  * ...
- * @author https://github.com/deepcake
+ * @author https://github.com/deepcake, https://github.com/onehundredfeet
  */
 
- typedef ViewEntitySet = ecs.utils.FastEntitySet;
 
 @:ecs_view
 @:keepSub
@@ -20,8 +20,14 @@ class AbstractView {
     public function hashCode():Int {
         return _id;
     }
+
+    public var entities(get,null):ReadOnlyFastEntitySet;
+    inline function get_entities() {
+        return _entities;
+    }
+
     /** List of matched entities */
-    public var entities(default, null) = new ViewEntitySet();
+    var _entities(default, null) = new FastEntitySet();
 
 //    var collected = new Array<Bool>();  // Membership is already being stored
 
@@ -43,10 +49,10 @@ class AbstractView {
         if (activations == 0) {
             Workflow.views.remove(this);
 
-            for (e in entities) {
+            for (e in _entities) {
                 dispatchRemovedCallback(e);
             }
-            entities.removeAll();
+            _entities.removeAll();
         }
     }
 
@@ -56,7 +62,7 @@ class AbstractView {
 
 
     public inline function size():Int {
-        return entities.length;
+        return _entities.length;
     }
 
 
@@ -83,27 +89,27 @@ class AbstractView {
 
 
     @:allow(ecs.Workflow) function addIfMatched(id:Int) {
-        if (isMatched(id) && !entities.exists(id)) {
-            entities.add(id);
+        if (isMatched(id) && !_entities.exists(id)) {
+            _entities.add(id);
             dispatchAddedCallback(id);
         }
     }
 
     @:allow(ecs.Workflow) function addIfMatchedNoCheck(id:Int) {
         if (isMatched(id)) {
-            entities.add(id);
+            _entities.add(id);
             dispatchAddedCallback(id);
         }
     }
 
 
     @:allow(ecs.Workflow) function addMatchedNew(id:Int) {
-        entities.add(id);
+        _entities.add(id);
         dispatchAddedCallback(id);
     }
 
     @:allow(ecs.Workflow) function removeIfExists(id:Int) {
-        if(entities.remove(id)) {
+        if(_entities.remove(id)) {
             dispatchRemovedCallback(id);
         }
     }
@@ -112,10 +118,10 @@ class AbstractView {
     @:allow(ecs.Workflow) function reset() {
         activations = 0;
         Workflow.views.remove(this);
-        for (e in entities) {
+        for (e in _entities) {
             dispatchRemovedCallback(e);
         }
-        entities.removeAll();
+        _entities.removeAll();
 //        collected.splice(0, collected.length);
     }
 

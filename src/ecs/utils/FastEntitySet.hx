@@ -47,3 +47,8 @@ class FastEntitySet {
         return _count;
     }
 }
+
+@:forward(length, iterator, exists)
+abstract ReadOnlyFastEntitySet(ecs.utils.FastEntitySet) from ecs.utils.FastEntitySet{
+
+}

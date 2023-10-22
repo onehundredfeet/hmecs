@@ -19,7 +19,6 @@ using haxe.macro.Expr;
 using haxe.macro.TypeTools;
 using ecs.core.macro.Extensions;
 
-
 #end
 
 import ecs.Entity.Status;
@@ -68,7 +67,11 @@ class Workflow {
 	/**
 	 * All active entities
 	 */
-	public static var entities(default, null) = new ViewEntitySet();
+	 public static var entities(get, null) : ReadOnlyFastEntitySet;
+	 static function get_entities() {
+		 return _entities;
+	 }
+	static var _entities(default, null) = new FastEntitySet();
 
 	/**
 	 * All active views
@@ -93,7 +96,7 @@ class Workflow {
 	 * @return String
 	 */
 	public static function info():String {
-		var ret = '# ( ${systems.length} ) { ${views.length} } [ ${entities.length} | ${idPool.length} ]'; // TODO version or something
+		var ret = '# ( ${systems.length} ) { ${views.length} } [ ${_entities.length} | ${idPool.length} ]'; // TODO version or something
 
 		#if ecs_profiling
 		ret += ' : $updateTime ms'; // total
@@ -112,7 +115,7 @@ class Workflow {
 		return {
 			systems : systems.length,
 			views : views.length,
-			entities : entities.length,
+			entities : _entities.length,
 			ids : idPool.length
 
 		}
@@ -139,7 +142,7 @@ class Workflow {
 	 * Removes all views, systems and entities from the workflow, and resets the id sequence 
 	 */
 	public static function reset() {
-		for (e in entities) {
+		for (e in _entities) {
 			e.destroy();
 		}
 		for (s in systems) {
@@ -207,7 +210,7 @@ class Workflow {
 
 		if (immediate) {
 			statuses[id] = Active;
-			entities.add(id);
+			_entities.add(id);
 		} else {
 			statuses[id] = Inactive;
 		}
@@ -379,7 +382,7 @@ class Workflow {
 		// Active or Inactive
 		if (status(id) < Cached) {
 			removeAllComponentsOf(id);
-			entities.remove(id);
+			_entities.remove(id);
 			idPool.push(id);
 			statuses[id] = Cached;
 		}
@@ -388,7 +391,7 @@ class Workflow {
 	@:allow(ecs.Entity) static inline function add(id:Int) {
 		if (status(id) == Inactive) {
 			statuses[id] = Active;
-			entities.add(id);
+			_entities.add(id);
 			for (v in views)
 				v.addIfMatched(id);
 		}
@@ -398,7 +401,7 @@ class Workflow {
 		if (status(id) == Active) {
 			for (v in views)
 				v.removeIfExists(id);
-			entities.remove(id);
+			_entities.remove(id);
 			statuses[id] = Inactive;
 		}
 	}
