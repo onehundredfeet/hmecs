@@ -134,21 +134,20 @@ abstract Entity(Int) from Int to Int {
 
 		var addComponentsToContainersExprs = [for(i => c in components) {
 			var info = complexTypes[i].getComponentContainerInfo(pos);
-			return info.getAddExpr(macro __entity__, c);
-			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
-			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+			info.getAddExpr(macro __entity__, c);
 		}];
 
 		var addEntityToRelatedViewsExprs = complexTypes.map(function(ct) {
-			return ct.getViewsOfComponent(pos).followName(pos);
-		}).map(function(viewsOfComponentClassName) {
-			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
-			return macro @:privateAccess $x.inst().addIfMatched(__entity__);
+			var viewName = ct.getViewsOfComponent(pos).followName(pos);
+			var view = viewName.asTypeIdent(Context.currentPos());
+			return macro @:privateAccess $view.inst().addIfMatched(__entity__);
 		});
 
-		var body = [].concat(addComponentsToContainersExprs).concat([
-			macro if (__entity__.isActive()) $b{ addEntityToRelatedViewsExprs }
-		]).concat([macro return __entity__]);
+		var body = macro {
+			$b{ addComponentsToContainersExprs };
+			if (__entity__.isActive()) $b{ addEntityToRelatedViewsExprs };
+			return __entity__;
+		};
 
 		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
 
