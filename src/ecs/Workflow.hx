@@ -90,7 +90,7 @@ class Workflow {
 	static inline function get_systems() {
 		return _systems;
 	}
-	public static var _systems(default, null) = new Array<ISystem>();
+	static var _systems(default, null) = new Array<ISystem>();
 
 	#if ecs_profiling
 	static var updateTime = .0;
