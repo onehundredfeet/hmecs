@@ -1,8 +1,7 @@
 package ecs;
 
 import ecs.core.ISystem;
-import ecs.utils.LinkedList;
- 
+
 /**
  * SystemList  
  * 
@@ -26,7 +25,7 @@ class SystemList implements ISystem {
 
     var name:String;
 
-    var systems = new LinkedList<ISystem>();
+    var systems = new Array<ISystem>();
 
     var activated = false;
 
@@ -35,8 +34,7 @@ class SystemList implements ISystem {
         this.name = name;
     }
 
-
-    @:noCompletion @:final public function __activate__() {
+    @:noCompletion final public function __activate__() {
         if (!activated) {
             activated = true;
             for (s in systems) {
@@ -45,7 +43,7 @@ class SystemList implements ISystem {
         }
     }
 
-    @:noCompletion @:final public function __deactivate__() {
+    @:noCompletion final public function __deactivate__() {
         if (activated) {
             activated = false;
             for (s in systems) {
@@ -54,11 +52,11 @@ class SystemList implements ISystem {
         }
     }
 
-    @:final  public function forceUpdate( dt : Float ) : Void {
+    final  public function forceUpdate( dt : Float ) : Void {
         __update__(dt);
     }
 
-    @:noCompletion @:final public function __update__(dt:Float) {
+    @:noCompletion final public function __update__(dt:Float) {
         #if ecs_profiling
         var __timestamp__ = haxe.Timer.stamp();
         #end
@@ -97,7 +95,7 @@ class SystemList implements ISystem {
 
     public function add(s:ISystem):SystemList {
         if (!exists(s)) {
-            systems.add(s);
+            systems.push(s);
             if (activated) {
                 s.__activate__();
             }
@@ -116,7 +114,7 @@ class SystemList implements ISystem {
     }
 
     public function exists(s:ISystem):Bool {
-        return systems.exists(s);
+        return systems.contains(s);
     }
 
     @:generic

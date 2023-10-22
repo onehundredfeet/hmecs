@@ -36,7 +36,7 @@ enum ParallelType {
 	PCount(n:Int);
 }
 
-@:enum abstract MetaFuncType(Int) {
+enum abstract MetaFuncType(Int) {
 	var SINGLE_CALL = 1;
 	var VIEW_ITER = 2;
 	var ENTITY_ITER = 3;
@@ -403,11 +403,11 @@ public static function build(debug:Bool = false) {
 				}))
 			.concat( // add added-listeners
 				afuncs.map(function(f) {
-					return macro $i{f.view.name}.onAdded.add($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.observeAdd($i{'__${f.name}_listener__'});
 				}))
 			.concat( // add removed-listeners
 				rfuncs.map(function(f) {
-					return macro $i{f.view.name}.onRemoved.add($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.observeRemove($i{'__${f.name}_listener__'});
 				}))
 			.concat( // call added-listeners
 				afuncs.map(function(f) {
@@ -424,11 +424,11 @@ public static function build(debug:Bool = false) {
 				}))
 			.concat( // remove added-listeners
 				afuncs.map(function(f) {
-					return macro $i{f.view.name}.onAdded.remove($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.ignoreAdd($i{'__${f.name}_listener__'});
 				}))
 			.concat( // remove removed-listeners
 				rfuncs.map(function(f) {
-					return macro $i{f.view.name}.onRemoved.remove($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.ignoreRemove($i{'__${f.name}_listener__'});
 				}))
 			.concat( // null signal wrappers
 				listeners.map(function(f) {

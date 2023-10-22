@@ -26,8 +26,7 @@ import ecs.Entity.Status;
 import ecs.core.AbstractView;
 import ecs.core.ICleanableComponentContainer;
 import ecs.core.ISystem;
-import ecs.core.RestrictedLinkedList;
-
+import ecs.utils.FastEntitySet;
 
 class Workflow {
 	#if ecs_max_flags
@@ -69,17 +68,17 @@ class Workflow {
 	/**
 	 * All active entities
 	 */
-	public static var entities(default, null) = new RestrictedLinkedList<Entity>();
+	public static var entities(default, null) = new ViewEntitySet();
 
 	/**
 	 * All active views
 	 */
-	public static var views(default, null) = new RestrictedLinkedList<AbstractView>();
+	public static var views(default, null) = new Array<AbstractView>();
 
 	/**
 	 * All systems that will be called when `update()` is called
 	 */
-	public static var systems(default, null) = new RestrictedLinkedList<ISystem>();
+	public static var systems(default, null) = new Array<ISystem>();
 
 	#if ecs_profiling
 	static var updateTime = .0;
@@ -172,7 +171,7 @@ class Workflow {
 	 */
 	public static function addSystem(s:ISystem) {
 		if (!hasSystem(s)) {
-			systems.add(s);
+			systems.push(s);
 			s.__activate__();
 		}
 	}
@@ -194,7 +193,7 @@ class Workflow {
 	 * @return `Bool`
 	 */
 	public static function hasSystem(s:ISystem):Bool {
-		return systems.exists(s);
+		return systems.contains(s);
 	}
 
 	// Entity

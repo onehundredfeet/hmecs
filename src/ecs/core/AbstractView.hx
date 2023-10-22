@@ -1,18 +1,29 @@
 package ecs.core;
 
+import ecs.Entity;
 /**
  * ...
  * @author https://github.com/deepcake
  */
+
+ typedef ViewEntitySet = ecs.utils.FastEntitySet;
+
 @:ecs_view
 @:keepSub
 class AbstractView {
+    static var _idCount = 0;
+    var _id = 0;
+    public function new() {
+        _id = _idCount++;
+    }
 
-
+    public function hashCode():Int {
+        return _id;
+    }
     /** List of matched entities */
-    public var entities(default, null) = new RestrictedLinkedList<Entity>();
+    public var entities(default, null) = new ViewEntitySet();
 
-    var collected = new Array<Bool>();  // Membership is already being stored
+//    var collected = new Array<Bool>();  // Membership is already being stored
 
     var activations = 0;
 
@@ -20,7 +31,7 @@ class AbstractView {
     public function activate() {
         activations++;
         if (activations == 1) {
-            Workflow.views.add(this);
+            Workflow.views.push(this);
             for (e in Workflow.entities) {
                 addIfMatched(e);
             }
@@ -31,9 +42,11 @@ class AbstractView {
         activations--;
         if (activations == 0) {
             Workflow.views.remove(this);
-            while (entities.length > 0) {
-                removeIfExists(entities.pop());
+
+            for (e in entities) {
+                dispatchRemovedCallback(e);
             }
+            entities.removeAll();
         }
     }
 
@@ -70,26 +83,27 @@ class AbstractView {
 
 
     @:allow(ecs.Workflow) function addIfMatched(id:Int) {
+        if (isMatched(id) && !entities.exists(id)) {
+            entities.add(id);
+            dispatchAddedCallback(id);
+        }
+    }
+
+    @:allow(ecs.Workflow) function addIfMatchedNoCheck(id:Int) {
         if (isMatched(id)) {
-            if (collected[id] != true) {
-                collected[id] = true;
-                entities.add(id);
-                dispatchAddedCallback(id);
-            }
+            entities.add(id);
+            dispatchAddedCallback(id);
         }
     }
 
 
     @:allow(ecs.Workflow) function addMatchedNew(id:Int) {
-        collected[id] = true;
         entities.add(id);
         dispatchAddedCallback(id);
     }
 
     @:allow(ecs.Workflow) function removeIfExists(id:Int) {
-        if (collected[id] == true) {
-            collected[id] = false;
-            entities.remove(id);
+        if(entities.remove(id)) {
             dispatchRemovedCallback(id);
         }
     }
@@ -98,10 +112,11 @@ class AbstractView {
     @:allow(ecs.Workflow) function reset() {
         activations = 0;
         Workflow.views.remove(this);
-        while (entities.length > 0) {
-            removeIfExists(entities.pop());
+        for (e in entities) {
+            dispatchRemovedCallback(e);
         }
-        collected.splice(0, collected.length);
+        entities.removeAll();
+//        collected.splice(0, collected.length);
     }
 
 

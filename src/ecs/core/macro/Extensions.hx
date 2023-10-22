@@ -8,6 +8,7 @@ import haxe.macro.MacroStringTools;
 import haxe.macro.Context;
 import haxe.macro.Printer;
 import haxe.macro.Type;
+import haxe.macro.TypeTools;
 
 class Extensions {
 	static var _printer:Printer;
@@ -93,6 +94,28 @@ class Extensions {
 			case TType(_.get() => t, _): [t.meta].concat(getMeta(t.type));
 			case TLazy(f): getMeta(f());
 			default: [];
+		}
+
+
+		public static function gatherMetaValueFromHierarchy(t:haxe.macro.Type, key:String):Array<Dynamic> {
+			var metaValue :Array<Dynamic> = null;
+			        
+			switch(t) {
+				case TInst(cl, _):
+					metaValue = cl.get().meta.extract(key);
+					if (cl.get().superClass != null) {
+						metaValue = metaValue.concat(gatherMetaValueFromHierarchy(TInst(cl.get().superClass.t, null), key));
+					}
+				case TAbstract(a, _):
+					metaValue = a.get().meta.extract( key);
+					metaValue = metaValue.concat(gatherMetaValueFromHierarchy(haxe.macro.TypeTools.followWithAbstracts(t,true), key));
+				case TEnum(en, _):
+					metaValue = en.get().meta.extract(key);
+				case _:
+					metaValue = [];
+			}
+			
+			return metaValue;
 		}
 
 	static public function toMap(m:Metadata) {

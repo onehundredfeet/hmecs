@@ -9,6 +9,7 @@ package ecs.utils;
  * ...
  * @author https://github.com/deepcake
  */
+ #if ECS_USE_LINK_LIST
 @:generic
 class LinkedList<T> {
 
@@ -176,3 +177,4 @@ class LinkedListIterator<T> {
     }
 
 }
+#end

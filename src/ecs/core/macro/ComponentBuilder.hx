@@ -6,7 +6,7 @@ import ecs.core.macro.MacroTools.*;
 import haxe.macro.Type;
 import haxe.macro.Printer;
 import haxe.macro.Expr;
-
+import haxe.display.Display;
 using ecs.core.macro.MacroTools;
 using Lambda;
 
@@ -18,7 +18,7 @@ using ecs.core.macro.Extensions;
 
 typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 
-@:enum abstract StorageType(Int) from Int to Int {
+enum abstract StorageType(Int) from Int to Int {
 	var FAST = 0; // An array the length of all entities, with non-null meaning membership
 	var COMPACT = 1; // A map from entity to members
 	var SINGLETON = 2; // A single reference with a known entity owner
@@ -160,7 +160,11 @@ class StorageInfo {
 
 	public function getExistsExpr(entityVar:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
+			case FAST: 
+				isValueStruct ? 
+			macro $containerFullNameExpr._existsStorage[$entityVar]
+			:	
+			macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
 			case COMPACT: macro $containerFullNameExpr.storage.exists($entityVar);
 			case SINGLETON: macro $containerFullNameExpr.owner == $entityVar;
 			case TAG: 
@@ -175,7 +179,15 @@ class StorageInfo {
 
 	public function getAddExpr(entityVarExpr:Expr, componentExpr:Expr):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+			case FAST: 
+				isValueStruct ? 
+				macro {
+					$containerFullNameExpr._existsStorage[$entityVarExpr] = true;
+					$containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+				}
+				:
+			macro $containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+			
 			case COMPACT: macro $containerFullNameExpr.storage.set($entityVarExpr, $componentExpr);
 			case SINGLETON: macro {
 					if ($containerFullNameExpr.owner != 0)
@@ -338,10 +350,15 @@ class StorageInfo {
 		// dervied from the meta
 		followedMeta = getTypeMetaMap( t );
 		storageType = StorageType.getStorageType(followedMeta);
-		
+//		trace('ECS: ${fullName} is ${structValues}');
+
 		//		isPooled = getPooled(followedMeta);
 		isPooled = false;
 		isImmutable = followedMeta.exists(":immutable");
+		var structValues = t.gatherMetaValueFromHierarchy(":struct");
+		var platform = haxe.macro.Compiler.getConfiguration().platform;
+		var isStructPlatform = platform == Platform.Cs || platform == Platform.Cpp;
+		isValueStruct = isStructPlatform && structValues.length > 0;
 	}
 
 	function updateContainer() {
@@ -401,12 +418,20 @@ class StorageInfo {
 						}
 					}
 					case FAST:
+
+						var existsStorage = isValueStruct ? macro new Array<Bool>() : macro null;
+						var existsStorageExpr = isValueStruct ? macro (_existsStorage[id]) : macro (storage[id] != $emptyExpr);
+						var existsMarkTrueExpr = isValueStruct ? macro (_existsStorage[id] = true) : macro null;
+						var existsMarkFalseExpr = isValueStruct ? macro (_existsStorage[id] = false) : macro null;
+
 						macro class $containerTypeName {
 							public static var storage = new Array<$followedCT>();
 							public static var _shelved = new Map<Int,$followedCT>();
-		
+							public static var _existsStorage = $existsStorage;
+
 							public inline function exists(id:Int)  {
-								return storage[id] != $emptyExpr;
+								//return storage[id] != $emptyExpr;
+								return $existsStorageExpr;
 							}
 							public inline static function shelved(id:Int) {
 								return _shelved.exists(id);
@@ -414,18 +439,22 @@ class StorageInfo {
 							public inline static function shelve(id:Int) {
 								_shelved.set(id, storage[id]);
 								storage[id] = $emptyExpr;
+								$existsMarkFalseExpr;
 							}
 							public inline static function unshelve(id:Int) : $followedCT{
 								var x = _shelved.get(id);
 								storage[id] = x;
 								_shelved.remove(id);
+								$existsMarkTrueExpr;
 								return x;
 							}
 							public inline static function remove(id) {
 								storage[id] = $emptyExpr;
+								$existsMarkFalseExpr;
 							}
 							public inline static function add(id, item : $followedCT) {
 								storage[id] = item;
+								$existsMarkTrueExpr;
 							}
 						}
 					case COMPACT: 
@@ -493,6 +522,7 @@ class StorageInfo {
 	public var emptyExpr:Expr;
 	public var isPooled:Bool;
 	public var isImmutable : Bool;
+	public var isValueStruct : Bool;
 }
 
 class ComponentBuilder {
