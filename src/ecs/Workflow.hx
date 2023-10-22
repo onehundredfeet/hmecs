@@ -26,6 +26,7 @@ import ecs.core.AbstractView;
 import ecs.core.ICleanableComponentContainer;
 import ecs.core.ISystem;
 import ecs.utils.FastEntitySet;
+import haxe.ds.ReadOnlyArray;
 
 class Workflow {
 	#if ecs_max_flags
@@ -68,7 +69,7 @@ class Workflow {
 	 * All active entities
 	 */
 	 public static var entities(get, null) : ReadOnlyFastEntitySet;
-	 static function get_entities() {
+	 static inline function get_entities() {
 		 return _entities;
 	 }
 	static var _entities(default, null) = new FastEntitySet();
@@ -76,12 +77,20 @@ class Workflow {
 	/**
 	 * All active views
 	 */
-	public static var views(default, null) = new Array<AbstractView>();
+	public static var views(get, null) : ReadOnlyArray<AbstractView>;
+	static inline function get_views() {
+		return _views;
+	}
+	@:allow(ecs.core.AbstractView) static var _views(default, null) = new Array<AbstractView>();
 
 	/**
 	 * All systems that will be called when `update()` is called
 	 */
-	public static var systems(default, null) = new Array<ISystem>();
+	public static var systems(get, null) : ReadOnlyArray<ISystem>;
+	static inline function get_systems() {
+		return _systems;
+	}
+	public static var _systems(default, null) = new Array<ISystem>();
 
 	#if ecs_profiling
 	static var updateTime = .0;
@@ -174,7 +183,7 @@ class Workflow {
 	 */
 	public static function addSystem(s:ISystem) {
 		if (!hasSystem(s)) {
-			systems.push(s);
+			_systems.push(s);
 			s.__activate__();
 		}
 	}
@@ -186,7 +195,7 @@ class Workflow {
 	public static function removeSystem(s:ISystem) {
 		if (hasSystem(s)) {
 			s.__deactivate__();
-			systems.remove(s);
+			_systems.remove(s);
 		}
 	}
 
@@ -196,7 +205,7 @@ class Workflow {
 	 * @return `Bool`
 	 */
 	public static function hasSystem(s:ISystem):Bool {
-		return systems.contains(s);
+		return _systems.contains(s);
 	}
 
 	// Entity

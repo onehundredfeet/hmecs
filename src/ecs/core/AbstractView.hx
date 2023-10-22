@@ -37,7 +37,7 @@ class AbstractView {
     public function activate() {
         activations++;
         if (activations == 1) {
-            Workflow.views.push(this);
+            Workflow._views.push(this);
             for (e in Workflow.entities) {
                 addIfMatched(e);
             }
@@ -47,7 +47,7 @@ class AbstractView {
     public function deactivate() {
         activations--;
         if (activations == 0) {
-            Workflow.views.remove(this);
+            Workflow._views.remove(this);
 
             for (e in _entities) {
                 dispatchRemovedCallback(e);
@@ -117,7 +117,7 @@ class AbstractView {
 
     @:allow(ecs.Workflow) function reset() {
         activations = 0;
-        Workflow.views.remove(this);
+        Workflow._views.remove(this);
         for (e in _entities) {
             dispatchRemovedCallback(e);
         }
