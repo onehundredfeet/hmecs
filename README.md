@@ -18,7 +18,13 @@ The original vision by [deepcake](https://github.com/deepcake/echo) was fantasti
 - Struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  
 - Parallelism wasn't natively supported (First pass design complete)
 
-The first version of this will primarily target HashLink, but may be extended to others.
+### Supported Platforms
+I have tested it on the following platforms
+
+- Hashlink
+- HXCPP
+- JS
+- HXCS - Warning - while it will not cause any obvious issues, using structs as components will potentially cause issues when trying to write to them as they are passed by value.
 
 ### Overview
  * Component is an instance of `T:Any` class. For each class `T` will be generated a global component container, where instance of `T` is a value and `Entity` is a key. 
