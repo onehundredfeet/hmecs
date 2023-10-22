@@ -1,18 +1,35 @@
 package ecs.core;
 
+import ecs.Entity;
+import ecs.utils.FastEntitySet;
 /**
  * ...
- * @author https://github.com/deepcake
+ * @author https://github.com/deepcake, https://github.com/onehundredfeet
  */
+
+
 @:ecs_view
 @:keepSub
 class AbstractView {
+    static var _idCount = 0;
+    var _id = 0;
+    public function new() {
+        _id = _idCount++;
+    }
 
+    public function hashCode():Int {
+        return _id;
+    }
+
+    public var entities(get,null):ReadOnlyFastEntitySet;
+    inline function get_entities() {
+        return _entities;
+    }
 
     /** List of matched entities */
-    public var entities(default, null) = new RestrictedLinkedList<Entity>();
+    var _entities(default, null) = new FastEntitySet();
 
-    var collected = new Array<Bool>();
+//    var collected = new Array<Bool>();  // Membership is already being stored
 
     var activations = 0;
 
@@ -20,7 +37,7 @@ class AbstractView {
     public function activate() {
         activations++;
         if (activations == 1) {
-            Workflow.views.add(this);
+            Workflow._views.push(this);
             for (e in Workflow.entities) {
                 addIfMatched(e);
             }
@@ -30,10 +47,12 @@ class AbstractView {
     public function deactivate() {
         activations--;
         if (activations == 0) {
-            Workflow.views.remove(this);
-            while (entities.length > 0) {
-                removeIfExists(entities.pop());
+            Workflow._views.remove(this);
+
+            for (e in _entities) {
+                dispatchRemovedCallback(e);
             }
+            _entities.removeAll();
         }
     }
 
@@ -43,7 +62,7 @@ class AbstractView {
 
 
     public inline function size():Int {
-        return entities.length;
+        return _entities.length;
     }
 
 
@@ -70,26 +89,27 @@ class AbstractView {
 
 
     @:allow(ecs.Workflow) function addIfMatched(id:Int) {
+        if (isMatched(id) && !_entities.exists(id)) {
+            _entities.add(id);
+            dispatchAddedCallback(id);
+        }
+    }
+
+    @:allow(ecs.Workflow) function addIfMatchedNoCheck(id:Int) {
         if (isMatched(id)) {
-            if (collected[id] != true) {
-                collected[id] = true;
-                entities.add(id);
-                dispatchAddedCallback(id);
-            }
+            _entities.add(id);
+            dispatchAddedCallback(id);
         }
     }
 
 
     @:allow(ecs.Workflow) function addMatchedNew(id:Int) {
-        collected[id] = true;
-        entities.add(id);
+        _entities.add(id);
         dispatchAddedCallback(id);
     }
 
     @:allow(ecs.Workflow) function removeIfExists(id:Int) {
-        if (collected[id] == true) {
-            collected[id] = false;
-            entities.remove(id);
+        if(_entities.remove(id)) {
             dispatchRemovedCallback(id);
         }
     }
@@ -97,11 +117,12 @@ class AbstractView {
 
     @:allow(ecs.Workflow) function reset() {
         activations = 0;
-        Workflow.views.remove(this);
-        while (entities.length > 0) {
-            removeIfExists(entities.pop());
+        Workflow._views.remove(this);
+        for (e in _entities) {
+            dispatchRemovedCallback(e);
         }
-        collected.splice(0, collected.length);
+        _entities.removeAll();
+//        collected.splice(0, collected.length);
     }
 
 

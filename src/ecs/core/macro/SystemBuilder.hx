@@ -9,11 +9,12 @@ import haxe.macro.Expr;
 import haxe.macro.Printer;
 import ecs.core.macro.ViewSpec;
 
+using ecs.core.macro.Extensions;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
 using ecs.core.macro.MacroTools;
-using tink.MacroApi;
+
 using StringTools;
 using Lambda;
 
@@ -35,7 +36,7 @@ enum ParallelType {
 	PCount(n:Int);
 }
 
-@:enum abstract MetaFuncType(Int) {
+enum abstract MetaFuncType(Int) {
 	var SINGLE_CALL = 1;
 	var VIEW_ITER = 2;
 	var ENTITY_ITER = 3;
@@ -300,8 +301,8 @@ public static function build(debug:Bool = false) {
 	});
 
 	var uexprs = []
-	#if echoes_profiling.concat
-	([macro var __timestamp__ = Date.now().getTime()])
+	#if ecs_profiling
+	.concat([macro var __timestamp__ = haxe.Timer.stamp()])
 	#end
 	.concat(ufuncs.map(function(f) {
 		return switch (f.type) {
@@ -337,12 +338,11 @@ public static function build(debug:Bool = false) {
 					for (c in f.view.spec.includes) {
 						var ct = c.ct.typeFullName(pos);
 						var info = getComponentContainerInfo(c.ct, pos);
-						callTypeMap[ct] = info.requiresStorage() ? info.getGetExpr(macro __entity__, info.fullName + "_inst") : info.getGetExpr(macro __entity__);
+						callTypeMap[ct] = info.getGetExprCached(macro __entity__, info.fullName + "_inst") ;
 					}
 
 					var cache = f.view.spec.includes.map(function(c) {
 						var info = getComponentContainerInfo(c.ct, pos);
-						if (!info.requiresStorage()) return null;
 						return info.getCacheExpr(info.fullName + "_inst");
 					}).filter( (x) -> x != null) ;
 
@@ -380,7 +380,10 @@ public static function build(debug:Bool = false) {
 				}
 		}
 	}))
-	#if echoes_profiling.concat ([macro this.__updateTime__ = Std.int(Date.now().getTime() - __timestamp__)]) #end;
+	#if ecs_profiling
+	.concat ([macro this.__updateTime__ = (haxe.Timer.stamp() - __timestamp__) * 1000.]) 
+	#end
+	;
 
 	var aexpr = macro if (!activated)
 		$b{
@@ -400,11 +403,11 @@ public static function build(debug:Bool = false) {
 				}))
 			.concat( // add added-listeners
 				afuncs.map(function(f) {
-					return macro $i{f.view.name}.onAdded.add($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.observeAdd($i{'__${f.name}_listener__'});
 				}))
 			.concat( // add removed-listeners
 				rfuncs.map(function(f) {
-					return macro $i{f.view.name}.onRemoved.add($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.observeRemove($i{'__${f.name}_listener__'});
 				}))
 			.concat( // call added-listeners
 				afuncs.map(function(f) {
@@ -421,11 +424,11 @@ public static function build(debug:Bool = false) {
 				}))
 			.concat( // remove added-listeners
 				afuncs.map(function(f) {
-					return macro $i{f.view.name}.onAdded.remove($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.ignoreAdd($i{'__${f.name}_listener__'});
 				}))
 			.concat( // remove removed-listeners
 				rfuncs.map(function(f) {
-					return macro $i{f.view.name}.onRemoved.remove($i{'__${f.name}_listener__'});
+					return macro $i{f.view.name}.ignoreRemove($i{'__${f.name}_listener__'});
 				}))
 			.concat( // null signal wrappers
 				listeners.map(function(f) {

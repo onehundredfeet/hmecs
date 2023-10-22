@@ -10,7 +10,7 @@ using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
-using tink.MacroApi;
+using ecs.core.macro.Extensions;
 
 class ViewsOfComponentBuilder {
 	public static final VIEW_OF_NAMESPACE = "ecs.viewsof";
@@ -54,7 +54,7 @@ class ViewsOfComponentBuilder {
 				
 				public inline function addIfMatched(id:Int) {
 					for (v in views) {
-						if (v.isActive()) {
+						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
 							@:privateAccess v.addIfMatched(id);
 						}
 					}

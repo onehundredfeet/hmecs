@@ -1,5 +1,8 @@
 package ecs.utils;
-import ecs.utils.LinkedList.LinkedListIterator;
+#if false
+import ecs.utils.FastEntitySet;
+import ecs.utils.FastHashableSet;
+
 #if macro
 import haxe.macro.Expr;
 #end
@@ -8,39 +11,22 @@ import haxe.macro.Expr;
  * ...
  * @author https://github.com/deepcake
  */
-@:forward(length)
+@:forward(length, remove, add, removeAll, iterator)
 @:generic
-abstract Signal<T>(LinkedList<T>) {
+abstract Signal<T : IHashable>(FastHashableSet<T>) {
 
 
-    public inline function new() this = new LinkedList<T>();
+    public inline function new() this = new FastHashableSet<T>();
 
-
-    public inline function add(listener:T) {
-        this.add(listener);
-    }
 
     public inline function has(listener:T):Bool {
         return this.exists(listener);
     }
 
-    public inline function remove(listener:T) {
-        this.remove(listener);
-    }
-
-    public inline function removeAll() {
-        while (this.length > 0) this.pop();
-    }
 
     public inline function size() {
         return this.length;
     }
-
-
-    public inline function iterator():LinkedListIterator<T> {
-        return this.iterator();
-    }
-
 
     macro public function dispatch(self:Expr, args:Array<Expr>) {
         return macro {
@@ -52,3 +38,5 @@ abstract Signal<T>(LinkedList<T>) {
 
 
 }
+
+#end

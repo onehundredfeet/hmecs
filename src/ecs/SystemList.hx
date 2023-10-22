@@ -1,8 +1,7 @@
 package ecs;
 
 import ecs.core.ISystem;
-import ecs.utils.LinkedList;
- 
+
 /**
  * SystemList  
  * 
@@ -19,14 +18,14 @@ import ecs.utils.LinkedList;
 class SystemList implements ISystem {
 
 
-    #if echoes_profiling
+    #if ecs_profiling
     var __updateTime__ = .0;
     #end
 
 
     var name:String;
 
-    var systems = new LinkedList<ISystem>();
+    var systems = new Array<ISystem>();
 
     var activated = false;
 
@@ -35,8 +34,7 @@ class SystemList implements ISystem {
         this.name = name;
     }
 
-
-    @:noCompletion @:final public function __activate__() {
+    @:noCompletion final public function __activate__() {
         if (!activated) {
             activated = true;
             for (s in systems) {
@@ -45,7 +43,7 @@ class SystemList implements ISystem {
         }
     }
 
-    @:noCompletion @:final public function __deactivate__() {
+    @:noCompletion final public function __deactivate__() {
         if (activated) {
             activated = false;
             for (s in systems) {
@@ -54,21 +52,21 @@ class SystemList implements ISystem {
         }
     }
 
-    @:final  public function forceUpdate( dt : Float ) : Void {
+    final  public function forceUpdate( dt : Float ) : Void {
         __update__(dt);
     }
 
-    @:noCompletion @:final public function __update__(dt:Float) {
-        #if echoes_profiling
-        var __timestamp__ = Date.now().getTime();
+    @:noCompletion final public function __update__(dt:Float) {
+        #if ecs_profiling
+        var __timestamp__ = haxe.Timer.stamp();
         #end
 
         for (s in systems) {
             s.__update__(dt);
         }
 
-        #if echoes_profiling
-        __updateTime__ = Std.int(Date.now().getTime() - __timestamp__);
+        #if ecs_profiling
+        __updateTime__ = (haxe.Timer.stamp() - __timestamp__) * 1000.;
         #end
     }
 
@@ -81,7 +79,7 @@ class SystemList implements ISystem {
 
         var ret = '$span$name';
 
-        #if echoes_profiling
+        #if ecs_profiling
         ret += ' : $__updateTime__ ms';
         #end
 
@@ -97,7 +95,7 @@ class SystemList implements ISystem {
 
     public function add(s:ISystem):SystemList {
         if (!exists(s)) {
-            systems.add(s);
+            systems.push(s);
             if (activated) {
                 s.__activate__();
             }
@@ -116,9 +114,18 @@ class SystemList implements ISystem {
     }
 
     public function exists(s:ISystem):Bool {
-        return systems.exists(s);
+        return systems.contains(s);
     }
 
+    @:generic
+    public function getOp<T>(c : Class<T>) : T {
+        for (x in systems) {
+            if (Std.isOfType(x, c)) {
+                return cast x;
+            }
+        }
+        return null;
+    }
 
     public function toString():String return 'SystemList';
 

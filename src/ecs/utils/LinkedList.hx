@@ -1,9 +1,15 @@
 package ecs.utils;
 
+//
+// [RC] There has to be a better data structure than this for views
+// Existance, removal are BRUTAL
+//
+
 /**
  * ...
  * @author https://github.com/deepcake
  */
+ #if ECS_USE_LINK_LIST
 @:generic
 class LinkedList<T> {
 
@@ -171,3 +177,4 @@ class LinkedListIterator<T> {
     }
 
 }
+#end

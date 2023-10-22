@@ -9,7 +9,7 @@ using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using Lambda;
 using haxe.ds.ArraySort;
-using tink.MacroApi;
+using ecs.core.macro.Extensions;
 
 typedef ViewTypeRef = {
 	ct:ComplexType,

@@ -18,7 +18,13 @@ The original vision by [deepcake](https://github.com/deepcake/echo) was fantasti
 - Struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  
 - Parallelism wasn't natively supported (First pass design complete)
 
-The first version of this will primarily target HashLink, but may be extended to others.
+### Supported Platforms
+I have tested it on the following platforms
+
+- Hashlink
+- HXCPP
+- JS
+- HXCS - Warning - while it will not cause any obvious issues, using structs as components will potentially cause issues when trying to write to them as they are passed by value.
 
 ### Overview
  * Component is an instance of `T:Any` class. For each class `T` will be generated a global component container, where instance of `T` is a value and `Entity` is a key. 
@@ -26,18 +32,61 @@ The first version of this will primarily target HashLink, but may be extended to
  * `View<T1, T2, TN>` is a collection of entities containing all components of the required types `T1, T2, TN`. Views are placed in Systems. 
  * `System` is a place for processing a certain set of data represented by views. 
  * To organize systems in phases can be used the `SystemList`. 
-* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view.
+* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view. `NOTE: Worlds will be deprecated in favour of a new tag system`
 * `Pool` a pool is a static container that can be used to speed up allocations using a rent/retire paradigm. Call a static rent to get a new instance and then retire on that instance to return it to the pool
 * `Workflow` a global class used to access common features such as a singleton
+* `Tag` is class with the @:storage(TAG) metadata that changes the behaviour from being specified as an instance to added as a type. A flag set keeps track of which entities are tagged, makeing storing many tags compact and fast.  When specified in a function, a single static instance of the class will be passed in to all calls, regardless of which entity is passed in.
 
-#### Note: Currently requires running a macro as the last line in your main file. Add this function to the bottom of your root hx file, i.e. Main.hx.  Then call the function as your first function call.
+## WARNING & INSTRUCTIONS
+### Due to the heavily macro based approach of the system, there are some nuances that require some concessions.
 
-function ecsSetup() {
-	ecs.core.macro.Global.setup();
+1. To get all the features working, you will need to create a very lean, or even proxy, main file and use it as your entry point when compiling.
+
+```haxe
+import your.MainClass;
+
+class ProxyMain {
+  public static function main() {
+    MainClass.main();
+  }
 }
+```
 
+2. You will need to add a call to initialize a variety of late binding mechanisms.
 
-#### Example
+```haxe
+import your.MainClass;
+
+class ProxyMain {
+  public static function main() {
+    #if !macro
+  	ecs.core.macro.Global.setup();  // macro to generate all the global calls and then hook them up at runtime
+    #end
+    MainClass.main();
+  }
+}
+```
+
+## Usage
+
+### Component Storage
+Each component type can have its own storage specification.  They are specified using the @:storage metadata on the component type.  You can use abstract types to wrap basic types to apply the metadata.
+
+#### @:storage(FAST)
+This is the default. It is an array the length of the total number of entities. Any entities with the component will have a non-zero allocated object in the array corresponding to the entity id.  Obviously this can waste a lot of memory if overused with a large number of entities.
+
+#### @:storage(COMPACT)
+This is the typical secondary value.  It specifies an IntMap to be used for the storage backend.  This will slightly increase the lookup time for get, but it will significantly reduce the amount of memory required.
+
+#### @:storage(FLAG)
+This is says that this type is a bit flag on the flags storage for the entity.  It takes a single bit per entity, much smaller than using an array.  It is slightly slower than the fast storage but not by much.
+
+A side benefit is that a single instance of the tagged class is available in views that require this flag.
+
+#### @:storage(SINGLETON)
+There can only be one instance of this class and only one entity can own it. It is very limited, but very fast and uses little memory.
+
+## Examples
 ```haxe
 import ecs.SystemList;
 import ecs.Workflow;
@@ -49,26 +98,45 @@ class MediumComponent {
 
 }
 
-@:storage(FAST) // Sepcifies the flavour of storage to use. FAST is the default.
+// Can use vanilla abstracts to create a new component type
+abstract AbstractComponent(MediumComponent) from MediumComponent to MediumComponent {
+
+}
+
+// Abstracts allow adding multiple components of the same underlying type to an entity 
+// When using abstracts, be careful not to assume the underlaying type when adding 
+@:forward
+abstract Name(String) from String to String {
+  public function new(name:String) this = name;
+}
+
+// 0 is assumed to mean 'empty' with Int abstracts. This may mean that with some cases it is not possible to use this approach.
+abstract IDComponent(Int) from Int to Int {
+
+}
+
+
+@:storage(FAST) // Sepcifies the flavour of storage to use. FAST is the default. Uses more memory (Array Storage)
 #if !macro @:build(ecs.core.macro.PoolBuilder.arrayPool()) #end // Implicitly adds rent & retire
 //@:no_autoretire  // turns off automatically using the attached pool.  Unless this is added, the ECS will automatically return the object to the pool on being removed from the entity
 class SmallComponent {
-    
-    function new() {
+    var value = 0;
 
+    function new(v : Int) {
+      value = v;
     }
 
-    @:pool_factory  // overrides the default 'new' 
+    @:pool_factory  // optional: overrides the default 'new', not necessary if you provide a parameterless constructor
     static function factory() : SmallComponent{
-      return new SmallComponent();  // Example - This is identical to the generated default factory
+      return new SmallComponent(5);  
     }
 
-    @:pool_retire  // callback when retiring
+    @:pool_retire  // optional: callback when retiring
     function onRetire() {
 
     }
 
-    @:pool_retire  // callback when retiring
+    @:pool_retire  // optional: callback when retiring
     function onRetireE(e : Entity) {
 
     }
@@ -80,14 +148,9 @@ class SmallComponent {
 
 }
 
-@:storage(COMPACT)
+@:storage(COMPACT) // Uses less memory, but operations are slightly slower than fast (Map storage)
 class HeavyComponent {
   public function new(){}
-
-//  @:onadd // UNIMPLEMENTED
-//    function onAdd() {
-      // Custom logic when a component is added from an entity
-//    }
 
   @:ecs_remove
     function onRemove() {
@@ -100,21 +163,28 @@ class SingletonComponent {
   public function new(){}
 }
 
-// 0 is assumed to mean 'empty' with Int abstracts. This may mean that with some cases it is not possible to use this approach.
-abstract MicroComponent(Int) from Int to Int {
-  public function new(x : Int) {
-    this = x;
+// This 'marks' entities with this component type, but will providethe same single static instance value as a parameter in updates
+// Specifies a type that is added as a type, not a value
+@:storage(TAG) // Uses very little memory and is fast to look up (Bitfield)
+class TagYouIt {
+   TagYouIt() {} // requires a constructor with no parameters, public or private
+
+  public var example = "it";
+}
+
+@:shelvable // PLANNED: Adds extra storage and behaviour to allow this component to be shelved.  Has a small performance impact on some actions.
+// At the moment all components are shelvable.
+class Position {
+  public var x : Float;
+  public var y : Float
+  public function new( x : Float, y : Float) {
+    this.x = x;
+    this.y = y;
   }
 }
-
-// Abstracts allow adding multiple components of the same underlying type to an entity 
-// When using abstracts, be careful not to assume the underlaying type in the system function definitions
-@:forward
-abstract Name(String) from String to String {
-  public function new(name:String) this = name;
-}
-
-
+//
+// Example program
+//
 class Example {
   final FIELDS = 1;
   final FOREST = 2;
@@ -138,6 +208,16 @@ class Example {
     trace(jack.get(Position).x); // 5
     jack.remove(Position); // oh no!
     jack.add(new Position(1, 1)); // okay
+    jack.add(TagYouIt); // Jack is now tagged
+
+    //
+    // Shelving - Retaining reference to component, but officially detatching it from the entity
+    // Can only hold ONE component at a time. 
+    // Do not add a new component when there is already one shelved, the result is undefined.
+    jack.shelve(Position); // Retains the component in storage, but removes it from being attached to the entity
+    trace(jack.exists(Position)); // false
+    jack.unshelve(Position): // Re-attaches the corresponding shelved component.  
+    trace(jack.exists(Position)); // true
 
     // THIS IS TWO FEATURES 
     // - the singleton() entity on workflow is a global entity across all worlds & systems.
@@ -175,10 +255,16 @@ class Movement extends ecs.System {
     pos.y += vel.y * dt;
   }
 
+
   //Can narrow the scope of the update to only entities that are present in a world set
   @:worlds(WORLDS_FOREST) // These are bit flags.  The string is evaulate as an expression
   @update function inForest(name:Name) {
     trace('${name} is in the forest'); // Will display Jack
+  }
+
+  //Can narrow the scope of the update to only entities that have the tag TagYouIt
+  @update function isIt(name:Name, tag:TagYouIt) {
+    trace('${name} is ${tag.example}'); // Will display Jack is it
   }
 
   // Worlds can be strings or constant string expressions if using compiler only @:
@@ -203,6 +289,7 @@ class NamePrinter extends ecs.System {
   // All of necessary for meta-functions views will be defined and initialized under the hood, 
   // but it is also possible to define the View manually (initialization is still not required) 
   // for additional features such as counting and sorting entities;
+  // Note: Does not support @:worlds 
   var named:View<Name>;
 
   @:update function sortAndPrint() {
@@ -227,7 +314,7 @@ class Render extends ecs.System {
     trace('Oh My God! They removed ${ e.exists(Name) ? e.get(Name) : "Unknown Sprite" }!');
   }
 
-  // PARALLEL API NOT IMPLEMENTED YET
+  //PLANNED PARALLEL API NOT IMPLEMENTED YET
   @:parallel(FULL) // | @:p(FULL) - Valid values FULL | DOUBLE | HALF | # - Will create threads to call this function in parallel according to the number specifed in the parameters.  Will collect all threads before continuing.
   @:bucket(5) // | @:b(5) Specifies the parallel bucketing size valid values MAX | # - Max will take total / threads
   @:fork(SPRITE_UPDATE) // - Named synchronization - Will split off this update in another thread and continue processing other updates, can be combined with @:parallel

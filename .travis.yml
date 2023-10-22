@@ -32,19 +32,19 @@ script:
   - haxelib run travix python
   - haxelib run travix java
 
-  - haxelib run travix interp -D ecs_array_container -D echoes_profiling
-  - haxelib run travix node -D ecs_array_container -D echoes_profiling
-  - haxelib run travix cpp -D ecs_array_container -D echoes_profiling
-  - haxelib run travix neko -D ecs_array_container -D echoes_profiling
-  - haxelib run travix python -D ecs_array_container -D echoes_profiling
-  - haxelib run travix java -D ecs_array_container -D echoes_profiling
+  - haxelib run travix interp -D ecs_array_container -D ecs_profiling
+  - haxelib run travix node -D ecs_array_container -D ecs_profiling
+  - haxelib run travix cpp -D ecs_array_container -D ecs_profiling
+  - haxelib run travix neko -D ecs_array_container -D ecs_profiling
+  - haxelib run travix python -D ecs_array_container -D ecs_profiling
+  - haxelib run travix java -D ecs_array_container -D ecs_profiling
 
-  - haxelib run travix interp -D ecs_vector_container -D echoes_profiling
-  - haxelib run travix node -D ecs_vector_container -D echoes_profiling
-  - haxelib run travix cpp -D ecs_vector_container -D echoes_profiling
-  - haxelib run travix neko -D ecs_vector_container -D echoes_profiling
-  - haxelib run travix python -D ecs_vector_container -D echoes_profiling
-  - haxelib run travix java -D ecs_vector_container -D echoes_profiling
+  - haxelib run travix interp -D ecs_vector_container -D ecs_profiling
+  - haxelib run travix node -D ecs_vector_container -D ecs_profiling
+  - haxelib run travix cpp -D ecs_vector_container -D ecs_profiling
+  - haxelib run travix neko -D ecs_vector_container -D ecs_profiling
+  - haxelib run travix python -D ecs_vector_container -D ecs_profiling
+  - haxelib run travix java -D ecs_vector_container -D ecs_profiling
 
   # - haxelib run travix js
   # - haxelib run travix flash

@@ -10,13 +10,13 @@ import haxe.macro.Type.ModuleType;
 import ecs.core.macro.ViewSpec;
 import ecs.utils.Const;
 import ecs.utils.Signal;
-
+using ecs.core.macro.Extensions;
 using ecs.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using Lambda;
 using haxe.ds.ArraySort;
-using tink.MacroApi;
+
 using haxe.macro.PositionTools;
 
 typedef ViewRec = {name:String, spec:ViewSpec, ct:ComplexType};
@@ -165,26 +165,47 @@ class ViewBuilder {
 
 			// instance
 
-			public var onAdded(default, null) = new $signalTypePath();
-			public var onRemoved(default, null) = new $signalTypePath();
+			public function observeAdd(x : $signalTypeParamComplexType) {
+				_onAdded.push(x);
+			}
+			public function observeRemove(x : $signalTypeParamComplexType) {
+				_onRemoved.push(x);
+			}
+
+			public function ignoreAdd(x : $signalTypeParamComplexType) {
+				_onAdded.remove(x);
+			}
+			public function ignoreRemove(x : $signalTypeParamComplexType) {
+				_onRemoved.remove(x);
+			}
+
+			var _onAdded = new Array<$signalTypeParamComplexType>();
+			var _onRemoved = new Array<$signalTypeParamComplexType>();
 
 			function new() {
+				super();
 				@:privateAccess ecs.Workflow.definedViews.push(this);
 				$b{addViewToViewsOfComponent}
 			}
 
 			override function dispatchAddedCallback(id:Int) {
-				onAdded.dispatch($a{signalArgs});
+				for (x in _onAdded) {
+					x($a{signalArgs});
+				}
+				//_onAdded.dispatch($a{signalArgs});
 			}
 
 			override function dispatchRemovedCallback(id:Int) {
-				onRemoved.dispatch($a{signalArgs});
+				for (x in _onRemoved) {
+					x($a{signalArgs});
+				}
+				//_onRemoved.dispatch($a{signalArgs});
 			}
 
 			override function reset() {
 				super.reset();
-				onAdded.removeAll();
-				onRemoved.removeAll();
+				//_onAdded.removeAll();
+				//_onRemoved.removeAll();
 			}
 		}
 
@@ -194,7 +215,7 @@ class ViewBuilder {
 		// iter
 		{
 			var funcComplexType = TFunction([macro:ecs.Entity].concat(components.map(function(c) return c.ct)), macro:Void);
-			var funcCallArgs = [macro __entity__].concat(components.map(function(c) return getComponentContainerInfo(c.ct, pos).getGetExpr(macro __entity__)));
+			var funcCallArgs = [macro __entity__].concat(components.map(function(c) return getComponentContainerInfo(c.ct, pos).getGetExpr(macro __entity__, true)));
 			var body = macro {
 				for (__entity__ in entities) {
 					f($a{funcCallArgs});
@@ -214,9 +235,13 @@ class ViewBuilder {
 			if (worlds != 0xffffffff) {
 				var worldVal:Expr = {expr: EConst(CInt('${worlds}')), pos: Context.currentPos()};
 				var entityWorld = macro ecs.Workflow.worlds(id);
-				body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
+				body = macro {
+					return (($entityWorld & $worldVal) == 0) ? false : $cond;
+				};
 			} else {
-				body = macro return $cond;
+				body = macro {
+					return $cond;
+				}
 			}
 			def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:Int)], macro:Bool, body, Context.currentPos()));
 		}

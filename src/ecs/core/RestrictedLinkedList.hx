@@ -1,5 +1,6 @@
 package ecs.core;
 
+#if ECS_USE_LINKED_LIST
 @:allow(ecs)
 @:forward(head, tail, length, iterator, sort)
 abstract RestrictedLinkedList<T>(ecs.utils.LinkedList<T>) to ecs.utils.LinkedList<T> {
@@ -12,3 +13,5 @@ abstract RestrictedLinkedList<T>(ecs.utils.LinkedList<T>) to ecs.utils.LinkedLis
     inline function exists(item:T) return this.exists(item);
 
 }
+
+#end

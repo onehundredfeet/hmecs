@@ -13,8 +13,7 @@ import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.Type.ClassField;
 import haxe.macro.Type;
-
-using tink.MacroApi;
+using ecs.core.macro.Extensions;
 using haxe.macro.Context;
 using Lambda;
 
@@ -284,23 +283,31 @@ class MacroTools {
 	static var WORLD_META = ['worlds', 'world', 'wd', ":worlds", ":world"];
 
 	public static function metaFieldToWorlds(f:Field):Int {
+//		var mmap = f.meta.toMap();
+
 		var worldData = f.meta.filter(function(m) return WORLD_META.contains(m.name));
 		if (worldData != null && worldData.length > 0) {
 			var wd = worldData[0];
+			var worlds = 0;
 
 			if (wd.params.length > 0) {
 				var p:Expr = wd.params[0];
-				var pe = getNumericValue(p, 0xffffffff, p.pos);
-				return 0xffffffff;
-				if (pe != null) {
-					var t:Int = pe;
-					return pe;
+				for (w in wd.params) {
+					var pe = getNumericValue(w, null, p.pos);
+					if (pe == null) {
+						Context.error('Invalid world value: ${w}', p.pos);
+						return 0;
+					} 
+					var mask:Int = cast(pe, Int);
+					worlds |= mask;
 				}
 			}
+			return worlds;
 		}
 		return 0xffffffff;
 	}
 
+	/*
 	public static function exprToWorlds(p:Expr):Int {
 		var pe = getNumericValue(p, 0xffffffff, p.pos);
 		if (pe != null) {
@@ -309,6 +316,7 @@ class MacroTools {
 		}
 		return 0xffffffff;
 	}
+	*/
 
 	public static function getLocalField(n:String):Expr {
 		var cf = TypeTools.findField(Context.getLocalClass().get(), n, true);
@@ -338,7 +346,7 @@ class MacroTools {
 			var f = splits.pop();
 			var tps = splits.join(".");
 
-			var tp = Types.asComplexType(tps);
+			var tp = tps.asComplexType();
 			if (tp != null) {
 				return getNumericValue({expr: EField({expr: EConst(CIdent(tps)), pos: Context.currentPos()}, f), pos: pos}, valueDefault, pos);
 			}
@@ -424,7 +432,7 @@ class MacroTools {
 					Context.error('Type not a class ${path}', e.pos);
 					return valueDefault;
 				}
-				var cf = TypeTools.findField(c, f, true);
+				var cf : ClassField = TypeTools.findField(c, f, true);
 				if (cf == null)
 					cf = TypeTools.findField(c, f, false);
 				if (cf != null) {
@@ -434,7 +442,7 @@ class MacroTools {
 						if (cfe != null) {
 							return getTypeNumericValue(cfe, valueDefault, pos);
 						}
-
+						Context.error('Empty class field', Context.currentPos());
 						return valueDefault;
 					} else {
 						Context.error('Only var fields are supported', Context.currentPos());
@@ -458,7 +466,7 @@ class MacroTools {
 
 						default: trace('Unknown op: ${op}');
 					}
-
+					Context.error('Unknown binop ${op} ${a} ${b}', Context.currentPos());
 			default:
 				Context.error('Unknown expr: ${e.expr}', pos);
 		}
@@ -482,8 +490,8 @@ class MacroTools {
 
 	public static function getStringValue(e:Expr):String {
 		var str = e.getString();
-		if (str.isSuccess())
-			return str.sure();
+		if (str != null)
+			return str;
 		switch (e.expr) {
 			case EConst(c):
 				switch (c) {
