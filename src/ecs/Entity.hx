@@ -239,7 +239,7 @@ abstract Entity(Int) from Int to Int {
 			return info.getRemoveExpr(entityExpr);
 		}
 		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
-			return macro @:privateAccess ${viewExpr}.removeIfMatched($entityExpr);
+			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
 		}
 		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
 	 }
@@ -249,7 +249,7 @@ abstract Entity(Int) from Int to Int {
 			return info.getShelveExpr(entityExpr,pos);
 		}
 		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
-			return macro @:privateAccess ${viewExpr}.removeIfMatched($entityExpr);
+			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
 		}
 		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
 	}
@@ -289,7 +289,7 @@ abstract Entity(Int) from Int to Int {
 			return ct.getViewsOfComponent(pos).followName(pos);
 		}).map(function(viewsOfComponentClassName) {
 			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
-			return macro @:privateAccess $x.inst().removeIfMatched(__entity__);
+			return macro @:privateAccess $x.inst().removeIfExists(__entity__);
 		});
 		errorStage = "got views of components";
 

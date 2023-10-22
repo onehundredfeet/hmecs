@@ -52,17 +52,18 @@ class ViewsOfComponentBuilder {
 					views.push(v);
 				}
 
-				public inline function removeIfMatched(id:Int) {
-					for (v in views) {
-						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
-							@:privateAccess v.removeIfExists(id);
-						}
-					}
-				}
 				public inline function addIfMatched(id:Int) {
 					for (v in views) {
 						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
 							@:privateAccess v.addIfMatched(id);
+						}
+					}
+				}
+
+				public inline function removeIfExists(id:Int) {
+					for (v in views) {
+						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
+							@:privateAccess v.removeIfExists(id);
 						}
 					}
 				}
