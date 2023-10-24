@@ -25,14 +25,10 @@ class PoolBuilder {
 		var lt = Context.getLocalType().follow();
 		var ct = lt.toComplexType();
 		switch (lt) {
-			case TInst(t, params):
-				switch (t.get().kind) {
-					case KAbstractImpl(a):
-						if (a.get().params.length > 0)
-							throw 'Pools do not support abstract types with parameters on ${ct.toString()}';
-						ct = a.get().name.asComplexType();
-					default:
-				}
+			case TInst(_.get().kind => KAbstractImpl(a), _):
+				if (a.get().params.length > 0)
+					throw 'Pools do not support abstract types with parameters on ${ct.toString()}';
+				ct = a.get().name.asComplexType();
 			default:
 		}
 

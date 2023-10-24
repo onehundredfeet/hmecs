@@ -71,21 +71,19 @@ class StorageInfo {
 	static function getPooled(mm:MetaMap) {
 		var bb = mm.get(":build");
 
-		if (bb != null) {
-			for (b in bb) {
-				switch (b[0].expr) {
-					case ECall(e, p):
-						switch (e.expr) {
-							case EField(fe, field):
-								if (fe.toString() == "ecs.core.macro.PoolBuilder") {
-									return true;
-								}
-							default:
-						}
-					default:
-				}
+		if (bb == null) {
+			return false;
+		}
+		
+		for (b in bb) {
+			switch (b[0].expr) {
+				case ECall(_.expr => EField(fe, _), _)
+					if (fe.toString() == "ecs.core.macro.PoolBuilder"):
+					return true;
+				default:
 			}
 		}
+		
 		return false;
 	}
 
@@ -104,14 +102,9 @@ class StorageInfo {
 		var rt = followedT.followWithAbstracts();
 
 		emptyExpr = switch (rt) {
-			case TInst(t, params): macro null;
-			case TAbstract(t, params):
-				if (t.get().name == "Int") {
-					macro 0;
-				} else {
-					macro null;
-				}
-
+			case TInst(_, _): macro null;
+			case TAbstract(_.get() => { name: "Int" }, _):
+				macro 0;
 			default: macro null;
 		}
 
@@ -232,31 +225,24 @@ class StorageInfo {
 			var cfs = cfs_statics.concat(cfs_non_statics);
 
 			for (cfx in cfs) {
-				var cf = cfx.cf;
-				if (cf.meta.has(":ecs_remove")) {
-					switch (cf.kind) {
-						case FMethod(k):
-							var te = cf.expr();
-							switch (te.expr) {
-								case TFunction(tfunc):
-									var fname = cf.name;
-									var needsEntity = false;
-									for (a in tfunc.args) {
-										if (a.v.t.toComplexType().toString() == (macro:ecs.Entity).toString()) {
-											needsEntity = true;
-											break;
-										}
-									}
-									if (needsEntity) {
-										retireExprs.push(macro @:privateAccess $accessExpr.$fname($entityVarExpr));
-									} else {
-										// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
-										retireExprs.push(macro @:privateAccess $accessExpr.$fname());
-									}
-								default:
+				switch (cfx.cf) {
+					case { name: name, kind: FMethod(_), meta: meta,
+						expr: _().expr => TFunction(tfunc) }
+						if (meta.has(":ecs_remove")):
+						var needsEntity = false;
+						for (a in tfunc.args) {
+							if (a.v.t.toComplexType().toString() == "ecs.Entity") {
+								needsEntity = true;
+								break;
 							}
-						default:
-					}
+						}
+						if (needsEntity) {
+							retireExprs.push(macro @:privateAccess $accessExpr.$name($entityVarExpr));
+						} else {
+							// trace('removing without entity ${cf.name} | ${tfunc.args.length} | ${ cfx.stat} in ${followedClass.name}');
+							retireExprs.push(macro @:privateAccess $accessExpr.$name());
+						}
+					default:
 				}
 			}
 		}
@@ -277,7 +263,7 @@ class StorageInfo {
 					$containerFullNameExpr.storage = $emptyExpr;
 					$containerFullNameExpr.owner = 0;
 				}
-			case TAG: 
+			case TAG:
 				var te = tagExpr();	
 				@:privateAccess  macro ecs.Workflow.clearTag($te, $te);	
 		};*/
