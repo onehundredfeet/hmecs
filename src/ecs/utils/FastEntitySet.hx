@@ -4,14 +4,14 @@ class FastEntityArraySkippingIterator {
     var set:Array<Int>;
     var i:Int;
   
-    public function new(set:Array<Int>) {
+    public inline function new(set:Array<Int>) {
       this.set = set;
       i = 0;
       while (i < set.length && set[i] == -1) i++;
     }
   
     public inline function hasNext() {
-      return i < set.length && set[i] != -1;
+      return i < set.length;
     }
   
     public inline function next() {
