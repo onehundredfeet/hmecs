@@ -13,6 +13,7 @@ import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.Type.ClassField;
 import haxe.macro.Type;
+
 using ecs.core.macro.Extensions;
 using haxe.macro.Context;
 using Lambda;
@@ -49,10 +50,12 @@ class MacroTools {
 		};
 	}
 
-	public static function arg(name:String, type:ComplexType):FunctionArg {
+	public static function arg(name:String, type:ComplexType, ?opt = false, ?value : Expr = null):FunctionArg {
 		return {
 			name: name,
-			type: type
+			type: type,
+			opt: opt,
+			value: value
 		};
 	}
 
@@ -98,7 +101,6 @@ class MacroTools {
 		}
 		#end
 		return null;
-	
 	}
 
 	static public function typeNotFoundError(c:ComplexType, doThrow:Bool = false) {
@@ -128,9 +130,8 @@ class MacroTools {
 		Context.defineModule(namespace + "." + def.name, [def]);
 		#else
 		try {
-		Context.defineType( def, dependency );
-		}
-		catch(e:Dynamic) {
+			Context.defineType(def, dependency);
+		} catch (e:Dynamic) {
 			Context.warning('Error defining type ${e}', Context.currentPos());
 		}
 		#end
@@ -149,7 +150,6 @@ class MacroTools {
 		if (yy.isSuccess()) {
 			x = yy.sure();
 		}
-
 		#else
 		if (x == null) {
 			try {
@@ -157,41 +157,36 @@ class MacroTools {
 
 				if (t != null) {
 					x = doFollow ? t.follow() : t;
-					//Context.warning('Get ${x}', pos);
-
+					// Context.warning('Get ${x}', pos);
 				}
 			} catch (e:String) {}
 		}
 
 		if (x == null) {
-		try {
-			var t = Context.resolveType(c, pos);
-			if (t != null) {
-				x = doFollow ? t.follow() : t;
-				//Context.warning('Resolved ${x}', pos);
-
-			}
-		} 
-		catch (e:String) {}
-		catch (d:Dynamic) {
+			try {
+				var t = Context.resolveType(c, pos);
+				if (t != null) {
+					x = doFollow ? t.follow() : t;
+					// Context.warning('Resolved ${x}', pos);
+				}
+			} catch (e:String) {} catch (d:Dynamic) {}
 		}
-	}
-		
+
 		if (x == null) {
-			//Context.warning('no type ${c.toString()}', pos);
+			// Context.warning('no type ${c.toString()}', pos);
 		}
 		#end
 
-	return x;
+		return x;
 
 		/*
-			
+
 
 			return x; */
 	}
 
 	public static function followComplexType(ct:ComplexType, pos):ComplexType {
-		var x = toTypeOrNull(ct,true, pos);
+		var x = toTypeOrNull(ct, true, pos);
 		if (x == null) {
 			Context.error('Could not find type: ${ct.toString()}', pos);
 		}
@@ -238,7 +233,9 @@ class MacroTools {
 		return switch (followComplexType(ct, pos)) {
 			case TPath(t): {
 					(t.sub != null ? t.sub : t.name)
-						+ ((t.params != null && t.params.length > 0) ? '<' + t.params.map(typeParamName.bind(_, (x) -> typeValidShortName(x,pos))).join(',') + '>' : '');
+						+ ((t.params != null && t.params.length > 0) ? '<'
+							+ t.params.map(typeParamName.bind(_, (x) -> typeValidShortName(x, pos))).join(',')
+							+ '>' : '');
 				}
 			case x: {
 					#if (haxe_ver < 4)
@@ -256,7 +253,7 @@ class MacroTools {
 					(t.pack.length > 0 ? t.pack.map(capitalize).join('') : '')
 						+ t.name
 						+ (t.sub != null ? t.sub : '')
-						+ ((t.params != null && t.params.length > 0) ? t.params.map(typeParamName.bind(_, (x) -> typeFullName(x,pos) )).join('') : '');
+						+ ((t.params != null && t.params.length > 0) ? t.params.map(typeParamName.bind(_, (x) -> typeFullName(x, pos))).join('') : '');
 				}
 			case x: {
 					#if (haxe_ver < 4)
@@ -275,7 +272,7 @@ class MacroTools {
 	}
 
 	public static function joinFullName(types:Array<ComplexType>, sep:String, pos) {
-		var typeNames = types.map((x) -> typeFullName(x,pos));
+		var typeNames = types.map((x) -> typeFullName(x, pos));
 		typeNames.sort(compareStrings);
 		return typeNames.join(sep);
 	}
@@ -283,7 +280,7 @@ class MacroTools {
 	static var WORLD_META = ['worlds', 'world', 'wd', ":worlds", ":world"];
 
 	public static function metaFieldToWorlds(f:Field):Int {
-//		var mmap = f.meta.toMap();
+		//		var mmap = f.meta.toMap();
 
 		var worldData = f.meta.filter(function(m) return WORLD_META.contains(m.name));
 		if (worldData != null && worldData.length > 0) {
@@ -297,7 +294,7 @@ class MacroTools {
 					if (pe == null) {
 						Context.error('Invalid world value: ${w}', p.pos);
 						return 0;
-					} 
+					}
 					var mask:Int = cast(pe, Int);
 					worlds |= mask;
 				}
@@ -308,16 +305,15 @@ class MacroTools {
 	}
 
 	/*
-	public static function exprToWorlds(p:Expr):Int {
-		var pe = getNumericValue(p, 0xffffffff, p.pos);
-		if (pe != null) {
-			var t:Int = pe;
-			return pe;
+		public static function exprToWorlds(p:Expr):Int {
+			var pe = getNumericValue(p, 0xffffffff, p.pos);
+			if (pe != null) {
+				var t:Int = pe;
+				return pe;
+			}
+			return 0xffffffff;
 		}
-		return 0xffffffff;
-	}
-	*/
-
+	 */
 	public static function getLocalField(n:String):Expr {
 		var cf = TypeTools.findField(Context.getLocalClass().get(), n, true);
 		if (cf == null)
@@ -361,27 +357,26 @@ class MacroTools {
 	}
 
 	public static function getTypeNumericValue(typedExpr:haxe.macro.Type.TypedExpr, valueDefault:Dynamic, pos:Position):Dynamic {
-
 		switch (typedExpr.expr) {
 			case TConst(c):
 				switch (c) {
 					case TInt(i): return i;
 					default: Context.warning('found constant ${c}', pos);
 				}
-				case TBinop(op, e1, e2):
-					var a = getTypeNumericValue(e1, valueDefault, pos);
-					var b = getTypeNumericValue(e2, valueDefault, pos);
-					if (a != null && b != null)
-						switch (op) {
-							case OpShl: return getTypeNumericValue(e1, valueDefault, pos) << getTypeNumericValue(e2, valueDefault, pos);
-							case OpShr: return getTypeNumericValue(e1, valueDefault, pos) >> getTypeNumericValue(e2, valueDefault, pos);
-							case OpAdd: return getTypeNumericValue(e1, valueDefault, pos) + getTypeNumericValue(e2, valueDefault, pos);
-							case OpMult: return getTypeNumericValue(e1, valueDefault, pos) * getTypeNumericValue(e2, valueDefault, pos);
-							case OpOr: return getTypeNumericValue(e1, valueDefault, pos) | getTypeNumericValue(e2, valueDefault, pos);
-							case OpAnd: return getTypeNumericValue(e1, valueDefault, pos) & getTypeNumericValue(e2, valueDefault, pos);
-	
-							default: trace('Unknown op: ${op}');
-						}
+			case TBinop(op, e1, e2):
+				var a = getTypeNumericValue(e1, valueDefault, pos);
+				var b = getTypeNumericValue(e2, valueDefault, pos);
+				if (a != null && b != null)
+					switch (op) {
+						case OpShl: return getTypeNumericValue(e1, valueDefault, pos) << getTypeNumericValue(e2, valueDefault, pos);
+						case OpShr: return getTypeNumericValue(e1, valueDefault, pos) >> getTypeNumericValue(e2, valueDefault, pos);
+						case OpAdd: return getTypeNumericValue(e1, valueDefault, pos) + getTypeNumericValue(e2, valueDefault, pos);
+						case OpMult: return getTypeNumericValue(e1, valueDefault, pos) * getTypeNumericValue(e2, valueDefault, pos);
+						case OpOr: return getTypeNumericValue(e1, valueDefault, pos) | getTypeNumericValue(e2, valueDefault, pos);
+						case OpAnd: return getTypeNumericValue(e1, valueDefault, pos) & getTypeNumericValue(e2, valueDefault, pos);
+
+						default: trace('Unknown op: ${op}');
+					}
 			default:
 		}
 		return valueDefault;
@@ -432,7 +427,7 @@ class MacroTools {
 					Context.error('Type not a class ${path}', e.pos);
 					return valueDefault;
 				}
-				var cf : ClassField = TypeTools.findField(c, f, true);
+				var cf:ClassField = TypeTools.findField(c, f, true);
 				if (cf == null)
 					cf = TypeTools.findField(c, f, false);
 				if (cf != null) {
@@ -466,7 +461,7 @@ class MacroTools {
 
 						default: trace('Unknown op: ${op}');
 					}
-					Context.error('Unknown binop ${op} ${a} ${b}', Context.currentPos());
+				Context.error('Unknown binop ${op} ${a} ${b}', Context.currentPos());
 			default:
 				Context.error('Unknown expr: ${e.expr}', pos);
 		}
@@ -555,6 +550,162 @@ class MacroTools {
 		}
 		return null;
 	}
+
+	// adapted from tink macro:
+	// 	The MIT License (MIT)
+	// Copyright (c) 2013 Juraj Kirchheim
+	// Permission is hereby granted, free of charge, to any person obtaining a copy of
+	// this software and associated documentation files (the "Software"), to deal in
+	// the Software without restriction, including without limitation the rights to
+	// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+	// the Software, and to permit persons to whom the Software is furnished to do so,
+	// subject to the following conditions:
+	// The above copyright notice and this permission notice shall be included in all
+	// copies or substantial portions of the Software.
+	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+	// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+	// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+	// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+	// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+	public static function hasAccess(f:Field, a:Access) {
+		if (f.access != null)
+			for (x in f.access)
+				if (x == a)
+					return true;
+		return false;
+	}
+
+	public static function changeAccess(f:Field, add:Access, remove:Access) {
+		var i = 0;
+		if (f.access == null)
+			f.access = [];
+		while (i < f.access.length) {
+			var a = f.access[i];
+			if (a == remove) {
+				f.access.splice(i, 1);
+				if (add == null)
+					return;
+				remove = null;
+			} else {
+				i++;
+				if (a == add) {
+					add = null;
+					if (remove == null)
+						return;
+				}
+			}
+		}
+		if (add != null)
+			f.access.push(add);
+	}
+
+	public static function setAccess(f:Field,a:Access, isset:Bool) {
+		changeAccess(f,
+		  isset ? a : null, 
+		  isset ? null : a
+		);
+		return isset;
+	  }
+
+	public static function setIsPublic(f:Field, param) {
+		if (param == null) {
+			changeAccess(f, null, APublic);
+			changeAccess(f, null, APrivate);
+		} else if (param)
+			changeAccess(f, APublic, APrivate);
+		else
+			changeAccess(f, APrivate, APublic);
+		return param;
+	}
+
+	static public function getValues(m:Metadata, name:String)
+		return if (m == null) []; else [for (meta in m) if (meta.name == name) meta.params];
+
+	static public function getIdent(e:Expr)
+		return switch (e.expr) {
+			case EConst(c):
+				switch (c) {
+					case CIdent(id): id;
+					default: null;
+				}
+			default:
+				null;
+		}
+
+	static var scopes = new Array<Array<Var>>();
+
+	static function inScope<T>(a:Array<Var>, f:Void->T) {
+		scopes.push(a);
+
+		inline function leave()
+			scopes.pop();
+		try {
+			var ret = f();
+			leave();
+			return ret;
+		} catch (e:Dynamic) {
+			leave();
+			return null;
+		}
+	}
+
+	static public function scoped<T>(f:Void->T)
+		return inScope([], f);
+
+	static public function inSubScope<T>(f:Void->T, a:Array<Var>)
+		return inScope(switch scopes[scopes.length - 1] {
+			case null: a;
+			case v: v.concat(a);
+		}, f);
+
+	static public function typeof(expr:Expr, ?locals)
+		return try {
+			if (locals == null)
+				locals = scopes[scopes.length - 1];
+			if (locals != null)
+				expr = [EVars(locals).at(expr.pos), expr].toMBlock(expr.pos);
+			Context.typeof(expr);
+		} catch (e:haxe.macro.Error) {
+			null;
+		} catch (e:Dynamic) {
+			null;
+		}
+
+	static public inline function func(e:Expr, ?args:Array<FunctionArg>, ?ret:ComplexType, ?params, ?makeReturn = true):Function {
+		return {
+			args: args == null ? [] : args,
+			ret: ret,
+			params: params == null ? [] : params,
+			expr: if (makeReturn) EReturn(e).at(e.pos) else e
+		}
+	}
+
+	static public function method(name:String, ?pos, ?isPublic = true, f:Function) {
+		var f:Field = {
+			name: name,
+			pos: if (pos == null) f.expr.pos else pos,
+			kind: FFun(f)
+		};
+		setIsPublic(f, isPublic);
+		return f;
+	}
+
+	static public function addMeta(f:Field, name, ?pos, ?params):Field {
+		if (f.meta == null)
+			f.meta = [];
+		f.meta.push({
+			name: name,
+			pos: if (pos == null) f.pos else pos,
+			params: if (params == null) [] else params
+		});
+		return f;
+	}
+
+	static public function getOverrides(f:Field) return hasAccess(f, AOverride);
+	static public function setOverrides(f:Field, param) return setAccess(f, AOverride, param);
+	// end tink macro
 }
 
 class ComplexTools {
