@@ -50,7 +50,7 @@ class MacroTools {
 		};
 	}
 
-	public static function arg(name:String, type:ComplexType, ?opt = false, ?value : Expr = null):FunctionArg {
+	public static function arg(name:String, type:ComplexType, ?opt = false, ?value:Expr = null):FunctionArg {
 		return {
 			name: name,
 			type: type,
@@ -601,13 +601,10 @@ class MacroTools {
 			f.access.push(add);
 	}
 
-	public static function setAccess(f:Field,a:Access, isset:Bool) {
-		changeAccess(f,
-		  isset ? a : null, 
-		  isset ? null : a
-		);
+	public static function setAccess(f:Field, a:Access, isset:Bool) {
+		changeAccess(f, isset ? a : null, isset ? null : a);
 		return isset;
-	  }
+	}
 
 	public static function setIsPublic(f:Field, param) {
 		if (param == null) {
@@ -703,12 +700,185 @@ class MacroTools {
 		return f;
 	}
 
-	static public function getOverrides(f:Field) return hasAccess(f, AOverride);
-	static public function setOverrides(f:Field, param) return setAccess(f, AOverride, param);
-	// end tink macro
+	static public function getOverrides(f:Field)
+		return hasAccess(f, AOverride);
+
+	static public function setOverrides(f:Field, param)
+		return setAccess(f, AOverride, param);
+
+	static public inline function sanitize(pos:Position)
+		return if (pos == null) Context.currentPos(); else pos;
+
+	static public inline function at(e:ExprDef, ?pos:Position)
+		return {
+			expr: e,
+			pos: sanitize(pos)
+		};
+
+	static public function getMeta(type:Type)
+		return switch type {
+			case TInst(_.get().meta => m, _): [m];
+			case TEnum(_.get().meta => m, _): [m];
+			case TAbstract(_.get().meta => m, _): [m];
+			case TType(_.get() => t, _): [t.meta].concat(getMeta(t.type));
+			case TLazy(f): getMeta(f());
+			default: [];
+		}
+		static public function toMap(m:Metadata) {
+			var ret = new Map<String,Array<Array<Expr>>>();
+			if (m != null)
+			  for (meta in m) {
+				if (!ret.exists(meta.name))
+				  ret.set(meta.name, []);
+				ret.get(meta.name).push(meta.params);
+			  }
+			return ret;
+		  }
+		  static public function unifiesWith(from:Type, to:Type)
+			return Context.unify(from, to);
+		  static public function toString(t:ComplexType)
+			return new Printer().printComplexType(t);
+		  static public inline function toArg(name:String, ?t, ?opt = false, ?value = null):FunctionArg {
+			return {
+			  name: name,
+			  opt: opt,
+			  type: t,
+			  value: value
+			};
+		  }
+		  static public function asTypePath(s:String, ?params):TypePath {
+			var parts = s.split('.');
+			var name = parts.pop(),
+			  sub = null;
+			if (parts.length > 0 && parts[parts.length - 1].charCodeAt(0) < 0x5B) {
+			  sub = name;
+			  name = parts.pop();
+			  if(sub == name) sub = null;
+			}
+			return {
+			  name: name,
+			  pack: parts,
+			  params: params == null ? [] : params,
+			  sub: sub
+			};
+		  }
+		  static public function getInt(e:Expr)
+			return
+			  switch (e.expr) {
+				case EConst(c):
+				  switch (c) {
+					case CInt(id): Std.parseInt(id);
+					default: null;
+				  }
+				default: null;
+			  }
+			  static public inline function field(e:Expr, field, ?pos)
+				return EField(e, field).at(pos);
+			  static public inline function binOp(e1:Expr, e2, op, ?pos)
+				return EBinop(op, e1, e2).at(pos);
+			  static public inline function assign(target:Expr, value:Expr, ?op:Binop, ?pos:Position)
+				return binOp(target, value, op == null ? OpAssign : OpAssignOp(op), pos);
+			  static public inline function toExpr(v:Dynamic, ?pos:Position)
+				return Context.makeExpr(v, pos.sanitize());
 }
 
-class ComplexTools {
+abstract Member(Field) from Field to Field {
+	public var name(get, set):String;
+	public var meta(get, set):Metadata;
+	public var kind(get, set):FieldType;
+	public var pos(get, set):Position;
+	public var overrides(get, set):Bool;
+	public var isStatic(get, set):Bool;
+	public var isPublic(get, set):Null<Bool>;
+
+	
+	static public function method(name:String, ?pos, ?isPublic = true, f:Function) {
+		var f:Field = {
+		  name: name,
+		  pos: if (pos == null) f.expr.pos else pos,
+		  kind: FFun(f)
+		};
+		var ret:Member = f;
+		ret.isPublic = isPublic;
+		return ret;
+	  }
+	  inline function get_overrides() return hasAccess(AOverride);
+	  inline function set_overrides(param) return setAccess(AOverride, param);
+	  function get_isPublic() {
+		if (this.access != null)    
+		  for (a in this.access) 
+			switch a {
+			  case APublic: return true;
+			  case APrivate: return false;
+			  default:
+			}
+		return null;
+	  }
+	  
+	  function set_isPublic(param) {
+		if (param == null) {
+		  changeAccess(null, APublic);
+		  changeAccess(null, APrivate);
+		}
+		else if (param) 
+		  changeAccess(APublic, APrivate);
+		else 
+		  changeAccess(APrivate, APublic);
+		return param;
+	  }
+	  function changeAccess(add:Access, remove:Access) {
+		var i = 0;
+		if (this.access == null)
+		  this.access = [];
+		while (i < this.access.length) {
+		  var a = this.access[i];
+		  if (a == remove) {
+			this.access.splice(i, 1);
+			if (add == null) return;
+			remove = null;
+		  }
+		  else {
+			i++;
+			if (a == add) {
+			  add = null;
+			  if (remove == null) return;
+			}
+		  }
+		}
+		if (add != null)
+		  this.access.push(add);
+	  }
+	  public inline function asField():Field return this;
+	  function hasAccess(a:Access) {
+		if (this.access != null)
+		  for (x in this.access)
+			if (x == a) return true;
+		return false;
+	  }
+	
+	  function setAccess(a:Access, isset:Bool) {
+		changeAccess(
+		  isset ? a : null, 
+		  isset ? null : a
+		);
+		return isset;
+	  }
+	  inline function get_meta() return switch this.meta {
+		case null: this.meta = [];
+		case v: v;
+	  }
+	  inline function set_meta(param) return this.meta = param;
+	  inline function get_isStatic() return hasAccess(AStatic);
+	  inline function set_isStatic(param) return setAccess(AStatic, param);
+	  inline function get_pos() return this.pos;
+	  inline function set_pos(param) return this.pos = param;
+	  inline function get_kind() return this.kind;
+	  inline function set_kind(param) return this.kind = param;
+	  inline function get_name() return this.name;
+	  inline function set_name(param) return this.name = param;
+}
+	// end tink macro
+	class ComplexTools {
 	public static function modulePath(ct:ComplexType) {
 		var tp = switch (ct) {
 			case TPath(p): p;

@@ -96,6 +96,20 @@ class Extensions {
 			default: [];
 		}
 
+		public static function isSameAbstractType( a : AbstractType, b : AbstractType ) {
+			if (a == null || b == null) return false;
+			if (a == b) return true;
+
+			if (a.name != b.name) return false;
+			if (a.module != b.module) return false;
+			if (a.params.length != b.params.length) return false;
+
+			for (i in 0...a.params.length) {
+				if (a.params[i].name != b.params[i].name) return false;
+			}
+
+			return true;
+		}
 
 		public static function gatherMetaValueFromHierarchy(t:haxe.macro.Type, key:String):Array<Dynamic> {
 			var metaValue :Array<Dynamic> = null;
@@ -108,7 +122,22 @@ class Extensions {
 					}
 				case TAbstract(a, _):
 					metaValue = a.get().meta.extract( key);
-					metaValue = metaValue.concat(gatherMetaValueFromHierarchy(haxe.macro.TypeTools.followWithAbstracts(t,true), key));
+					var next = haxe.macro.TypeTools.followWithAbstracts(t,true);
+					if (next != null) {
+						switch(next){
+							case TAbstract(aa,_):
+								if (isSameAbstractType(a.get(), aa.get())) {
+									metaValue = [];
+								} else {
+									metaValue = metaValue.concat(gatherMetaValueFromHierarchy(next, key));									
+								}
+							default:
+								metaValue = metaValue.concat(gatherMetaValueFromHierarchy(next, key));
+						}
+					}
+					else {
+						metaValue = [];
+					}
 				case TEnum(en, _):
 					metaValue = en.get().meta.extract(key);
 				case _:
