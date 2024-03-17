@@ -1,6 +1,8 @@
 package ecs.core.macro;
 
 import ecs.utils.Const;
+import ecs.core.Containers;
+
 #if macro
 import ecs.core.macro.MacroTools.*;
 import haxe.macro.Type;
@@ -18,6 +20,21 @@ using ecs.core.macro.Extensions;
 
 typedef MetaMap = haxe.ds.Map<String, Array<Array<Expr>>>;
 
+function finiteStorage() : Bool {
+	#if ecs_max_entities
+	return true;
+	#else
+	return false;
+	#end
+}
+function maxEntities() : Int{
+	#if ecs_max_entities
+	return Std.parseInt(haxe.macro.Context.definedValue("ecs_max_entities"));
+	#else
+	return -1;
+	#end
+}
+
 enum abstract StorageType(Int) from Int to Int {
 	var FAST = 0; // An array the length of all entities, with non-null meaning membership
 	var COMPACT = 1; // A map from entity to members
@@ -27,18 +44,27 @@ enum abstract StorageType(Int) from Int to Int {
 	//  var GLOBAL = 4;     // Exists on every entity
 	//  var TRANSIENT = 5;  // Automatically removed every tick
 	//  var NONE = 6; 		// This class is not allowed to be used as a component
-	public static function getStorageType(mm:MetaMap) {
+	public static function getStorageType(mm:MetaMap, t : haxe.macro.Type) {
 		var storageType = StorageType.FAST;
 
 		var stma = mm.get(":storage");
 
 		if (stma != null) {
 			var stm = stma[0];
+			if (stm[0] == null) {
+				Context.warning('Storage specification on type ${t.toString()} is empty, using FAST', Context.currentPos());
+				return FAST;
+			}
 			return switch (stm[0].expr) {
 				case EConst(CIdent(s)), EConst(CString(s)):
 					switch (s.toUpperCase()) {
 						case "FAST": FAST;
-						case "COMPACT": COMPACT;
+						case "COMPACT": 
+							#if ecs_compact_is_array
+							FAST;
+							#else
+							COMPACT;
+							#end
 						case "SINGLETON": SINGLETON;
 						case "TAG": TAG;
 						default:
@@ -106,13 +132,17 @@ class StorageInfo {
 		emptyExpr = switch (rt) {
 			case TInst(t, params): macro null;
 			case TAbstract(t, params):
-				if (t.get().name == "Int") {
-					macro 0;
-				} else {
-					macro null;
+				switch(t.get().name) {
+					case "Int": macro cast 0;
+					case "Bytes": macro null;
+					default:
+						macro null;
 				}
 
-			default: macro null;
+			case TAnonymous(t):
+				macro null;
+			default: 
+				macro null;
 		}
 
 		// dervied from the meta
@@ -349,7 +379,7 @@ class StorageInfo {
 	function updateMeta(t : haxe.macro.Type) {
 		// dervied from the meta
 		followedMeta = getTypeMetaMap( t );
-		storageType = StorageType.getStorageType(followedMeta);
+		storageType = StorageType.getStorageType(followedMeta, t);
 //		trace('ECS: ${fullName} is ${structValues}');
 
 		//		isPooled = getPooled(followedMeta);
@@ -419,13 +449,21 @@ class StorageInfo {
 					}
 					case FAST:
 
+						#if ecs_max_entities
+						var existsStorage = isValueStruct ? macro new EntityVector<Bool>(Parameters.MAX_ENTITIES) : macro null;
+						#else
 						var existsStorage = isValueStruct ? macro new Array<Bool>() : macro null;
+						#end
 						var existsStorageExpr = isValueStruct ? macro (_existsStorage[id]) : macro (storage[id] != $emptyExpr);
 						var existsMarkTrueExpr = isValueStruct ? macro (_existsStorage[id] = true) : macro null;
 						var existsMarkFalseExpr = isValueStruct ? macro (_existsStorage[id] = false) : macro null;
 
 						macro class $containerTypeName {
+							#if ecs_max_entities
+							public static var storage = new ecs.core.Containers.EntityVector<$followedCT>(ecs.core.Parameters.MAX_ENTITIES);
+							#else
 							public static var storage = new Array<$followedCT>();
+							#end
 							public static var _shelved = new Map<Int,$followedCT>();
 							public static var _existsStorage = $existsStorage;
 

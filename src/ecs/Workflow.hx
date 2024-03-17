@@ -27,24 +27,28 @@ import ecs.core.ICleanableComponentContainer;
 import ecs.core.ISystem;
 import ecs.utils.FastEntitySet;
 import haxe.ds.ReadOnlyArray;
+import ecs.core.Parameters;
+import ecs.core.Containers;
 
 class Workflow {
-	#if ecs_max_flags
-	static inline final MAX_TAGS : Int = Std.parseInt(haxe.macro.Context.definedValue("ecs_max_tags"));
-	#else
-	static inline final MAX_TAGS : Int = 32;
-	#end
-	static inline final TAG_STRIDE : Int = Std.int(MAX_TAGS / 32);
+
+	static inline final TAG_STRIDE : Int = Std.int(Parameters.MAX_TAGS / 32);
 	@:allow(ecs.Entity) static inline final INVALID_ID = 0;
 
 	static var nextId = INVALID_ID + 1;
 
 	static var idPool = new Array<Int>();
 
+	//Per entity
+	#if ecs_max_entities
+	static var statuses = new EntityVector<Status>(Parameters.MAX_ENTITIES);
+	static var tags = new EntityVector<Int>(Parameters.MAX_ENTITIES * TAG_STRIDE);
+	static var worldFlags = new EntityVector<Int>(Parameters.MAX_ENTITIES);
+	#else
 	static var statuses = new Array<Status>();
 	static var tags = new Array<Int>();
-
 	static var worldFlags = new Array<Int>();
+	#end
 
 	// all of every defined component container
 	#if ecs_legacy_containers
@@ -168,9 +172,11 @@ class Workflow {
 
 		// [RC] why splice and not resize?
 		idPool.resize(0);
+		#if !ecs_max_entities
 		statuses.resize(0);
 		worldFlags.resize(0);
 		tags.resize(0);
+		#end
 
 		nextId = INVALID_ID + 1;
 	}
@@ -216,6 +222,12 @@ class Workflow {
 		if (id == null) {
 			id = nextId++;
 		}
+
+		#if ecs_max_entities
+		if (id >= Parameters.MAX_ENTITIES) {
+			throw 'Maximum number of entities reached';
+		}
+		#end
 
 		if (immediate) {
 			statuses[id] = Active;
