@@ -116,7 +116,6 @@ class StorageInfo {
 	}
 
 	public function new(ct:ComplexType, i:Int, pos) {
-		//trace ('Generating storage for ${ct.toString()}');
 		// derived from parameters
 		givenCT = ct;
 		followedCT = ct.followComplexType(pos);
@@ -235,9 +234,13 @@ class StorageInfo {
 			return  clearTagExpr(entityVarExpr);
 		}
 
-		var retireExprs = getRetireExpr(entityVarExpr);
-
-		return storageRemovePreambleExpr(entityVarExpr, retireExprs);
+		try {
+			var retireExprs = getRetireExpr(entityVarExpr);
+			return storageRemovePreambleExpr(entityVarExpr, retireExprs);
+		} catch (e) {
+			Context.fatalError('Error getting retire expr for ${entityVarExpr}', Context.currentPos());
+		}
+		return null;
 	}
 
 	public function getRetireExpr(entityVarExpr:Expr):Array<Expr> {
@@ -354,11 +357,17 @@ class StorageInfo {
 					if (x != null) {
 						fc = x.get();
 					} else {
-						Context.warning('abstract not implemented ${at} ${followedCT.toString()}', Context.currentPos());
+						Context.fatalError('abstract not implemented ${at} ${followedCT.toString()}', Context.currentPos());
 					}
 				default:
-					Context.warning('Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
+					Context.fatalError('Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
 			}
+		}
+		catch(s : String) {
+			Context.fatalError('String Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
+		}
+		catch(d : Dynamic) {
+			Context.fatalError('Dynamic Couldn\'t find class ${followedCT.toString()}', Context.currentPos());
 		}
 		return fc;
 	}
@@ -393,7 +402,11 @@ class StorageInfo {
 
 	function updateContainer() {
 		var tp = (switch (storageType) {
+			#if ecs_max_entities
+			case FAST: tpath(["ecs", "core"], "EntityVector", [TPType(followedCT)]);
+			#else
 			case FAST: tpath([], "Array", [TPType(followedCT)]);
+			#end
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
 			case TAG: followedCT.toString().asTypePath();
 			case SINGLETON: followedCT.toString().asTypePath();
@@ -448,7 +461,6 @@ class StorageInfo {
 						}
 					}
 					case FAST:
-
 						#if ecs_max_entities
 						var existsStorage = isValueStruct ? macro new EntityVector<Bool>(Parameters.MAX_ENTITIES) : macro null;
 						#else
@@ -528,7 +540,6 @@ class StorageInfo {
 					}
 				}
 
-
 				//trace(_printer.printTypeDefinition(def));
 				def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
 			}
@@ -537,6 +548,7 @@ class StorageInfo {
 				containerType = containerCT.toTypeOrNull(Context.currentPos());
 			}
 		} else {
+			Context.fatalError('Could not find storage type for ${followedCT.toString()}', Context.currentPos());
 			containerCT = null;
 			containerTypeName = null;
 			containerFullName = null;
@@ -577,6 +589,9 @@ class ComponentBuilder {
 	}
 
 	public static function getComponentContainerInfo(componentComplexType:ComplexType, pos):StorageInfo {
+		if (componentComplexType == null) {
+			Context.fatalError('componentComplexType type is null', pos);
+		}
 		var name = componentComplexType.followName(pos);
 
 		var info = currentComponentContainerTypeCache.get(name);
@@ -591,10 +606,15 @@ class ComponentBuilder {
 			#end
 			info.update();
 			currentComponentContainerTypeCache.set(name, info);
+			trace('Re-using type ${name}');
 			return info;
 		}
 
-		info = new StorageInfo(componentComplexType, ++componentIndex, pos);
+		try {
+			info = new StorageInfo(componentComplexType, ++componentIndex, pos);
+		} catch(e ) {
+			Context.fatalError('Error generating storage info for ${name}', pos);
+		}
 		componentContainerTypeCache[name] = info;
 		currentComponentContainerTypeCache.set(name, info);
 

@@ -188,13 +188,17 @@ class MacroTools {
 	public static function followComplexType(ct:ComplexType, pos):ComplexType {
 		var x = toTypeOrNull(ct, true, pos);
 		if (x == null) {
-			Context.error('Could not find type: ${ct.toString()}', pos);
+			Context.fatalError('Could not find type: ${ct.toString()}', pos);
 		}
 		return x.toComplexType();
 	}
 
 	public static function followName(ct:ComplexType, pos):String {
-		return new Printer().printComplexType(followComplexType(ct, pos));
+		var x = followComplexType(ct, pos);
+		if (x == null) {
+			Context.fatalError('Could not follow type: ${ct.toString()}', pos);
+		}
+		return new Printer().printComplexType(x);
 	}
 
 	public static function parseClassName(e:Expr) {
