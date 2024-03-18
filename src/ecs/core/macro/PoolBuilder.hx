@@ -46,7 +46,6 @@ class PoolBuilder {
 				var it = i.t.get();
 				if (it.name == "IPoolable") {
 					poolRoot = true;
-					trace('Pool root found on ${classType.name}');
 					break;
 				}
 			}
@@ -59,7 +58,6 @@ class PoolBuilder {
 						var it = i.t.get();
 						if (it.name == "IPoolable") {
 							poolRoot = false;
-							trace('Parent Pool root found on ${st.name} ${classType.name}');
 							break;
 						}
 					}
