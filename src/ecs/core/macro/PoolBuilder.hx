@@ -61,7 +61,7 @@ class PoolBuilder {
 							break;
 						}
 					}
-					if (poolRoot) {
+					if (!poolRoot) {
 						break;
 					}
 					sc = st.superClass;
