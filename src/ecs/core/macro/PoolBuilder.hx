@@ -20,6 +20,7 @@ class PoolBuilder {
 	static var _printer:Printer = new Printer();
 
 	// Sorry this is brutally messy, it took a while to work through the edge cases
+	// USE THE IPoolable interface please
 	public static function arrayPool() {
 		var fields = Context.getBuildFields();
 		var lt = Context.getLocalType().follow();
@@ -34,6 +35,40 @@ class PoolBuilder {
 					default:
 				}
 			default:
+		}
+
+		// check to see if this is the start of the pool implementation
+		var classTypeRef = Context.getLocalClass();
+		var poolRoot = false;
+		if (classTypeRef != null) {
+			var classType = classTypeRef.get();
+			for (i in classType.interfaces) {
+				var it = i.t.get();
+				if (it.name == "IPoolable") {
+					poolRoot = true;
+					trace('Pool root found on ${classType.name}');
+					break;
+				}
+			}
+			if (!poolRoot) {
+				poolRoot = true;
+				var sc = classType.superClass;
+				while (sc != null) {
+					var st = sc.t.get();
+					for (i in st.interfaces) {
+						var it = i.t.get();
+						if (it.name == "IPoolable") {
+							poolRoot = false;
+							trace('Parent Pool root found on ${st.name} ${classType.name}');
+							break;
+						}
+					}
+					if (poolRoot) {
+						break;
+					}
+					sc = st.superClass;
+				}
+			}
 		}
 
 		// Create pool static var
@@ -63,7 +98,8 @@ class PoolBuilder {
 				return x;
 			}
 
-			fields.push(ffun(null, [APublic, AStatic, AInline], "rent", null, ct, allocBody, Context.currentPos()));
+			var access = [APublic, AStatic, AInline];
+			fields.push(ffun(null, access, "rent", null, ct, allocBody, Context.currentPos()));
 		}
 
 		// Retire
@@ -74,7 +110,11 @@ class PoolBuilder {
 				default: null;				
 			}).filter((x)-> x != null);
 			retireCalls.push(macro __pool.push(this));
-			fields.push(ffun(null, [APublic, AInline], "retire", [], null, macro $b{retireCalls}, Context.currentPos()));
+			var access = [APublic];
+			if (!poolRoot) {
+				access.push(AOverride);
+			}
+			fields.push(ffun(null, access, "retire", [], null, macro $b{retireCalls}, Context.currentPos()));
 		}
 
 		/*
