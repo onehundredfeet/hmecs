@@ -1,10 +1,31 @@
-package;
+package test;
 
 @:storage(FAST)
 class X {
     public var a : Float;
-    public function new() { };
+    public inline function new() { };
+   
 }
+
+@:storage(FLAT)
+class F {
+    public var a : Float = 0.0;
+    public inline function new() { };
+    public inline function copy( from : F ) {
+        this.a = from.a;
+    }
+}
+
+@:storage(FLAT)
+@:struct
+class FS {
+    public var a : Float= 0.0;
+    public inline function new() { };
+    public inline function copy( from : FS ) {
+        this.a = from.a;
+    }
+}
+
 
 @:storage(COMPACT)
 class Y {

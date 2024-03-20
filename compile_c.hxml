@@ -1,8 +1,8 @@
 --library buddy
 --class-path src
---class-path test
--hl bin/test.hl
---main test.Test
+--class-path .
 -D ecs_max_tags=64
 -D ecs_max_entities=512
+-hl bin/test/test.c
+--main test.Test
 -D hl_ver=1.14.0

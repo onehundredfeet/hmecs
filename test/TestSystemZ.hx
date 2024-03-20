@@ -1,6 +1,6 @@
-package;
+package test;
 
-import TestComponents;
+import test.TestComponents;
 
 
 class TestSystemZ extends ecs.System {

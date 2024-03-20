@@ -1,6 +1,6 @@
-package;
+package test;
 
-import TestComponents;
+import test.TestComponents;
 
 class TestSystemA extends ecs.System {
     @:not(Y)
@@ -9,6 +9,10 @@ class TestSystemA extends ecs.System {
     var xz:View<X,Z>;
     var xy:View<X,Y,Z>;
 
+    @:added
+    function addedF(f : F) {
+        trace("Added TestSystemA F");
+    }
 
     @:added
     function added(ix:X, e:ecs.Entity) {

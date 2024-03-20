@@ -8,7 +8,12 @@ import ecs.core.macro.MacroTools.*;
 import haxe.macro.Type;
 import haxe.macro.Printer;
 import haxe.macro.Expr;
+#if (haxe_ver >= 5.0)
+import haxe.macro.Compiler;
+#else
 import haxe.display.Display;
+#end
+
 using ecs.core.macro.MacroTools;
 using Lambda;
 
@@ -40,7 +45,8 @@ enum abstract StorageType(Int) from Int to Int {
 	var COMPACT = 1; // A map from entity to members
 	var SINGLETON = 2; // A single reference with a known entity owner
 	var TAG = 3; // An bitfield the length of all entities, with ON | OFF meaning membership
-
+	var FLAT = 4; // A pre-allocated array with values for all entities
+	
 	//  var GLOBAL = 4;     // Exists on every entity
 	//  var TRANSIENT = 5;  // Automatically removed every tick
 	//  var NONE = 6; 		// This class is not allowed to be used as a component
@@ -67,6 +73,12 @@ enum abstract StorageType(Int) from Int to Int {
 							#end
 						case "SINGLETON": SINGLETON;
 						case "TAG": TAG;
+						case "FLAT": 
+							#if ecs_max_entities
+							FLAT;
+							#else
+							FAST;
+							#end
 						default:
 							Context.warning('Unknown storage type ${s}', Context.currentPos());
 							FAST;
@@ -169,6 +181,7 @@ class StorageInfo {
 	public function getGetExprCached(entityExpr:Expr, cachedVarName:String):Expr {
 		return switch (storageType) {
 			case FAST: macro $i{cachedVarName}[$entityExpr];
+			case FLAT: macro $i{cachedVarName}[$entityExpr];
 			case COMPACT: macro $i{cachedVarName}.get($entityExpr);
 			case SINGLETON: macro $i{cachedVarName};
 			case TAG: macro @:privateAccess $i{cachedVarName};
@@ -178,6 +191,7 @@ class StorageInfo {
 	public function getGetExpr(entityExpr:Expr, sure:Bool = false):Expr {
 		return switch (storageType) {
 			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
+			case FLAT: macro $containerFullNameExpr.storage[$entityExpr];
 			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
 			case SINGLETON: macro $containerFullNameExpr.storage;
 			case TAG: var te = tagExpr();	
@@ -189,6 +203,8 @@ class StorageInfo {
 
 	public function getExistsExpr(entityVar:Expr):Expr {
 		return switch (storageType) {
+			case FLAT: 
+				macro $containerFullNameExpr._existsStorage[$entityVar];
 			case FAST: 
 				isValueStruct ? 
 			macro $containerFullNameExpr._existsStorage[$entityVar]
@@ -208,6 +224,11 @@ class StorageInfo {
 
 	public function getAddExpr(entityVarExpr:Expr, componentExpr:Expr):Expr {
 		return switch (storageType) {
+			case FLAT: 
+				macro {
+					$containerFullNameExpr.storage[$entityVarExpr].copy($componentExpr);
+					$containerFullNameExpr._existsStorage[$entityVarExpr] = true;
+				}
 			case FAST: 
 				isValueStruct ? 
 				macro {
@@ -245,6 +266,7 @@ class StorageInfo {
 
 	public function getRetireExpr(entityVarExpr:Expr):Array<Expr> {
 		var accessExpr = switch (storageType) {
+			case FLAT: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
 			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
 			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.get($entityVarExpr);
 			case SINGLETON: macro($containerFullNameExpr.owner == $entityVarExpr ? $containerFullNameExpr.storage : null);
@@ -298,7 +320,7 @@ class StorageInfo {
 	
 	function storageRemoveExpr(entityVarExpr:Expr):Expr {
 		return switch (storageType) {
-			case FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.remove($entityVarExpr);
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.remove($entityVarExpr);
 			case TAG: clearTagExpr(entityVarExpr);
 		}
 		/*
@@ -324,7 +346,7 @@ class StorageInfo {
 
 	public function getShelveExpr(entityVarExpr:Expr, pos:Position):Expr {
 		var shelfCall = switch (storageType) {
-			case FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.shelve($entityVarExpr);
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.shelve($entityVarExpr);
 			case TAG: Context.fatalError("Cannot shelve a tag",pos);
 		}
 
@@ -334,7 +356,7 @@ class StorageInfo {
 
 	public function getUnshelveExpr(entityVarExpr:Expr, pos:Position):Expr {
 		return switch (storageType) {
-			case FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.unshelve($entityVarExpr);
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.unshelve($entityVarExpr);
 			case TAG: Context.fatalError("Cannot unshelve a tag",pos);
 		}
 	}
@@ -395,18 +417,35 @@ class StorageInfo {
 		isPooled = false;
 		isImmutable = followedMeta.exists(":immutable");
 		var structValues = t.gatherMetaValueFromHierarchy(":struct");
-		var platform = haxe.macro.Compiler.getConfiguration().platform;
+		var platform= haxe.macro.Compiler.getConfiguration().platform;
+		
+		#if (haxe_ver >= 5.0)
+		var isStructPlatform = platform == Platform.Cpp;
+		#else
 		var isStructPlatform = platform == Platform.Cs || platform == Platform.Cpp;
+		#end
 		isValueStruct = isStructPlatform && structValues.length > 0;
 	}
 
 	function updateContainer() {
+		#if (hl_ver >= version("1.14.0"))
+		var platform = haxe.macro.Compiler.getConfiguration().platform;
+		var isHL = platform == Platform.Hl;
+		#end
 		var tp = (switch (storageType) {
 			#if ecs_max_entities
 			case FAST: tpath(["ecs", "core"], "EntityVector", [TPType(followedCT)]);
 			#else
 			case FAST: tpath([], "Array", [TPType(followedCT)]);
 			#end
+			case FLAT:
+				#if (hl_ver >= version("1.14.0"))
+				if (!isHL)
+					throw "Flat is unsupported outside HL";
+				tpath(["hl"], "CArray", [TPType(followedCT)]);
+				#else
+				throw "Flat is unsupported outside HL 1.14+";
+				#end
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
 			case TAG: followedCT.toString().asTypePath();
 			case SINGLETON: followedCT.toString().asTypePath();
@@ -460,9 +499,55 @@ class StorageInfo {
 							owner = 0;
 						}
 					}
+					case FLAT:
+						var existsMarkTrueExpr =  macro (_existsStorage[id] = true);
+						var existsMarkFalseExpr =  macro (_existsStorage[id] = false) ;
+
+						// var x = macro var x : Class<Bool>;
+						// switch(x.expr) {
+						// 	case EVars(vars):
+						// 		for (v in vars) {
+						// 			trace(v.name);
+						// 			trace(v.type);
+						// 		}
+						// 	default:
+						// }
+						var x = name.split(".");
+
+						macro class $containerTypeName {
+							public static var storage = hl.CArray.alloc($p{x}, ecs.core.Parameters.MAX_ENTITIES);
+							public static var _shelved = new Map<Int,$followedCT>();
+							public static var _existsStorage = new ecs.core.Containers.EntityVector<Bool>(ecs.core.Parameters.MAX_ENTITIES) ;
+
+							public inline function exists(id:Int)  {
+								return _existsStorage[id];
+							}
+							public inline static function shelved(id:Int) {
+								return _shelved.exists(id);
+							}
+							public inline static function shelve(id:Int) {
+								_shelved.set(id, storage[id]);
+								$existsMarkFalseExpr;
+							}
+							public inline static function unshelve(id:Int) : $followedCT{
+								var x = _shelved.get(id);
+								storage[id].copy(x);
+								_shelved.remove(id);
+								$existsMarkTrueExpr;
+								return x;
+							}
+							public inline static function remove(id) {
+								$existsMarkFalseExpr;
+							}
+							public inline static function add(id, item : $followedCT) {
+								// need to do a memberwise copy
+								storage[id].copy(item);
+								$existsMarkTrueExpr;
+							}
+						}
 					case FAST:
 						#if ecs_max_entities
-						var existsStorage = isValueStruct ? macro new EntityVector<Bool>(Parameters.MAX_ENTITIES) : macro null;
+						var existsStorage = isValueStruct ? macro new ecs.core.Containers.EntityVector<Bool>(ecs.core.Parameters.MAX_ENTITIES) : macro null;
 						#else
 						var existsStorage = isValueStruct ? macro new Array<Bool>() : macro null;
 						#end
@@ -613,7 +698,7 @@ class ComponentBuilder {
 		try {
 			info = new StorageInfo(componentComplexType, ++componentIndex, pos);
 		} catch(e ) {
-			Context.fatalError('Error generating storage info for ${name}', pos);
+			Context.fatalError('Error generating storage info for ${name} : ${e}', pos);
 		}
 		componentContainerTypeCache[name] = info;
 		currentComponentContainerTypeCache.set(name, info);

@@ -153,8 +153,7 @@ enum EnumComponent {
     E2(value:Int);
 }
 
-@:enum
-abstract EnumAbstractComponent(Null<Int>) from Null<Int> to Null<Int> {
+enum abstract EnumAbstractComponent(Null<Int>) from Null<Int> to Null<Int> {
     var EA1 = 1;
     var EA2 = 2;
 }

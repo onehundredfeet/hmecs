@@ -1,14 +1,14 @@
-package;
+package test;
 
 import ecs.core.macro.Global;
 import ecs.Workflow;
 import ecs.View;
 import ecs.Entity;
-import TestComponents;
-import TestWorlds;
-import TestSystemY;
-import TestSystemZ;
-import TestSystemA;
+import test.TestComponents;
+import test.TestWorlds;
+import test.TestSystemY;
+import test.TestSystemZ;
+import test.TestSystemA;
 
 
 class Test {
@@ -28,11 +28,13 @@ class Test {
   
         var e = new Entity();
         var e2 = new Entity();
-        e.add( new K() );
-        
+//        e.add( new K() );
+        e.add( new F() );
+        e.add( new FS() );
         e.remove( K );
 
         var xxx = new X();
+        var fff = new F();
                 
 //        e.add( TagA.VALID );
 //        e.add( TagB.VALID );

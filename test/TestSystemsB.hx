@@ -1,6 +1,6 @@
-package;
+package test;
 
-import TestComponents;
+import test.TestComponents;
 
 class TestSystemsB extends ecs.System {
 //    @:not(Y)
