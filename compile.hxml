@@ -4,5 +4,5 @@
 -hl bin/test.hl
 --main test.Test
 -D ecs_max_tags=64
--D ecs_max_entities=512
--D hl_ver=1.14.0
+#-D ecs_max_entities=512
+#-D hl_ver=1.14.0
