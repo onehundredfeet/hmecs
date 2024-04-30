@@ -44,10 +44,12 @@ class Workflow {
 	static var statuses = new EntityVector<Status>(Parameters.MAX_ENTITIES);
 	static var tags = new EntityVector<Int>(Parameters.MAX_ENTITIES * TAG_STRIDE);
 	static var worldFlags = new EntityVector<Int>(Parameters.MAX_ENTITIES);
+	static var _generations = new EntityVector<Int>(Parameters.MAX_ENTITIES);
 	#else
 	static var statuses = new Array<Status>();
 	static var tags = new Array<Int>();
 	static var worldFlags = new Array<Int>();
+	static var _generations = new Array<Int>();
 	#end
 
 	// all of every defined component container
@@ -221,6 +223,9 @@ class Workflow {
 
 		if (id == null) {
 			id = nextId++;
+			_generations[id] = 0;
+		} else {
+			_generations[id]++;
 		}
 
 		#if ecs_max_entities
@@ -518,5 +523,9 @@ class Workflow {
 		#end
 
 		return ret.substr(0, ret.length - 1);
+	}
+
+	public inline static function getGeneration(id:Int):Int {
+		return _generations[id];
 	}
 }

@@ -8,9 +8,7 @@ using ecs.core.macro.ViewsOfComponentBuilder;
 using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
-
 using StringTools;
-
 #end
 
 /**
@@ -105,6 +103,16 @@ abstract Entity(Int) from Int to Int {
 		Workflow.cache(this);
 	}
 
+	public var generation(get, never):Int;
+
+	inline function get_generation() {
+		return Workflow.getGeneration(this);
+	}
+
+	public function toSafe():EntityRef {
+		return haxe.Int64.make(this, Workflow.getGeneration(this));
+	}
+
 	/**
 	 * Returns list of all associated to this entity components.  
 	 * @return String
@@ -114,7 +122,7 @@ abstract Entity(Int) from Int to Int {
 	}
 
 	#if macro
-	static function getComponentContainerInfo(c: haxe.macro.Expr, pos:haxe.macro.Expr.Position) {
+	static function getComponentContainerInfo(c:haxe.macro.Expr, pos:haxe.macro.Expr.Position) {
 		var to = c.typeof();
 		if (to == null) {
 			Context.fatalError('Can not find type for ${c} ', pos);
@@ -133,8 +141,8 @@ abstract Entity(Int) from Int to Int {
 					// Typedef
 					(type.follow().toComplexType()).getComponentContainerInfo(pos);
 				}
-			// class is specified instead of an expression					
-			default: 
+			// class is specified instead of an expression
+			default:
 				(type.follow().toComplexType()).getComponentContainerInfo(pos);
 		}
 	}
@@ -175,7 +183,9 @@ abstract Entity(Int) from Int to Int {
 	}
 
 	#if macro
-	static function ecsActionByClass(self : Expr, types:Array<ExprOf<Class<Any>>>, pos : Position, storageAction: (info: StorageInfo, entityExpr:Expr, pos:Position) -> Expr, viewAction:(viewExpr: Expr, entityExpr:Expr, pos:Position)->Expr):ExprOf<ecs.Entity> {
+	static function ecsActionByClass(self:Expr, types:Array<ExprOf<Class<Any>>>, pos:Position,
+			storageAction:(info:StorageInfo, entityExpr:Expr, pos:Position) -> Expr,
+			viewAction:(viewExpr:Expr, entityExpr:Expr, pos:Position) -> Expr):ExprOf<ecs.Entity> {
 		var errorStage = "";
 		if (types.length == 0) {
 			Context.error('Required one or more Component Types', pos);
@@ -191,7 +201,6 @@ abstract Entity(Int) from Int to Int {
 			return storageAction(info, macro __entity__, pos);
 		});
 		errorStage = "got action expression";
-
 
 		var viewActionExpr = cts.map(function(ct) {
 			return ct.getViewsOfComponent(pos).followName(pos);
@@ -211,11 +220,11 @@ abstract Entity(Int) from Int to Int {
 		].flatten();
 
 		/*
-		var body = [].concat([
-			macro if (__entity__.isActive())
-				$b{removeEntityFromRelatedViewsExprs}
-		]).concat(removeComponentsFromContainersExprs).concat([macro return __entity__]);
-*/
+			var body = [].concat([
+				macro if (__entity__.isActive())
+					$b{removeEntityFromRelatedViewsExprs}
+			]).concat(removeComponentsFromContainersExprs).concat([macro return __entity__]);
+		 */
 		errorStage = "made body";
 
 		var ret = macro inline(function(__entity__:ecs.Entity) $b{body})($self);
@@ -225,46 +234,45 @@ abstract Entity(Int) from Int to Int {
 		return ret;
 	}
 	#end
-	
+
 	//
 	// By class functions
 	//
+
 	/**
 	 * Removes a component from this entity with specified type  
 	 * @param types comma separated `Class<Any>` types of components that should be removed
 	 * @return `Entity`
 	 */
-	 macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var storageAction = (info: StorageInfo, entityExpr:Expr, pos:Position) -> {
+	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
 			return info.getRemoveExpr(entityExpr);
 		}
-		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
-			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
-		}
-		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
-	 }
-
-	 macro public function shelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var storageAction = (info: StorageInfo, entityExpr:Expr, pos:Position) -> {
-			return info.getShelveExpr(entityExpr,pos);
-		}
-		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
+		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
 			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
 		}
 		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
 	}
-	
+
+	macro public function shelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getShelveExpr(entityExpr, pos);
+		}
+		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
+		}
+		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
+	}
 
 	macro public function unshelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var storageAction = (info: StorageInfo, entityExpr:Expr, pos:Position) -> {
-			return info.getUnshelveExpr(entityExpr,pos);
+		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getUnshelveExpr(entityExpr, pos);
 		}
-		var viewAction = (viewExpr: Expr, entityExpr:Expr, pos:Position) -> {
+		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
 			return macro @:privateAccess ${viewExpr}.addIfMatched($entityExpr);
 		}
 		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
 	}
-
 
 	#if the_old_way_is_better
 	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
@@ -391,4 +399,137 @@ enum abstract Status(Int) {
 	@:op(A > B) static function gt(a:Status, b:Status):Bool;
 
 	@:op(A < B) static function lt(a:Status, b:Status):Bool;
+}
+
+abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
+	public static var INVALID_ENTITY(get, never):EntityRef;
+
+	inline static function get_INVALID_ENTITY() {
+		return haxe.Int64.make(Entity.INVALID_ENTITY, 0);
+	}
+
+	public var entity(get, never):Entity;
+
+	inline function get_entity() {
+		return this.high;
+	}
+
+	public var generation(get, never):Int;
+
+	inline function get_generation() {
+		return this.low;
+	}
+
+	public inline function isValid():Bool {
+		return entity.isValid() && generation == entity.generation;
+	}
+
+	// Assumes that the entity is valid
+	public inline function isFresh():Bool {
+		return generation == entity.generation;
+	}
+
+	public inline function isStale():Bool {
+		return generation != entity.generation;
+	}
+
+	public inline function entityIsValid():Bool {
+		return entity.isValid();
+	}
+
+	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
+
+		var indirectExpr = macro $self.entity;
+
+		return info.getGetExpr(indirectExpr);
+	}
+
+	macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
+
+		var indirectExpr = macro $self.entity;
+		return info.getExistsExpr(indirectExpr);
+	}
+
+	macro public function exists(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
+		var indirectExpr = macro $self.entity;
+
+		return info.getExistsExpr(indirectExpr);
+	}
+
+	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getRemoveExpr(entityExpr);
+		}
+		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
+		}
+		var indirectExpr = macro $self.entity;
+
+		return @:privateAccess Entity.ecsActionByClass(indirectExpr, types, Context.currentPos(), storageAction, viewAction);
+	}
+
+	@:to
+	public inline function toEntity():Entity {
+		return entity;
+	}
+
+	macro public function add(self:Expr, components:Array<Expr>):ExprOf<ecs.Entity> {
+		var pos = Context.currentPos();
+
+		if (components.length == 0) {
+			Context.error('Required one or more Components', pos);
+		}
+
+		var addComponentsToContainersExprs = components.map(function(c) {
+			var info = @:privateAccess Entity.getComponentContainerInfo(c, pos);
+
+			return info.getAddExpr(macro __entity__, c);
+		});
+
+		var body = [].concat(addComponentsToContainersExprs).concat([
+			macro if (__entity__.isActive()) {
+				for (v in ecs.Workflow.views) {
+					@:privateAccess v.addIfMatched(__entity__);
+				}
+			}
+		]).concat([macro return __entity__]);
+
+		var indirectExpr = macro $self.entity;
+
+		var ret = macro  inline (function(__entity__:ecs.Entity) $b{body})($indirectExpr);
+
+		return ret;
+	}
+
+	macro public function shelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getShelveExpr(entityExpr, pos);
+		}
+		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
+		}
+		var indirectExpr = macro $self.entity;
+		return @:privateAccess Entity.ecsActionByClass(indirectExpr, types, Context.currentPos(), storageAction, viewAction);
+	}
+
+	macro public function unshelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
+		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getUnshelveExpr(entityExpr, pos);
+		}
+		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
+			return macro @:privateAccess ${viewExpr}.addIfMatched($entityExpr);
+		}
+		var indirectExpr = macro $self.entity;
+		return @:privateAccess Entity.ecsActionByClass(indirectExpr, types, Context.currentPos(), storageAction, viewAction);
+	}
+
+	public inline function isActive():Bool {
+		return Workflow.status(entity) == Active;
+	}
 }
