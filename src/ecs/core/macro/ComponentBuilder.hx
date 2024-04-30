@@ -145,8 +145,10 @@ class StorageInfo {
 			case TAbstract(t, params):
 				switch(t.get().name) {
 					case "Int": macro cast 0;
+					case "I64" : macro haxe.Int64.make(0,0);
 					case "Bytes": macro null;
 					default:
+						trace('Unknown abstract ${t.get().name}');
 						macro null;
 				}
 
@@ -691,7 +693,7 @@ class ComponentBuilder {
 			#end
 			info.update();
 			currentComponentContainerTypeCache.set(name, info);
-			trace('Re-using type ${name}');
+//			trace('Re-using type ${name}');
 			return info;
 		}
 
