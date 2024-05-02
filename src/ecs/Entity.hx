@@ -437,6 +437,11 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 		return entity.isValid();
 	}
 
+	public var entitySafe(get,never):Entity;
+	inline function get_entitySafe() {
+		return (generation == entity.generation) ? entity : Entity.INVALID_ENTITY;
+	}
+
 	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
 		var pos = Context.currentPos();
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
