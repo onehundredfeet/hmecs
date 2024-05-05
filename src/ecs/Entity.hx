@@ -9,6 +9,9 @@ using ecs.core.macro.MacroTools;
 using haxe.macro.Context;
 using Lambda;
 using StringTools;
+#else
+
+import haxe.CallStack;
 #end
 
 /**
@@ -106,11 +109,15 @@ abstract Entity(Int) from Int to Int {
 	public var generation(get, never):Int;
 
 	inline function get_generation() {
-		return Workflow.getGeneration(this);
+		return  Workflow.getGeneration(this);
 	}
 
 	public function toSafe():EntityRef {
-		return haxe.Int64.make(this, Workflow.getGeneration(this));
+		if (this == INVALID_ENTITY) {
+			throw('Getting safe reference from invalid entity');
+		}
+		var gen = Workflow.getGeneration(this);
+		return haxe.Int64.make(this, gen);
 	}
 
 	/**
@@ -388,6 +395,12 @@ abstract Entity(Int) from Int to Int {
 
 		return info.getExistsExpr(self);
 	}
+
+	@:keep
+    public function toString() {
+		var g = Workflow.getGeneration(this);
+        return 'Entity(id:${this}, gen:${g})';
+    }
 }
 
 enum abstract Status(Int) {
@@ -439,7 +452,12 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 
 	public var entitySafe(get,never):Entity;
 	inline function get_entitySafe() {
-		return (generation == entity.generation) ? entity : Entity.INVALID_ENTITY;
+		var my_generation = this.low;
+		var stored_generation = entity.generation;
+		var same_generation = my_generation == stored_generation;
+		var e = this.high;
+
+		return same_generation  ? e : Entity.INVALID_ENTITY;
 	}
 
 	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
@@ -537,4 +555,9 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 	public inline function isActive():Bool {
 		return Workflow.status(entity) == Active;
 	}
+
+	@:keep
+    public function toString() {
+        return 'EntityRef(id:${entity}, generation:${generation})';
+    }
 }
