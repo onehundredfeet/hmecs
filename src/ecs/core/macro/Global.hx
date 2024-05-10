@@ -40,12 +40,37 @@ class Global {
 			removeExprs.push(info.getRemoveExpr(macro e));
 		}
  
-		var exists = infos.map( (x) -> {
+		var listComponentsExists = infos.map( (x) -> {
 			var testExpr = x.getExistsExpr(macro e );
 			var name = EConst(CString(x.name)).at();
 
 			return macro if ($testExpr) componentNames.push( $name );
 		});
+
+		var toStringComponents = infos.map( (x) -> {
+			var testExpr = x.getExistsExpr(macro e );
+			var name = EConst(CString(x.name)).at();
+			var getExpr = x.getGetExpr(macro e );
+
+			return macro if ($testExpr) strings.push( Std.string($getExpr) );
+		});
+
+		var toStringByComponentCases = infos.map( (x) -> {
+			var getExpr = x.getGetExpr(macro e);
+			var getStr = macro Std.string($getExpr);
+
+			var name = EConst(CString(x.name)).at();
+			var c : Case = {
+				values:[name],
+				expr: getStr
+			};
+			return c;
+		});
+		var toStringByComponentSwitch = 
+			ESwitch(macro name, toStringByComponentCases, macro null).at();
+
+
+		
 
 		var lateClass = macro class LateCalls  {
 			public static function removeAllComponents(e:ecs.Entity) {
@@ -54,7 +79,7 @@ class Global {
 
 			public static function listComponents( e:ecs.Entity ) {
 				var componentNames = new Array<String>();
-				$b{exists}
+				$b{listComponentsExists}
 				return componentNames;
 			}
 			public static function numComponentTypes() {
@@ -68,16 +93,26 @@ class Global {
 			public function getRemoveFunc():(ecs.Entity) -> Void {
 				return removeAllComponents;
 			}
+
+			public static function componentsToStrings(e:ecs.Entity) : Array<String> {
+				var strings = [];
+
+				$b{toStringComponents}
+				return strings;
+			}
+
+			public static function componentNameToString(e:ecs.Entity, name : String) : String {
+				return $toStringByComponentSwitch;
+			}
 		};
 
-		// var p = new Printer();
-		// trace ('${p.printTypeDefinition(lateClass)}');
+		//var p = new Printer();
+		//trace ('${p.printTypeDefinition(lateClass)}');
 
 		lateClass.meta.push({name: ":keep", pos: Context.currentPos()});
 		return lateClass;
 	}
 
-	
 	#end
 
 	public macro static function setup():Expr {
@@ -91,7 +126,8 @@ class Global {
 			@:privateAccess Workflow.numComponentTypes = ecs.LateCalls.numComponentTypes;
 			@:privateAccess Workflow.componentNames = ecs.LateCalls.getComponentNames;
 			@:privateAccess Workflow.entityComponentNames = ecs.LateCalls.listComponents;
-			
+			@:privateAccess Workflow.componentsToStrings = ecs.LateCalls.componentsToStrings;
+			@:privateAccess Workflow.componentNameToString = ecs.LateCalls.componentNameToString;
 		}
 		return x;
 	}

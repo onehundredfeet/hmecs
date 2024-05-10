@@ -481,6 +481,12 @@ class Workflow {
 	public static dynamic function entityComponentNames(e : ecs.Entity) : Array<String> {
 		return [];
 	}
+	public static dynamic function componentsToStrings(e : ecs.Entity) : Array<String> {
+		return [];
+	}
+	public static dynamic function componentNameToString(e : ecs.Entity, name : String) : String {
+		return "";
+	}
 
 	macro static function removeAllComponents(e : Expr) : Expr {
 		return macro {

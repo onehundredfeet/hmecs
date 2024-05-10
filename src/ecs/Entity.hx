@@ -460,6 +460,25 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 		return same_generation  ? e : Entity.INVALID_ENTITY;
 	}
 
+	public var entityEnsured(get,never):Entity;
+	inline function get_entityEnsured() {
+		var e = this.high;
+
+		if (e == Entity.INVALID_ENTITY) {
+			throw 'Entity is invalid';
+		}
+
+		var my_generation = this.low;
+		var stored_generation = entity.generation;
+		var same_generation = my_generation == stored_generation;
+
+		if (!same_generation) {
+			throw 'Entity ${e} is stale ${my_generation} != ${stored_generation}';
+		}
+
+		return e;
+	}
+
 	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
 		var pos = Context.currentPos();
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
