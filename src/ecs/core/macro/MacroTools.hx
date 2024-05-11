@@ -683,7 +683,7 @@ class MacroTools {
 		}
 	}
 
-	static public function method(name:String, ?pos, ?isPublic = true, f:Function) {
+	static public function method(name:String, ?pos, ?isPublic = true, f:Function) : haxe.macro.Field {
 		var f:Field = {
 			name: name,
 			pos: if (pos == null) f.expr.pos else pos,
