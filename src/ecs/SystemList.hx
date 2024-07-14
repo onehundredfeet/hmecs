@@ -113,6 +113,15 @@ class SystemList implements ISystem {
         return this;
     }
 
+    public function removeAll():SystemList {
+        if (activated) {
+            for (s in systems)
+                s.__deactivate__();
+        }
+        systems = [];
+        return this;
+    }
+
     public function exists(s:ISystem):Bool {
         return systems.contains(s);
     }
