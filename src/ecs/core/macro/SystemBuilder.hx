@@ -417,7 +417,7 @@ public static function build(debug:Bool = false) {
 
 	var dexpr = macro if (activated)
 		$b{
-			[].concat([macro activated = false, macro ondeactivate()])
+			[].concat([macro activated = false])
 			.concat( // deactivate views
 				definedViews.map(function(v) {
 					return macro $i{v.varname}.deactivate();
@@ -430,6 +430,7 @@ public static function build(debug:Bool = false) {
 				rfuncs.map(function(f) {
 					return macro $i{f.view.name}.ignoreRemove($i{'__${f.name}_listener__'});
 				}))
+			.concat([macro ondeactivate()])
 			.concat( // null signal wrappers
 				listeners.map(function(f) {
 					return macro $i{'__${f.name}_listener__'} = null;
