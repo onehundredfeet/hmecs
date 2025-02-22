@@ -234,9 +234,9 @@ class ViewBuilder {
 			var body;
 			if (worlds != 0xffffffff) {
 				var worldVal:Expr = {expr: EConst(CInt('${worlds}')), pos: Context.currentPos()};
-				var entityWorld = macro ecs.Workflow.worlds(id);
+				var entityWorld = macro ecs.Workflow.world(id);
 				body = macro {
-					return (($entityWorld & $worldVal) == 0) ? false : $cond;
+					return (((1 << $entityWorld) & $worldVal) == 0) ? false : $cond;
 				};
 			} else {
 				body = macro {

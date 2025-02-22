@@ -43,12 +43,12 @@ class Workflow {
 	#if ecs_max_entities
 	static var statuses = new EntityVector<Status>(Parameters.MAX_ENTITIES);
 	static var tags = new EntityVector<Int>(Parameters.MAX_ENTITIES * TAG_STRIDE);
-	static var worldFlags = new EntityVector<Int>(Parameters.MAX_ENTITIES);
+	static var _world = new EntityVector<Int>(Parameters.MAX_ENTITIES);
 	static var _generations = new EntityVector<Int>(Parameters.MAX_ENTITIES);
 	#else
 	static var statuses = new Array<Status>();
 	static var tags = new Array<Int>();
-	static var worldFlags = new Array<Int>();
+	static var _world = new Array<Int>();
 	static var _generations = new Array<Int>();
 	#end
 
@@ -176,7 +176,7 @@ class Workflow {
 		idPool.resize(0);
 		#if !ecs_max_entities
 		statuses.resize(0);
-		worldFlags.resize(0);
+		_world.resize(0);
 		tags.resize(0);
 		#end
 
@@ -218,7 +218,7 @@ class Workflow {
 
 	// Entity
 
-	@:allow(ecs.Entity) static function id(immediate:Bool, worlds:Int):Int {
+	@:allow(ecs.Entity) static function id(immediate:Bool, world:Int):Int {
 		var id = idPool.pop();
 
 		if (id == null) {
@@ -240,16 +240,16 @@ class Workflow {
 		} else {
 			statuses[id] = Inactive;
 		}
-		worldFlags[id] = worlds;
+		_world[id] = world;
 		tags[id] = 0;
 		return id;
 	}
 
-	public inline static function worlds(id:Int) {
+	public inline static function world(id:Int) {
 		if (status(id) == Active) {
-			return worldFlags[id];
+			return _world[id];
 		}
-		return 0;
+		return -1;
 	}
 
 	public inline static function worldEntity(idx:Int) {
@@ -379,30 +379,6 @@ class Workflow {
 
 	#if factories
 	#end
-	@:allow(ecs.Entity) static inline function setWorlds(id:Int, flags:Int) {
-		if (status(id) == Active) {
-			remove(id);
-			worldFlags[id] = flags;
-			add(id);
-		}
-		return 0;
-	}
-
-	@:allow(ecs.Entity) static inline function joinWorld(id:Int, idx:Int) {
-		if (status(id) == Active) {
-			remove(id);
-			worldFlags[id] = worldFlags[id] | (1 << idx);
-			add(id);
-		}
-	}
-
-	@:allow(ecs.Entity) static inline function leaveWorld(id:Int, idx:Int) {
-		if (status(id) == Active) {
-			remove(id);
-			worldFlags[id] = worldFlags[id] & ~(1 << idx);
-			add(id);
-		}
-	}
 
 	@:allow(ecs.Entity) static inline function cache(id:Int) {
 		// Active or Inactive
