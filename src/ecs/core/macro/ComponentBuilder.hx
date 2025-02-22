@@ -693,7 +693,7 @@ class ComponentBuilder {
 			#end
 			info.update();
 			currentComponentContainerTypeCache.set(name, info);
-//			trace('Re-using type ${name}');
+			// trace('Re-using type ${name}');
 			return info;
 		}
 

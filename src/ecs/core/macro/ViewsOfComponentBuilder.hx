@@ -55,6 +55,7 @@ class ViewsOfComponentBuilder {
 				public inline function addIfMatched(id:Int) {
 					for (v in views) {
 						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
+							// trace('addIfMatched: $v');
 							@:privateAccess v.addIfMatched(id);
 						}
 					}
@@ -63,6 +64,7 @@ class ViewsOfComponentBuilder {
 				public inline function removeIfExists(id:Int) {
 					for (v in views) {
 						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
+							// trace('removeIfExists: $v');
 							@:privateAccess v.removeIfExists(id);
 						}
 					}

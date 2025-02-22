@@ -31,7 +31,14 @@ class FastEntitySet {
     var _count = 0;
 
     public inline function add(value:Entity) {
-        var idx = _freeList.length > 0 ? _freeList.pop() : _setArray.length;
+        var idx = 0;
+        if (_freeList.length > 0) {
+            idx = _freeList.pop();
+        } else {
+            idx = _setArray.length;
+            _setArray.push(value);
+        }
+        // var idx = _freeList.length > 0 ? _freeList.pop() : _setArray.length;
         _setArray[idx] = value;
         _setMap.set(value, idx);
         _count++;
@@ -51,7 +58,7 @@ class FastEntitySet {
         return true;
     }
 
-    public function removeAll() {
+    public inline function removeAll() {
         _setMap.clear();
         _setArray.resize(0);
         _freeList.resize(0);

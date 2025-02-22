@@ -27,7 +27,7 @@ class AbstractView {
     }
 
     /** List of matched entities */
-    var _entities(default, null) = new FastEntitySet();
+    var _entities = new FastEntitySet();
 
 //    var collected = new Array<Bool>();  // Membership is already being stored
 
@@ -89,7 +89,9 @@ class AbstractView {
 
 
     @:allow(ecs.Workflow) function addIfMatched(id:Int) {
+        // trace(this);
         if (isMatched(id) && !_entities.exists(id)) {
+            // trace('ADDING $id');
             _entities.add(id);
             dispatchAddedCallback(id);
         }

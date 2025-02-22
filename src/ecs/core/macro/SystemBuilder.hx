@@ -391,6 +391,7 @@ public static function build(debug:Bool = false) {
 			.concat( // init signal listener wrappers
 				listeners.map(function(f) {
 					// DCE is eliminating this on 'full'
+					// TODO: generate classfields for these
 					var fwrapper = {
 						expr: EFunction(FunctionKind.FAnonymous, {args: f.viewargs, ret: macro:Void, expr: macro $i{f.name}($a{f.args})}),
 						pos: Context.currentPos()

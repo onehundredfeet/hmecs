@@ -268,7 +268,7 @@ class ViewBuilder {
 			var xx = ffun([AOverride, APublic], 'isMatchedByTypes', [arg('world', macro:Int), arg('names', macro:Array<String>)], macro:Bool, body,
 				Context.currentPos());
 
-			var pp = new Printer();
+			// var pp = new Printer();
 			// trace('isMatchedByTypes : ${pp.printField(xx)}');
 		}
 
