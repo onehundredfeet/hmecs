@@ -484,6 +484,9 @@ class Workflow {
 	public static dynamic function componentsToStrings(e : ecs.Entity) : Array<String> {
 		return [];
 	}
+	public static dynamic function componentsToDynamic(e : ecs.Entity) : Array<Dynamic> {
+		return [];
+	}
 	public static dynamic function componentNameToString(e : ecs.Entity, name : String) : String {
 		return "";
 	}

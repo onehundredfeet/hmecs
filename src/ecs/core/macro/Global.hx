@@ -49,10 +49,16 @@ class Global {
 
 		var toStringComponents = infos.map( (x) -> {
 			var testExpr = x.getExistsExpr(macro e );
-			var name = EConst(CString(x.name)).at();
 			var getExpr = x.getGetExpr(macro e );
 
 			return macro if ($testExpr) strings.push( Std.string($getExpr) );
+		});
+
+		var toDynamicComponents = infos.map( (x) -> {
+			var testExpr = x.getExistsExpr(macro e );
+			var getExpr = x.getGetExpr(macro e );
+
+			return macro if ($testExpr) objs.push( $getExpr );
 		});
 
 		var toStringByComponentCases = infos.map( (x) -> {
@@ -101,6 +107,13 @@ class Global {
 				return strings;
 			}
 
+			public static function componentsToDynamic(e:ecs.Entity) : Array<Dynamic> {
+				var objs:Array<Dynamic> = [];
+
+				$b{toDynamicComponents}
+				return objs;
+			}
+
 			public static function componentNameToString(e:ecs.Entity, name : String) : String {
 				return $toStringByComponentSwitch;
 			}
@@ -121,12 +134,13 @@ class Global {
 
 		//ViewBuilder.createAllViewType();
 		var x = macro {
-			trace('ECS: Setting up ECS late bind functions'); 
+			// trace('ECS: Setting up ECS late bind functions');
 			@:privateAccess Workflow.removeAllFunction = ecs.LateCalls.removeAllComponents; 
 			@:privateAccess Workflow.numComponentTypes = ecs.LateCalls.numComponentTypes;
 			@:privateAccess Workflow.componentNames = ecs.LateCalls.getComponentNames;
 			@:privateAccess Workflow.entityComponentNames = ecs.LateCalls.listComponents;
 			@:privateAccess Workflow.componentsToStrings = ecs.LateCalls.componentsToStrings;
+			@:privateAccess Workflow.componentsToDynamic = ecs.LateCalls.componentsToDynamic;
 			@:privateAccess Workflow.componentNameToString = ecs.LateCalls.componentNameToString;
 		}
 		return x;
