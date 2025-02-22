@@ -668,7 +668,7 @@ class MacroTools {
 			if (locals != null)
 				expr = [EVars(locals).at(expr.pos), expr].toMBlock(expr.pos);
 			Context.typeof(expr);
-		} catch (e:haxe.macro.Error) {
+		} catch (e:Error) {
 			null;
 		} catch (e:Dynamic) {
 			null;
@@ -683,7 +683,7 @@ class MacroTools {
 		}
 	}
 
-	static public function method(name:String, ?pos, ?isPublic = true, f:Function) : haxe.macro.Field {
+	static public function method(name:String, ?pos, ?isPublic = true, f:Function) : Field {
 		var f:Field = {
 			name: name,
 			pos: if (pos == null) f.expr.pos else pos,

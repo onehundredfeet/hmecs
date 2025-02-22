@@ -67,7 +67,7 @@ class Extensions {
 		return at(EField(x, member), pos);
 	}
 
-	static public function isVar(field:haxe.macro.ClassField)
+	static public function isVar(field:ClassField)
 		return switch (field.kind) {
 			case FVar(_, _): true;
 			default: false;
