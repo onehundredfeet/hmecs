@@ -409,7 +409,11 @@ class Workflow {
 		if (status(id) < Cached) {
 			removeAllComponentsOf(id);
 			_entities.remove(id);
-			idPool.push(id);
+
+			// TODO: somehow we managed to double-add an id to the pool by destroying an entity multiple times... !
+			// idPool.remove(id); Need to figure out a better way to do this [RC]
+			idPool.push(id); 
+
 			statuses[id] = Cached;
 		}
 	}
