@@ -1,104 +1,4 @@
-# hmecs (Haxe Macro Entity Component System)
-
-Super lightweight Entity Component System framework for Haxe. 
-Initially created to learn the power of macros. 
-Focused to be simple and fast. 
-Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fponticelli/edge), [ECX](https://github.com/eliasku/ecx), [ESKIMO](https://github.com/PDeveloper/eskimo) and [Ash-Haxe](https://github.com/nadako/Ash-Haxe)
-Extended to ecs - For performance improvements with struct only types
-
-#### Acknowledgement by onehundredfeet
-The original vision by [deepcake](https://github.com/deepcake/echo) was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had a few drawbacks I wanted to fix. 
-
-## News
-* Version 1.0 has been tagged.  
-* Version 1.5 is coming
- - Working branch you can check out if you want
- - Breaking changes so be careful, entities can only belong to one world
- - (Done) Adds World objects that contain all the entities, systems, views and components for a world
- - Systems can't intermingle functions that apply to different worlds
- - (In Progress) Threading - Automatic threading with meta data
-
-## Details
-
-#### Challenges & Solutions
-- It had a single world.  This is fine for most applications, but world partitions are sometimes necessary, especially in multiplayer games. (Solved with world flags feature)
-- Allocated objects are manually pooled (Solved pool builder feature)
-- Singleton components are not natively supported (Solved - Two different features)
-- Ability to customize the storage type per component (Solved with @:storage feature)
-- The performance at scale with lots of views makes adding and removing entities expensive. I plan on adding a factory system to speed the creation of entities. (1st pass done - Needs a revision)
-- Struct types in Haxe are still allocated individually.  This makes streamlined processing difficult.  For large element counts, you are constantly cache missing.  
-- Parallelism wasn't natively supported (First pass design complete)
-
-### Supported Platforms
-I have tested it on the following platforms
-
-- Hashlink
-- HXCPP
-- JS
-- HXCS - Warning - while it will not cause any obvious issues, using structs as components will potentially cause issues when trying to write to them as they are passed by value.
-
-### Overview
- * Component is an instance of `T:Any` class. For each class `T` will be generated a global component container, where instance of `T` is a value and `Entity` is a key. 
- * `Entity` in that case is just an abstract over the `Int`, but with the ability to work with it as with a set of components like in other regular ECS frameworks. 
- * `View<T1, T2, TN>` is a collection of entities containing all components of the required types `T1, T2, TN`. Views are placed in Systems. 
- * `System` is a place for processing a certain set of data represented by views. 
- * To organize systems in phases can be used the `SystemList`. 
-* `World` is a binding mechanism to allow views and systems to opperate on a subset of entities. A View (and a function in a System) can be associated with any number of Worlds.  When an Entity is created, it can be associated with any number of worlds.  At the moment, there is a maximum of 32 worlds.  Views will only include Entities that are associated with `ANY` of the worlds it can view. `NOTE: Worlds will be deprecated in favour of a new tag system`
-* `Pool` a pool is a static container that can be used to speed up allocations using a rent/retire paradigm. Call a static rent to get a new instance and then retire on that instance to return it to the pool
-* `Workflow` a global class used to access common features such as a singleton
-* `Tag` is class with the @:storage(TAG) metadata that changes the behaviour from being specified as an instance to added as a type. A flag set keeps track of which entities are tagged, makeing storing many tags compact and fast.  When specified in a function, a single static instance of the class will be passed in to all calls, regardless of which entity is passed in.
-
-## WARNING & INSTRUCTIONS
-### Due to the heavily macro based approach of the system, there are some nuances that require some concessions.
-
-1. To get all the features working, you will need to create a very lean, or even proxy, main file and use it as your entry point when compiling.
-
-```haxe
-import your.MainClass;
-
-class ProxyMain {
-  public static function main() {
-    MainClass.main();
-  }
-}
-```
-
-2. You will need to add a call to initialize a variety of late binding mechanisms.
-
-```haxe
-import your.MainClass;
-
-class ProxyMain {
-  public static function main() {
-    #if !macro
-  	ecs.core.macro.Global.setup();  // macro to generate all the global calls and then hook them up at runtime
-    #end
-    MainClass.main();
-  }
-}
-```
-
-## Usage
-
-### Component Storage
-Each component type can have its own storage specification.  They are specified using the @:storage metadata on the component type.  You can use abstract types to wrap basic types to apply the metadata.
-
-#### @:storage(FAST)
-This is the default. It is an array the length of the total number of entities. Any entities with the component will have a non-zero allocated object in the array corresponding to the entity id.  Obviously this can waste a lot of memory if overused with a large number of entities.
-
-#### @:storage(COMPACT)
-This is the typical secondary value.  It specifies an IntMap to be used for the storage backend.  This will slightly increase the lookup time for get, but it will significantly reduce the amount of memory required.
-
-#### @:storage(FLAG)
-This is says that this type is a bit flag on the flags storage for the entity.  It takes a single bit per entity, much smaller than using an array.  It is slightly slower than the fast storage but not by much.
-
-A side benefit is that a single instance of the tagged class is available in views that require this flag.
-
-#### @:storage(SINGLETON)
-There can only be one instance of this class and only one entity can own it. It is very limited, but very fast and uses little memory.
-
-## Examples
-```haxe
+package test;
 
 import ecs.SystemList;
 import ecs.Workflow;
@@ -375,20 +275,9 @@ class RenderSystem extends ecs.System {
   }
 }
 
+
+
 function ecsSetup() {
 	ecs.core.macro.Global.setup();  // macro to generate all the global calls and then hook them up at runtime
 }
 
-
-```
-
-#### Also
-There is also exists a few additional compiler flags:
- * `-D ecs_profiling` - collecting some more info in `Workflow.info()` method for debug purposes
- * `-D ecs_report` - traces a short report of built components and views
- * `-D ecs_max_tags=X` (typically a multiple of 32)  Defaults to 32
- * `-D ecs_max_worlds=X` (typically small, like 2 to 3) Defaults to 1
- * `-D ecs_max_entities=X` (typically medium to large size like 1024 to 1M)  Defaults to unbounded (lower performing)
-
-### Install
-```haxelib git ecs https://github.com/onehundredfeet/ecs.git```

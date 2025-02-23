@@ -1,0 +1,10 @@
+--library buddy
+--class-path src
+--class-path test
+-hl bin/readme.hl
+--main test.TestReadMe
+-D ecs_max_tags=64
+-D ecs_max_worlds=3
+
+#-D ecs_max_entities=512
+#-D hl_ver=1.14.0
