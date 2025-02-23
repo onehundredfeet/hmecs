@@ -412,7 +412,7 @@ class SystemBuilder {
 				}))
 			.concat( // activate views
 				definedViews.map(function(v) {
-					trace('Activating: ${v.varname}');
+//					trace('Activating: ${v.varname}');
 					return macro {
 						trace($v{v.varname});
 						$i{v.varname}.activate(__world_id__);

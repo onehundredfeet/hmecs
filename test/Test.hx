@@ -23,10 +23,6 @@ class Test {
         world.addSystem(new TestSystemZ(world));
         world.addSystem(new TestSystemA(world));
   
-        // only works with static views - factories don't work atm.
-       //var factory = ecs.Workflow.createFactory(1, X, Y);
-        //trace(factory);
-  
         var e = world.newEntity();
         var e2 = world.newEntity();
 //        e.add( new K() );
@@ -37,8 +33,6 @@ class Test {
         var xxx = new X();
         var fff = new F();
                 
-//        e.add( TagA.VALID );
-//        e.add( TagB.VALID );
         e.add( TagA );
         trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
         e.add( TagB );
@@ -49,6 +43,7 @@ class Test {
 //        e.remove(TagB);
         e.add( xxx );
         e.add( new Y() );
+        e2.add( new Y());
         trace('y view count ${ysystem.ycount()}');
         trace( 'e.TagA is ${e.get(TagA)}');
         trace( 'e.TagA.test is ${e.get(TagA).test}');
@@ -66,7 +61,6 @@ class Test {
         e.unshelve(Y);
         trace('POST UNSHELVE y view count ${ysystem.ycount()}');
         trace ('E has tag Y ${e.has(Y)}');
-//        xxx.a;
         
         world.update(1.);
  
