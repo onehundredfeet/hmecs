@@ -5,6 +5,15 @@ Initially created to learn the power of macros.
 Focused to be simple and fast. 
 Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fponticelli/edge), [ECX](https://github.com/eliasku/ecx), [ESKIMO](https://github.com/PDeveloper/eskimo) and [Ash-Haxe](https://github.com/nadako/Ash-Haxe)
 Extended to ecs - For performance improvements with struct only types
+## News
+* Version 1.0 has been tagged.  
+* Version 1.5 is coming
+ - Working branch you can check out if you want
+ - Breaking changes so be careful, entities can only belong to one world
+ - (Done) Adds World objects that contain all the entities, systems, views and components for a world
+ - Systems can't intermingle functions that apply to different worlds
+ - (In Progress) Threading - Automatic threading with meta data
+
 
 #### Acknowledgement by onehundredfeet
 The original vision by [deepcake](https://github.com/deepcake/echo) was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had a few drawbacks I wanted to fix. 
