@@ -5,6 +5,10 @@ Initially created to learn the power of macros.
 Focused to be simple and fast. 
 Inspired by other haxe ECS frameworks, especially [EDGE](https://github.com/fponticelli/edge), [ECX](https://github.com/eliasku/ecx), [ESKIMO](https://github.com/PDeveloper/eskimo) and [Ash-Haxe](https://github.com/nadako/Ash-Haxe)
 Extended to ecs - For performance improvements with struct only types
+
+#### Acknowledgement by onehundredfeet
+The original vision by [deepcake](https://github.com/deepcake/echo) was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had a few drawbacks I wanted to fix. 
+
 ## News
 * Version 1.0 has been tagged.  
 * Version 1.5 is coming
@@ -14,9 +18,7 @@ Extended to ecs - For performance improvements with struct only types
  - Systems can't intermingle functions that apply to different worlds
  - (In Progress) Threading - Automatic threading with meta data
 
-
-#### Acknowledgement by onehundredfeet
-The original vision by [deepcake](https://github.com/deepcake/echo) was fantastic.  A macro driven ECS that was aimed at ease of use and performance. It had a few drawbacks I wanted to fix. 
+## Details
 
 #### Challenges & Solutions
 - It had a single world.  This is fine for most applications, but world partitions are sometimes necessary, especially in multiplayer games. (Solved with world flags feature)
