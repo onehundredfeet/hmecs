@@ -52,7 +52,7 @@ class ViewsOfComponentBuilder {
 					views.push(v);
 				}
 
-				public inline function addIfMatched(id:Int) {
+				public inline function addIfMatched(id:ecs.Entity) {
 					for (v in views) {
 						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
 							// trace('addIfMatched: $v');
@@ -61,7 +61,7 @@ class ViewsOfComponentBuilder {
 					}
 				}
 
-				public inline function removeIfExists(id:Int) {
+				public inline function removeIfExists(id:ecs.Entity) {
 					for (v in views) {
 						if (v.isActive()) { // This is likely a bug - Needs to be removed even if not active
 							// trace('removeIfExists: $v');

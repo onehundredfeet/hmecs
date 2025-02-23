@@ -22,6 +22,31 @@ public static inline final MAX_ENTITIES = getMaxEntities();
 #end
 
 
+#if ecs_max_worlds
+
+static macro function getMaxWorldsExpr() {
+    var x= Std.parseInt(haxe.macro.Context.definedValue("ecs_max_worlds"));
+
+    return macro $v{x};
+}
+
+static inline function getMaxWorlds() : Int {
+    #if macro
+    return 1;
+    #else
+    return getMaxWorldsExpr();
+    #end
+}
+
+public static inline final MAX_WORLDS = getMaxWorlds();
+
+#else
+
+public static inline final MAX_WORLDS = 1;
+
+#end
+
+
 #if ecs_max_flags
 static macro function getMaxFlagsExpr() {
     var x= Std.parseInt(haxe.macro.Context.definedValue("ecs_max_flags"));

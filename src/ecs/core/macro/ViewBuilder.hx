@@ -10,13 +10,14 @@ import haxe.macro.Type.ModuleType;
 import ecs.core.macro.ViewSpec;
 import ecs.utils.Const;
 import ecs.utils.Signal;
+import ecs.core.Containers;
+
 using ecs.core.macro.Extensions;
 using ecs.core.macro.MacroTools;
 using haxe.macro.ComplexTypeTools;
 using haxe.macro.Context;
 using Lambda;
 using haxe.ds.ArraySort;
-
 using haxe.macro.PositionTools;
 
 typedef ViewRec = {name:String, spec:ViewSpec, ct:ComplexType};
@@ -120,7 +121,7 @@ class ViewBuilder {
 			return null;
 		}
 		var viewClsName = vi.name;
-		var worlds = vi.worlds;
+		//var worlds = vi.worlds;
 		var components = vi.includes;
 		var ct = vi.typePath().asComplexType();
 
@@ -131,6 +132,7 @@ class ViewBuilder {
 		// trace('creating view type ${viewClsName}');
 
 		var viewTypePath = tpath([], viewClsName, []);
+		var viewTypeCT = viewClsName.asComplexType();
 		// var viewComplexType = TPath(viewTypePath);
 
 		// signals
@@ -157,10 +159,13 @@ class ViewBuilder {
 		//Context.warning('Defining view type ${vi.typePath()}', pos);
 		// type def
 		var def:TypeDefinition = macro class $viewClsName extends ecs.core.AbstractView {
-			static var instance = new $viewTypePath();
+			static var instances = new ecs.core.Containers.GenericVector<$viewTypeCT>(ecs.core.Parameters.MAX_WORLDS);
 
-			@:keep inline public static function inst():$ct {
-				return instance;
+			@:keep inline public static function inst(world:Int):$ct {
+				if (instances[world] == null) {
+					new $viewTypePath(world);
+				}
+				return instances[world];
 			}
 
 			// instance
@@ -181,29 +186,35 @@ class ViewBuilder {
 
 			var _onAdded = new Array<$signalTypeParamComplexType>();
 			var _onRemoved = new Array<$signalTypeParamComplexType>();
-
-			function new() {
+			var _worldId : Int;
+			function new(world:Int) {
+				_worldId = world;
+				if (instances[world] != null) {
+					throw('View already exists for world ${world}');
+				} else {
+					instances[world] = this;
+				}
 				super();
-				@:privateAccess ecs.Workflow.definedViews.push(this);
+				@:privateAccess ecs.Workflow.world(world).definedViews.push(this);
 				$b{addViewToViewsOfComponent}
 			}
 
-			override function dispatchAddedCallback(id:Int) {
+			override function dispatchAddedCallback(id:ecs.Entity) {
 				for (x in _onAdded) {
 					x($a{signalArgs});
 				}
 				//_onAdded.dispatch($a{signalArgs});
 			}
 
-			override function dispatchRemovedCallback(id:Int) {
+			override function dispatchRemovedCallback(id:ecs.Entity) {
 				for (x in _onRemoved) {
 					x($a{signalArgs});
 				}
 				//_onRemoved.dispatch($a{signalArgs});
 			}
 
-			override function reset() {
-				super.reset();
+			override function reset(_) {
+				super.reset(_worldId);
 				//_onAdded.removeAll();
 				//_onRemoved.removeAll();
 			}
@@ -232,18 +243,18 @@ class ViewBuilder {
 
 			var cond = totalChecks.slice(1).fold(function(check1, check2) return macro $check1 && $check2, totalChecks[0]);
 			var body;
-			if (worlds != 0xffffffff) {
-				var worldVal:Expr = {expr: EConst(CInt('${worlds}')), pos: Context.currentPos()};
-				var entityWorld = macro ecs.Workflow.world(id);
-				body = macro {
-					return (((1 << $entityWorld) & $worldVal) == 0) ? false : $cond;
-				};
-			} else {
+			// if (worlds != 0xffffffff) {
+			// 	var worldVal:Expr = {expr: EConst(CInt('${worlds}')), pos: Context.currentPos()};
+			// 	var entityWorld = macro id.worldId();
+			// 	body = macro {
+			// 		return (((1 << $entityWorld) & $worldVal) == 0) ? false : $cond;
+			// 	};
+			// } else {
 				body = macro {
 					return $cond;
 				}
-			}
-			def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:Int)], macro:Bool, body, Context.currentPos()));
+			//}
+			def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:ecs.Entity)], macro:Bool, body, Context.currentPos()));
 		}
 
 		// isMatchedByTypes
@@ -254,13 +265,13 @@ class ViewBuilder {
 
 			var cond = totalChecks.slice(1).fold(function(check1, check2) return macro $check1 && $check2, totalChecks[0]);
 			var body;
-			if (worlds != 0xffffffff) {
-				var worldVal:Expr = {expr: EConst(CInt('${worlds}')), pos: Context.currentPos()};
-				var entityWorld = macro world;
-				body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
-			} else {
+			// if (worlds != 0xffffffff) {
+			// 	var worldVal:Expr = {expr: EConst(CInt('${worlds}')), pos: Context.currentPos()};
+			// 	var entityWorld = macro world;
+			// 	body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
+			// } else {
 				body = macro return $cond;
-			}
+//			}
 			var show = macro trace("names " + names);
 			body = {expr: EBlock([body]), pos: Context.currentPos()};
 			def.fields.push(ffun([AOverride, APublic], 'isMatchedByTypes', [arg('world', macro:Int), arg('names', macro:Array<String>)], macro:Bool, body,
@@ -297,7 +308,7 @@ class ViewBuilder {
 			return null;
 		}
 		var viewClsName = vi.name;
-		var worlds = vi.worlds;
+//		var worlds = vi.worlds;
 		var components = vi.includes;
 		var ct = vi.typePath().asComplexType();
 

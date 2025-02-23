@@ -172,7 +172,7 @@ class StorageInfo {
 	}
 	function clearTagExpr(entityVarExpr : Expr ) : Expr {
 		var te = tagExpr();	
-		return  macro @:privateAccess ecs.Workflow.clearTag($entityVarExpr, $te);	
+		return  macro @:privateAccess ecs.Workflow.world($entityVarExpr.worldId()).clearTag($entityVarExpr, $te);	
 	}
 
 	function setTagExpr(entityVarExpr : Expr ) : Expr {
@@ -182,9 +182,9 @@ class StorageInfo {
 	
 	public function getGetExprCached(entityExpr:Expr, cachedVarName:String):Expr {
 		return switch (storageType) {
-			case FAST: macro $i{cachedVarName}[$entityExpr];
-			case FLAT: macro $i{cachedVarName}[$entityExpr];
-			case COMPACT: macro $i{cachedVarName}.get($entityExpr);
+			case FAST: macro $i{cachedVarName}[$entityExpr.id()];
+			case FLAT: macro $i{cachedVarName}[$entityExpr.id()];
+			case COMPACT: macro $i{cachedVarName}.get($entityExpr.id());
 			case SINGLETON: macro $i{cachedVarName};
 			case TAG: macro @:privateAccess $i{cachedVarName};
 		};
@@ -192,63 +192,63 @@ class StorageInfo {
 
 	public function getGetExpr(entityExpr:Expr, sure:Bool = false):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerFullNameExpr.storage[$entityExpr];
-			case FLAT: macro $containerFullNameExpr.storage[$entityExpr];
-			case COMPACT: macro $containerFullNameExpr.storage.get($entityExpr);
-			case SINGLETON: macro $containerFullNameExpr.storage;
+			case FAST: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage[$entityExpr.id()];
+			case FLAT: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage[$entityExpr.id()];
+			case COMPACT: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage.get($entityExpr.id());
+			case SINGLETON: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage;
 			case TAG: var te = tagExpr();	
 			sure ? 
-				macro $containerFullNameExpr.storage :
-			  	macro @:privateAccess ecs.Workflow.getTag($entityExpr, $te) ? $containerFullNameExpr.storage : null;
+				macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage :
+			  	macro @:privateAccess ecs.Workflow.world($entityExpr.worldId()).getTag($entityExpr, $te) ? $containerFullNameExpr.worlds[$entityExpr.worldId()].storage : null;
 		};
 	}
 
 	public function getExistsExpr(entityVar:Expr):Expr {
 		return switch (storageType) {
 			case FLAT: 
-				macro $containerFullNameExpr._existsStorage[$entityVar];
+				macro $containerFullNameExpr.worlds[$entityVar.worldId()]._existsStorage[$entityVar.id()];
 			case FAST: 
 				isValueStruct ? 
-			macro $containerFullNameExpr._existsStorage[$entityVar]
+			macro $containerFullNameExpr.worlds[$entityVar.worldId()]._existsStorage[$entityVar.id()]
 			:	
-			macro $containerFullNameExpr.storage[$entityVar] != $emptyExpr;
-			case COMPACT: macro $containerFullNameExpr.storage.exists($entityVar);
-			case SINGLETON: macro $containerFullNameExpr.owner == $entityVar;
+			macro $containerFullNameExpr.worlds[$entityVar.worldId()].storage[$entityVar.id()] != $emptyExpr;
+			case COMPACT: macro $containerFullNameExpr.worlds[$entityVar.worldId()].storage.exists($entityVar.id());
+			case SINGLETON: macro $containerFullNameExpr.worlds[$entityVar.worldId()].owner == $entityVar.id();
 			case TAG: 
 				var te = tagExpr();	
-				macro  @:privateAccess ecs.Workflow.getTag($entityVar, $te);
+				macro  @:privateAccess ecs.Workflow.world($entityVar.worldId()).getTag($entityVar, $te);
 		};
 	}
 
-	public function getCacheExpr(cacheVarName:String):Expr {
-		return cacheVarName.define(macro $containerFullNameExpr.storage);
+	public function getCacheExpr(worldExpr : Expr, cacheVarName:String):Expr {
+		return cacheVarName.define(macro $containerFullNameExpr.worlds[$worldExpr].storage);
 	}
 
 	public function getAddExpr(entityVarExpr:Expr, componentExpr:Expr):Expr {
 		return switch (storageType) {
 			case FLAT: 
 				macro {
-					$containerFullNameExpr.storage[$entityVarExpr].copy($componentExpr);
-					$containerFullNameExpr._existsStorage[$entityVarExpr] = true;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()].copy($componentExpr);
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId()]._existsStorage[$entityVarExpr.id()] = true;
 				}
 			case FAST: 
 				isValueStruct ? 
 				macro {
-					$containerFullNameExpr._existsStorage[$entityVarExpr] = true;
-					$containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId()]._existsStorage[$entityVarExpr.id()] = true;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()] = $componentExpr;
 				}
 				:
-			macro $containerFullNameExpr.storage[$entityVarExpr] = $componentExpr;
+			macro $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()] = $componentExpr;
 			
-			case COMPACT: macro $containerFullNameExpr.storage.set($entityVarExpr, $componentExpr);
+			case COMPACT: macro $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage.set($entityVarExpr.id(), $componentExpr);
 			case SINGLETON: macro {
-					if ($containerFullNameExpr.owner != 0)
+					if ($containerFullNameExpr.worlds[$entityVarExpr.worldId()].owner != 0)
 						throw 'Singleton already has an owner';
-					$containerFullNameExpr.storage = $componentExpr;
-					$containerFullNameExpr.owner = $entityVarExpr;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage = $componentExpr;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].owner = $entityVarExpr.id();
 				};
 			case TAG:var te = tagExpr();	
-			macro @:privateAccess  ecs.Workflow.setTag($entityVarExpr, $te);
+			macro @:privateAccess  ecs.Workflow.world($entityVarExpr.worldId()).setTag($entityVarExpr, $te);
 		};
 	}
 
@@ -268,12 +268,12 @@ class StorageInfo {
 
 	public function getRetireExpr(entityVarExpr:Expr):Array<Expr> {
 		var accessExpr = switch (storageType) {
-			case FLAT: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
-			case FAST: macro @:privateAccess $containerFullNameExpr.storage[$entityVarExpr];
-			case COMPACT: macro @:privateAccess $containerFullNameExpr.storage.get($entityVarExpr);
-			case SINGLETON: macro($containerFullNameExpr.owner == $entityVarExpr ? $containerFullNameExpr.storage : null);
+			case FLAT: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()];
+			case FAST: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()];
+			case COMPACT: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage.get($entityVarExpr.id());
+			case SINGLETON: macro($containerFullNameExpr.worlds[$entityVarExpr.worldId()].owner == $entityVarExpr ? $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage : null);
 			case TAG: var te = tagExpr();	
-			@:privateAccess  macro ecs.Workflow.getTag($te, $te);
+			@:privateAccess  macro ecs.Workflow.world($entityVarExpr.worldId()).getTag($te, $te);
 		};
 
 		var retireExprs = new Array<Expr>();
@@ -322,7 +322,7 @@ class StorageInfo {
 	
 	function storageRemoveExpr(entityVarExpr:Expr):Expr {
 		return switch (storageType) {
-			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.remove($entityVarExpr);
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].remove($entityVarExpr.id());
 			case TAG: clearTagExpr(entityVarExpr);
 		}
 		/*
@@ -348,7 +348,7 @@ class StorageInfo {
 
 	public function getShelveExpr(entityVarExpr:Expr, pos:Position):Expr {
 		var shelfCall = switch (storageType) {
-			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.shelve($entityVarExpr);
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].shelve($entityVarExpr.id());
 			case TAG: Context.fatalError("Cannot shelve a tag",pos);
 		}
 
@@ -358,7 +358,7 @@ class StorageInfo {
 
 	public function getUnshelveExpr(entityVarExpr:Expr, pos:Position):Expr {
 		return switch (storageType) {
-			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.unshelve($entityVarExpr);
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].unshelve($entityVarExpr.id());
 			case TAG: Context.fatalError("Cannot unshelve a tag",pos);
 		}
 	}
@@ -459,7 +459,8 @@ class StorageInfo {
 
 			containerTypeName = 'StorageOf' + fullName;
 			containerFullName = STORAGE_NAMESPACE + "." + containerTypeName;
-
+			worldContainerTypeName = 'WorldStorageOf' + fullName;
+			worldContainerFullName = STORAGE_NAMESPACE + "." + worldContainerTypeName;
 			containerFullNameExpr = containerFullName.asTypeIdent(Context.currentPos());
 
 			//		Context.registerModuleDependency()
@@ -470,32 +471,36 @@ class StorageInfo {
 				var existsExpr = getExistsExpr(macro id);
 				var removeExpr = getRemoveExpr(macro id);
 
-				var def = 
+				var defWorld = 
 				switch(storageType) {
-					case TAG:  macro class $containerTypeName {
-						public static var storage:$storageCT = @:privateAccess new $tp();
+					case TAG:  macro class $worldContainerTypeName {
+						public inline function new() {}
+
+						public var storage:$storageCT = @:privateAccess new $tp();
 						
 					}
-					case SINGLETON: macro class $containerTypeName {
-						public static var storage:$storageCT;
-						public static var owner:Int = 0;
-						public static var _shelved :$storageCT = $emptyExpr;
-						public static inline function shelved(id:Int) {
+					case SINGLETON: macro class $worldContainerTypeName {
+						public inline function new() {}
+
+						public var storage:$storageCT;
+						public var owner:Int = 0;
+						public var _shelved :$storageCT = $emptyExpr;
+						public inline function shelved(id:Int) {
 							return _shelved != $emptyExpr;
 						}
-						public static inline function exists(id:Int) {
+						public inline function exists(id:Int) {
 							return storage != $emptyExpr;
 						}
-						public inline static function shelve(id:Int) {
+						public inline function shelve(id:Int) {
 							_shelved = storage;
 							storage = $emptyExpr;
 						}
-						public inline static function unshelve(id:Int) : $followedCT {
+						public inline function unshelve(id:Int) : $followedCT {
 							storage = _shelved;
 							_shelved = $emptyExpr;
 							return _shelved;
 						}
-						public inline static function remove(id:Int) {
+						public inline function remove(id:Int) {
 							storage = $emptyExpr;
 							_shelved = $emptyExpr;
 							owner = 0;
@@ -516,32 +521,35 @@ class StorageInfo {
 						// }
 						var x = name.split(".");
 
-						macro class $containerTypeName {
-							public static var storage = hl.CArray.alloc($p{x}, ecs.core.Parameters.MAX_ENTITIES);
-							public static var _shelved = new Map<Int,$followedCT>();
-							public static var _existsStorage = new ecs.core.Containers.EntityVector<Bool>(ecs.core.Parameters.MAX_ENTITIES) ;
+						
+						macro class $worldContainerTypeName {
+							public inline function new() {}
+
+							public var storage = hl.CArray.alloc($p{x}, ecs.core.Parameters.MAX_ENTITIES);
+							public var _shelved = new Map<Int,$followedCT>();
+							public var _existsStorage = new ecs.core.Containers.EntityVector<Bool>(ecs.core.Parameters.MAX_ENTITIES) ;
 
 							public inline function exists(id:Int)  {
 								return _existsStorage[id];
 							}
-							public inline static function shelved(id:Int) {
+							public inline function shelved(id:Int) {
 								return _shelved.exists(id);
 							}
-							public inline static function shelve(id:Int) {
+							public inline function shelve(id:Int) {
 								_shelved.set(id, storage[id]);
 								$existsMarkFalseExpr;
 							}
-							public inline static function unshelve(id:Int) : $followedCT{
+							public inline function unshelve(id:Int) : $followedCT{
 								var x = _shelved.get(id);
 								storage[id].copy(x);
 								_shelved.remove(id);
 								$existsMarkTrueExpr;
 								return x;
 							}
-							public inline static function remove(id) {
+							public inline function remove(id) {
 								$existsMarkFalseExpr;
 							}
-							public inline static function add(id, item : $followedCT) {
+							public inline function add(id, item : $followedCT) {
 								// need to do a memberwise copy
 								storage[id].copy(item);
 								$existsMarkTrueExpr;
@@ -557,77 +565,100 @@ class StorageInfo {
 						var existsMarkTrueExpr = isValueStruct ? macro (_existsStorage[id] = true) : macro null;
 						var existsMarkFalseExpr = isValueStruct ? macro (_existsStorage[id] = false) : macro null;
 
-						macro class $containerTypeName {
+						macro class $worldContainerTypeName {
+							public inline function new() {}
+
 							#if ecs_max_entities
-							public static var storage = new ecs.core.Containers.EntityVector<$followedCT>(ecs.core.Parameters.MAX_ENTITIES);
+							public  var storage = new ecs.core.Containers.EntityVector<$followedCT>(ecs.core.Parameters.MAX_ENTITIES);
 							#else
-							public static var storage = new Array<$followedCT>();
+							public  var storage = new Array<$followedCT>();
 							#end
-							public static var _shelved = new Map<Int,$followedCT>();
-							public static var _existsStorage = $existsStorage;
+							public  var _shelved = new Map<Int,$followedCT>();
+							public  var _existsStorage = $existsStorage;
 
 							public inline function exists(id:Int)  {
 								//return storage[id] != $emptyExpr;
 								return $existsStorageExpr;
 							}
-							public inline static function shelved(id:Int) {
+							public inline  function shelved(id:Int) {
 								return _shelved.exists(id);
 							}
-							public inline static function shelve(id:Int) {
+							public inline  function shelve(id:Int) {
 								_shelved.set(id, storage[id]);
 								storage[id] = $emptyExpr;
 								$existsMarkFalseExpr;
 							}
-							public inline static function unshelve(id:Int) : $followedCT{
+							public inline  function unshelve(id:Int) : $followedCT{
 								var x = _shelved.get(id);
 								storage[id] = x;
 								_shelved.remove(id);
 								$existsMarkTrueExpr;
 								return x;
 							}
-							public inline static function remove(id) {
+							public inline  function remove(id) {
 								storage[id] = $emptyExpr;
 								$existsMarkFalseExpr;
 							}
-							public inline static function add(id, item : $followedCT) {
+							public inline  function add(id, item : $followedCT) {
 								storage[id] = item;
 								$existsMarkTrueExpr;
 							}
 						}
 					case COMPACT: 
-					macro class $containerTypeName {
+					macro class $worldContainerTypeName {
+						public inline function new() {}
 						//public static var storage:$storageCT = @:privateAccess new $tp();
-						public static var storage = new Map<Int,$followedCT>();
-						public static var _shelved = new Map<Int,$followedCT>();
+						public  var storage = new Map<Int,$followedCT>();
+						public  var _shelved = new Map<Int,$followedCT>();
 	
 						public inline function exists(id:Int)  {
 							return storage.exists(id);
 						}
-						public inline static function shelved(id:Int) {
+						public inline  function shelved(id:Int) {
 							return _shelved.exists(id);
 						}
-						public inline static function shelve(id:Int) {
+						public inline  function shelve(id:Int) {
 							// This will fail if nothing is shelved
 							var x = storage.get(id);
 							_shelved.set(id, x);
 							storage.remove(id);
 						}
-						public inline static function unshelve(id:Int) : $followedCT{
+						public inline  function unshelve(id:Int) : $followedCT{
 							var x = _shelved.get(id);
 							storage.set(id, x);
 							_shelved.remove(id);
 							return x;
 						}
-						public inline static function remove(id) {
+						public inline  function remove(id) {
 							storage.remove(id);
 						}
-						public inline static function add(id, item : $followedCT) {
+						public inline  function add(id, item : $followedCT) {
 							storage.set(id,item);
 						}
 					}
 				}
 
+				
 				//trace(_printer.printTypeDefinition(def));
+				
+				defWorld.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
+
+				var worldContainerTypeNameCT = worldContainerTypeName.asComplexType();
+				var worldContainerTypeNameTP = worldContainerTypeName.asTypePath();
+				
+				var def = {
+					macro class $containerTypeName {
+						public static var worlds = initialize();
+
+						public static function initialize() {
+							var newWorlds = new ecs.core.Containers.GenericVector<$worldContainerTypeNameCT>(ecs.core.Parameters.MAX_WORLDS);
+							for (i in 0...ecs.core.Parameters.MAX_WORLDS) {
+								newWorlds[i] = new $worldContainerTypeNameTP();
+							}
+							return newWorlds;
+						}
+					}
+				}
 				def.defineTypeSafe(STORAGE_NAMESPACE, Const.ROOT_MODULE);
 			}
 
@@ -654,6 +685,8 @@ class StorageInfo {
 	public var fullName:String;
 	public var containerCT:ComplexType;
 	public var containerTypeName:String;
+	public var worldContainerTypeName:String;
+	public var worldContainerFullName:String;
 	public var containerFullName:String;
 	public var containerFullNameExpr:Expr;
 	public var emptyExpr:Expr;

@@ -1,13 +1,13 @@
 package ecs.utils;
 
 class FastEntityArraySkippingIterator {
-    var set:Array<Int>;
+    var set:Array<Entity>;
     var i:Int;
   
-    public inline function new(set:Array<Int>) {
+    public inline function new(set:Array<Entity>) {
       this.set = set;
       i = 0;
-      while (i < set.length && set[i] == -1) i++;
+      while (i < set.length && set[i] == ecs.Entity.INVALID_ENTITY) i++;
     }
   
     public inline function hasNext() {
@@ -16,7 +16,7 @@ class FastEntityArraySkippingIterator {
   
     public inline function next() {
         var idx = i++;
-        while (i < set.length && set[i] == -1) i++;
+        while (i < set.length && set[i] == ecs.Entity.INVALID_ENTITY) i++;
         return set[idx];
     }
   }
@@ -52,7 +52,7 @@ class FastEntitySet {
         var idx = _setMap.get(value);
         if (idx == null) return false;
         _setMap.remove(value);
-        _setArray[idx] = -1;
+        _setArray[idx] = ecs.Entity.INVALID_ENTITY;
         _freeList.push(idx);
         _count--;
         return true;

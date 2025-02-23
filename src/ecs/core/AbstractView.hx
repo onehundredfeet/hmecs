@@ -34,20 +34,20 @@ class AbstractView {
     var activations = 0;
 
 
-    public function activate() {
+    public function activate(world:Int) {
         activations++;
         if (activations == 1) {
-            Workflow._views.push(this);
-            for (e in Workflow.entities) {
+            Workflow.world(world)._views.push(this);
+            for (e in Workflow.world(world).entities) {
                 addIfMatched(e);
             }
         }
     }
 
-    public function deactivate() {
+    public function deactivate(world:Int) {
         activations--;
         if (activations == 0) {
-            Workflow._views.remove(this);
+            Workflow.world(world)._views.remove(this);
 
             for (e in _entities) {
                 dispatchRemovedCallback(e);
@@ -66,7 +66,7 @@ class AbstractView {
     }
 
 
-    function isMatched(id:Int):Bool {
+    function isMatched(id:Entity):Bool {
         // each required component exists in component container with this id
         // macro generated
         return false;
@@ -79,16 +79,16 @@ class AbstractView {
     }
 
 
-    function dispatchAddedCallback(id:Int) {
+    function dispatchAddedCallback(id:Entity) {
         // macro generated
     }
 
-    function dispatchRemovedCallback(id:Int) {
+    function dispatchRemovedCallback(id:Entity) {
         // macro generated
     }
 
 
-    @:allow(ecs.Workflow) function addIfMatched(id:Int) {
+    @:allow(ecs.Workflow, ecs.World) function addIfMatched(id:Entity) {
         // trace(this);
         if (isMatched(id) && !_entities.exists(id)) {
             // trace('ADDING $id');
@@ -97,7 +97,7 @@ class AbstractView {
         }
     }
 
-    @:allow(ecs.Workflow) function addIfMatchedNoCheck(id:Int) {
+    @:allow(ecs.Workflow, ecs.World) function addIfMatchedNoCheck(id:Entity) {
         if (isMatched(id)) {
             _entities.add(id);
             dispatchAddedCallback(id);
@@ -105,21 +105,21 @@ class AbstractView {
     }
 
 
-    @:allow(ecs.Workflow) function addMatchedNew(id:Int) {
+    @:allow(ecs.Workflow, ecs.World) function addMatchedNew(id:Entity) {
         _entities.add(id);
         dispatchAddedCallback(id);
     }
 
-    @:allow(ecs.Workflow) function removeIfExists(id:Int) {
+    @:allow(ecs.Workflow, ecs.World) function removeIfExists(id:Entity) {
         if(_entities.remove(id)) {
             dispatchRemovedCallback(id);
         }
     }
 
 
-    @:allow(ecs.Workflow) function reset() {
+    @:allow(ecs.Workflow, ecs.World) function reset(world:Int) {
         activations = 0;
-        Workflow._views.remove(this);
+        Workflow.world(world)._views.remove(this);
         for (e in _entities) {
             dispatchRemovedCallback(e);
         }

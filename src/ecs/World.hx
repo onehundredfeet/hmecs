@@ -1,0 +1,491 @@
+package ecs;
+
+import ecs.Entity.Entity;
+
+#if macro
+using ecs.core.macro.ComponentBuilder;
+using ecs.core.macro.ViewsOfComponentBuilder;
+using ecs.core.macro.MacroTools;
+using haxe.macro.Context;
+using haxe.macro.ComplexTypeTools;
+using haxe.macro.Context;
+using haxe.macro.Expr;
+using haxe.macro.TypeTools;
+using ecs.core.macro.Extensions;
+#end
+
+import ecs.Entity.Status;
+import ecs.core.AbstractView;
+import ecs.core.ICleanableComponentContainer;
+import ecs.core.ISystem;
+import ecs.utils.FastEntitySet;
+import haxe.ds.ReadOnlyArray;
+import ecs.core.Parameters;
+import ecs.core.Containers;
+
+class World {
+	public function new(worldid:Int) {
+		_worldID = worldid;
+		worldBits = worldid << @:privateAccess Entity.WORLD_SHIFT;
+		_self = newEntity();
+	}
+
+	inline static final TAG_STRIDE:Int = Std.int(Parameters.MAX_TAGS / 32);
+
+	public var self(get, never):Entity;
+
+	inline function get_self() {
+		return _self;
+	}
+
+    public var worldID(get, never):Int;
+    inline function get_worldID() {
+        return _worldID;
+    }
+    
+	var nextId = Entity.INVALID_ID + 1;
+	var _self:Entity;
+	var idPool = new Array<Int>();
+	var worldBits = 0;
+	var _worldID = 0;
+
+	// Per entity
+	#if ecs_max_entities
+	var statuses = new EntityVector<Status>(Parameters.MAX_ENTITIES);
+	var tags = new EntityVector<Int>(Parameters.MAX_ENTITIES * TAG_STRIDE);
+	var _generations = new EntityVector<Int>(Parameters.MAX_ENTITIES);
+	#else
+	var statuses = new Array<Status>();
+	var tags = new Array<Int>();
+	var _generations = new Array<Int>();
+	#end
+
+	// all of every defined component container
+	// all of every defined view
+	var definedViews = new Array<AbstractView>();
+
+	/**
+	 * All active entities
+	 */
+	public var entities(get, null):ReadOnlyFastEntitySet;
+
+	inline function get_entities() {
+		return _entities;
+	}
+
+	var _entities(default, null) = new FastEntitySet();
+
+	/**
+	 * All active views
+	 */
+	public var views(get, null):ReadOnlyArray<AbstractView>;
+
+	inline function get_views() {
+		return _views;
+	}
+
+	@:allow(ecs.core.AbstractView) var _views(default, null) = new Array<AbstractView>();
+
+	/**
+	 * All systems that will be called when `update()` is called
+	 */
+	public var systems(get, null):ReadOnlyArray<ISystem>;
+
+	inline function get_systems() {
+		return _systems;
+	}
+
+	var _systems(default, null) = new Array<ISystem>();
+
+	#if ecs_profiling
+	var updateTime = .0;
+	#end
+
+	/**
+	 * Returns the workflow statistics:  
+	 * _( systems count ) { views count } [ entities count | entity cache size ]_  
+	 * With `ecs_profiling` flag additionaly returns:  
+	 * _( system name ) : time for update ms_  
+	 * _{ view name } [ collected entities count ]_  
+	 * @return String
+	 */
+	public function info():String {
+		var ret = '# ( ${systems.length} ) { ${views.length} } [ ${_entities.length} | ${idPool.length} ]'; // TODO version or something
+
+		#if ecs_profiling
+		ret += ' : $updateTime ms'; // total
+		for (s in systems) {
+			ret += '\n${s.info('    ', 1)}';
+		}
+		for (v in views) {
+			ret += '\n    {$v} [${v.entities.length}]';
+		}
+		#end
+
+		return ret;
+	}
+
+	public function infoObj() {
+		return {
+			systems: systems.length,
+			views: views.length,
+			entities: _entities.length,
+			ids: idPool.length
+		}
+	}
+
+	/**
+	 * Update 
+	 * @param dt deltatime
+	 */
+	public function update(dt:Float) {
+		#if ecs_profiling
+		var timestamp = Date.now().getTime();
+		#end
+
+		for (s in systems) {
+			s.__update__(dt);
+		}
+
+		#if ecs_profiling
+		updateTime = Std.int(Date.now().getTime() - timestamp);
+		#end
+	}
+
+	/**
+	 * Removes all views, systems and entities from the workflow, and resets the id sequence 
+	 */
+	public function reset() {
+		for (e in _entities) {
+			e.destroy();
+		}
+		for (s in systems) {
+			removeSystem(s);
+		}
+		for (v in definedViews) {
+			v.reset(_worldID);
+		}
+		#if ecs_legacy_containers
+		for (c in definedContainers) {
+			c.reset();
+		}
+		#end
+
+		// [RC] why splice and not resize?
+		idPool.resize(0);
+		#if !ecs_max_entities
+		statuses.resize(0);
+		tags.resize(0);
+		#end
+
+		nextId = ecs.Entity.INVALID_ID + 1;
+	}
+
+	// System
+
+	/**
+	 * Adds the system to the workflow
+	 * @param s `System` instance
+	 */
+	public function addSystem(s:ISystem) {
+		if (!hasSystem(s)) {
+			_systems.push(s);
+			s.__activate__();
+		}
+	}
+
+	/**
+	 * Removes the system from the workflow
+	 * @param s `System` instance
+	 */
+	public function removeSystem(s:ISystem) {
+		if (hasSystem(s)) {
+			s.__deactivate__();
+			_systems.remove(s);
+		}
+	}
+
+	/**
+	 * Returns `true` if the system is added to the workflow, otherwise returns `false`  
+	 * @param s `System` instance
+	 * @return `Bool`
+	 */
+	public function hasSystem(s:ISystem):Bool {
+		return _systems.contains(s);
+	}
+
+	// Entity
+
+	public function newEntity(immediate:Bool = true):Entity {
+		var id = idPool.pop();
+
+		if (id == null) {
+			id = nextId++;
+			_generations[id] = 0;
+		} else {
+			_generations[id]++;
+		}
+
+		#if ecs_max_entities
+		if (id >= Parameters.MAX_ENTITIES) {
+			throw 'Maximum number of entities reached';
+		}
+		#end
+
+        var e = @:privateAccess Entity.fromWorldAndId(_worldID, id);
+		if (immediate) {
+			statuses[id] = Active;
+			_entities.add(e);
+		} else {
+			statuses[id] = Inactive;
+		}
+		tags[id] = 0;
+		return e;
+	}
+
+	/*
+		macro function getContainer( containerName : String ) {
+			var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
+			return macro @:privateAccess $i{ containerName }.inst();
+		}
+
+
+		  /**
+		* Creates a new archetype that makes entities
+		* @param components comma separated list of components of `Any` type
+		* @return `Entity`
+	 */
+	#if macro
+	/*
+		 function exprOfClassToTypePath( e : ExprOf<Class<Any>>) : TPath {
+			var x =  e.parseClassName().getType().follow().toComplexType();
+			trace("tpath: " + x);
+			return x;
+		}
+	 */
+	// var allocation = components.map(function(c) return  {expr: ENew(exprOfClassToTypePath(c)),  pos:Context.currentPos()});
+	#end
+	/*
+		 macro public function addNoViews(self:Expr, components:Array<ExprOf<Any>>):ExprOf<ecs.Entity> {
+			if (components.length == 0) {
+				Context.error('Required one or more Components', Context.currentPos());
+			}
+
+		   
+			var body = []
+				.concat(
+					addComponentsToContainersExprs
+				)
+				
+				.concat([ 
+					macro return __entity__ 
+				]);
+
+			var ret = macro #if (haxe_ver >= 4) inline #end ( function(__entity__:ecs.Entity) $b{body} )($self);
+
+			return ret;
+		}
+	 */
+	// macro public function createFactory(worlds:ExprOf<Any>, components:Array<ExprOf<Class<Any>>>) { // :ExprOf<ecs.Factory> {
+	// 	#if macro
+	// 	var pos = Context.currentPos();
+
+	// 	if (components.length == 0) {
+	// 		Context.error('Required one or more Components', Context.currentPos());
+	// 	}
+
+	// 	// var pp = new haxe.macro.Printer();
+	// 	var classNames = components.map(function(c) return {expr: c.exprOfClassToFullTypeName(null, pos).asTypeIdent(pos).expr, pos: pos});
+	// 	var allocation = components.map(function(c) return {expr: ENew(c.exprOfClassToTypePath(null, pos), []), pos: pos});
+
+	// 	var addComponentsToContainersExprs = components.map((c) -> {
+	// 		// trace("parsetname|" + c.parseClassName().getType().toComplexType());
+	// 		var ct = c.parseClassName().getType().follow().toComplexType();
+	// 		var info = ct.getComponentContainerInfo(pos);
+
+	// 		// trace('add and alloc ${c}');
+	// 		var alloc = {expr: ENew(ct.toString().asTypePath(), []), pos: Context.currentPos()};
+
+	// 		return info.getAddExpr(macro __entity__, alloc);
+	// 	});
+
+	// 	// trace(pp.printExprs(allocation, "\n"));
+
+	// 	var body = [].concat([macro var _views:Array<ecs.core.AbstractView> = []])
+	// 		.concat([
+	// 			// macro trace("Tracing against " + ecs.Workflow.views.length)
+	// 		])
+	// 		.concat([
+	// 			macro for (v in ecs.Workflow.views) {
+	// 				if (@:privateAccess v.isMatchedByTypes($worlds, $a{classNames})) {
+	// 					_views.push(v);
+	// 				}
+	// 			}
+	// 		])
+	// 		.concat([
+	// 			macro return function() {
+	// 				var __entity__ = new ecs.Entity($worlds);
+	// 				//                ecs.Workflow.addNoViews(e, $a{allocation});
+	// 				$b{addComponentsToContainersExprs};
+
+	// 				// trace("adding to views " + _views.length);
+	// 				for (v in _views) {
+	// 					// trace("adding to view ");
+	// 					@:privateAccess v.addMatchedNew(__entity__);
+	// 				}
+	// 				return __entity__;
+	// 			}
+	// 		]);
+
+	// 	var ret = macro inline(function() $b{body})();
+
+	// 	// trace(pp.printExpr(ret));
+	// 	return ret;
+	// 	#else
+	// 	return macro "";
+	// 	#end
+
+	// 	#if false.concat
+	// 	(addComponentsToContainersExprs) var addComponentsToContainersExprs = components.map(function(c) {
+	// 		var info = (c.typeof().follow().toComplexType()).getComponentContainerInfo();
+
+	// 		var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
+	// 		return macro @:privateAccess $i{containerName}.inst();
+	// 	});
+
+	// 	return macro "";
+	// 	#end
+	// }
+
+	#if factories
+	#end
+	@:allow(ecs.Entity) inline function cache(e:Entity) {
+		// Active or Inactive
+		if (status(e) < Cached) {
+			removeAllComponentsOf(e);
+			_entities.remove(e);
+
+			// TODO: somehow we managed to double-add an id to the pool by destroying an entity multiple times... !
+			// idPool.remove(id); Need to figure out a better way to do this [RC]
+			idPool.push(e.id());
+
+			statuses[e.id()] = Cached;
+		}
+	}
+
+	@:allow(ecs.Entity) inline function add(e:Entity) {
+		if (status(e) == Inactive) {
+			statuses[e.id()] = Active;
+			_entities.add(e);
+			for (v in views)
+				v.addIfMatched(e);
+		}
+	}
+
+	@:allow(ecs.Entity) inline function remove(e:Entity) {
+		if (status(e) == Active) {
+			for (v in views)
+				v.removeIfExists(e);
+			_entities.remove(e);
+			statuses[e.id()] = Inactive;
+		}
+	}
+
+	@:allow(ecs.Entity) inline function status(e:Entity):Status {
+		if (e.id() <= ecs.Entity.INVALID_ID)
+			return Status.Invalid;
+		return statuses[e.id()];
+	}
+
+	@:allow(ecs.Entity) inline function pauseAdding(id:Entity) {}
+
+	@:allow(ecs.Entity) inline function resumeAdding(id:Entity) {}
+
+	@:allow(ecs.Entity) inline function getTag(e:Entity, tag:Int) {
+		final offset = tag >> 5;
+		final bitOffset = tag - (offset << 5);
+		final tagField = tags[e.id() * TAG_STRIDE + offset];
+		return tagField & (1 << bitOffset) != 0;
+	}
+
+	@:allow(ecs.Entity) inline function setTag(e:Entity, tag:Int) {
+        var id = e.id();
+		//		trace('Setting tag  ${tag} on ${id}');
+		final offset = tag >> 5;
+		final bitOffset = tag - (offset << 5);
+		final idx = id * TAG_STRIDE + offset;
+		final tagField = tags[id * TAG_STRIDE + offset];
+		tags[id * TAG_STRIDE + offset] = tagField | (1 << bitOffset);
+	}
+
+	@:allow(ecs.Entity) inline function clearTag(e:Entity, tag:Int) {
+        var id = e.id();
+		final offset = tag >> 5;
+		final bitOffset = tag - (offset << 5);
+		final idx = id * TAG_STRIDE + offset;
+		final tagField = tags[id * TAG_STRIDE + offset];
+		tags[id * TAG_STRIDE + offset] = tagField & ~(1 << bitOffset);
+	}
+
+	// var removeAllFunction:(ecs.Entity) -> Void = null;
+
+	// public dynamic function numComponentTypes() {
+	// 	return 0;
+	// }
+
+	// public dynamic function componentNames():Array<String> {
+	// 	return [];
+	// }
+
+	// public dynamic function entityComponentNames(e:ecs.Entity):Array<String> {
+	// 	return [];
+	// }
+
+	// public dynamic function componentsToStrings(e:ecs.Entity):Array<String> {
+	// 	return [];
+	// }
+
+	// public dynamic function componentsToDynamic(e:ecs.Entity):Array<Dynamic> {
+	// 	return [];
+	// }
+
+	// public dynamic function componentNameToString(e:ecs.Entity, name:String):String {
+	// 	return "";
+	// }
+
+	// macro function removeAllComponents(e:Expr):Expr {
+	// 	return macro {
+	// 		if (removeAllFunction == null) {
+	// 			var c = Type.resolveClass("LateCalls");
+	// 			if (c == null)
+	// 				throw "Internal ecs Error - no LateCalls class available in reflection. Required compilation macro: --macro ecs.core.macro.Global.setup()";
+	// 			var i = Type.createInstance(c, null);
+	// 			if (i == null)
+	// 				throw "Internal ecs Error - could not instance LateCalls. Required compilation macro: --macro ecs.core.macro.Global.setup()";
+	// 			removeAllFunction = i.getRemoveFunc();
+	// 		}
+	// 		removeAllFunction($e);
+	// 	}
+	// }
+
+	@:allow(ecs.Entity) inline function removeAllComponentsOf(e:ecs.Entity) {
+//        var id = e.id();
+		if (status(e) == Active) {
+			for (v in views) {
+				v.removeIfExists(e);
+			}
+		}
+
+		Workflow.removeAllComponents(e);
+	}
+
+	@:allow(ecs.Entity) inline function printAllComponentsOf(id:Int):String {
+		var ret = '#$id:';
+
+		return ret.substr(0, ret.length - 1);
+	}
+
+	public inline function getGeneration(id:Int):Int {
+		return _generations[id];
+	}
+}

@@ -12,22 +12,23 @@ import test.TestSystemA;
 
 
 class Test {
-    public final TESTWORLD = 5;
+    public static final TESTWORLD = 0;
 
 
     public static function main() {
         #if !macro ecsSetup(); #end
-        var ysystem = new TestSystemY();
-        Workflow.addSystem(ysystem);
-        Workflow.addSystem(new TestSystemZ());
-        Workflow.addSystem(new TestSystemA());
+        var world = Workflow.world(TESTWORLD);
+        var ysystem = new TestSystemY(world);
+        world.addSystem(ysystem);
+        world.addSystem(new TestSystemZ(world));
+        world.addSystem(new TestSystemA(world));
   
         // only works with static views - factories don't work atm.
        //var factory = ecs.Workflow.createFactory(1, X, Y);
         //trace(factory);
   
-        var e = new Entity();
-        var e2 = new Entity();
+        var e = world.newEntity();
+        var e2 = world.newEntity();
 //        e.add( new K() );
         e.add( new F() );
         e.add( new FS() );
@@ -67,7 +68,7 @@ class Test {
         trace ('E has tag Y ${e.has(Y)}');
 //        xxx.a;
         
-        Workflow.update(1.);
+        world.update(1.);
  
           
     }

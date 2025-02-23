@@ -20,26 +20,44 @@ import haxe.CallStack;
  *  
  * @author https://github.com/deepcake
  */
-abstract Entity(Int) from Int to Int {
-	public static inline var INVALID_ENTITY:Entity = Workflow.INVALID_ID;
+
+abstract Entity(Int)  {
+	public static inline final INVALID_ID = 0;
+	public static inline var INVALID_ENTITY:Entity = new Entity(INVALID_ID);
 
 	/**
 	 * Creates a new Entity instance  
 	 * @param immediate immediately adds this entity to the workflow if `true`, otherwise `activate()` call is required
 	 */
-	public inline function new(world:Int = 0, immediate = true) {
-		this = Workflow.id(immediate, world);
+	private inline function new(i : Int) : Entity {
+		this = i;
+	}
+	
+	static inline final WORLD_SHIFT = 24;
+	static inline final WORLD_MASK = 0xFF000000;
+	static inline final ID_MASK = 0x00FFFFFF;
+
+	public inline function worldIdx() {
+		return this >> WORLD_SHIFT;
 	}
 
-	public inline function worlds() {
-		return Workflow.world(this);
+	public inline function world() {
+		return Workflow.world(this >> WORLD_SHIFT);
+	}
+
+	public inline function worldId() {
+		return this >> WORLD_SHIFT;
+	}
+
+	public inline function id() {
+		return this & ID_MASK;
 	}
 
 	/**
 	 * Adds this entity to the workflow, so it can be collected by views  
 	 */
 	public inline function activate() {
-		Workflow.add(this);
+		world().add(self());
 	}
 
 	/**
@@ -47,21 +65,21 @@ abstract Entity(Int) from Int to Int {
 	 * Entity can be added to the workflow again by `activate()` call
 	 */
 	public inline function deactivate() {
-		Workflow.remove(this);
+		world().remove(self());
 	}
 
 	/**
 	 * Prevents any addition callbaks until resuming
 	 */
 	public inline function pauseAdding() {
-		Workflow.pauseAdding(this);
+		world().pauseAdding(self());
 	}
 
 	/**
 	 * Calls any addition callbacks for new views
 	 */
 	public inline function resumeAdding() {
-		Workflow.resumeAdding(this);
+		world().resumeAdding(self());
 	}
 
 	/**
@@ -69,7 +87,7 @@ abstract Entity(Int) from Int to Int {
 	 * @return Status
 	 */
 	public inline function status():Status {
-		return Workflow.status(this);
+		return world().status(self());
 	}
 
 	/**
@@ -77,7 +95,7 @@ abstract Entity(Int) from Int to Int {
 	 * @return Bool
 	 */
 	public inline function isActive():Bool {
-		return Workflow.status(this) == Active;
+		return status() == Active;
 	}
 
 	/**
@@ -85,7 +103,11 @@ abstract Entity(Int) from Int to Int {
 	 * @return Bool
 	 */
 	public inline function isValid():Bool {
-		return this != INVALID_ENTITY && Workflow.status(this) < Cached;
+		return this != INVALID_ID && status() < Cached;
+	}
+
+	public inline function self():Entity {
+		return new Entity(this);
 	}
 
 	/**
@@ -94,7 +116,7 @@ abstract Entity(Int) from Int to Int {
 	 * If entity is not required anymore - `destroy()` should be called 
 	 */
 	public inline function removeAll() {
-		Workflow.removeAllComponentsOf(this);
+		world().removeAllComponentsOf(self());
 	}
 
 	/**
@@ -103,20 +125,20 @@ abstract Entity(Int) from Int to Int {
 	 * __Note__ that using this entity after call this method is incorrect!
 	 */
 	public inline function destroy() {
-		Workflow.cache(this);
+		world().cache(self());
 	}
 
 	public var generation(get, never):Int;
 
 	inline function get_generation() {
-		return  Workflow.getGeneration(this);
+		return  world().getGeneration(this);
 	}
 
-	public function toSafe():EntityRef {
-		if (this == INVALID_ENTITY) {
+	public function toSafe():SafeEntity {
+		if (this == INVALID_ID) {
 			throw('Getting safe reference from invalid entity');
 		}
-		var gen = Workflow.getGeneration(this);
+		var gen = world().getGeneration(this);
 		return haxe.Int64.make(this, gen);
 	}
 
@@ -125,7 +147,7 @@ abstract Entity(Int) from Int to Int {
 	 * @return String
 	 */
 	public inline function print():String {
-		return Workflow.printAllComponentsOf(this);
+		return world().printAllComponentsOf(this);
 	}
 
 	#if macro
@@ -171,14 +193,14 @@ abstract Entity(Int) from Int to Int {
 		var addComponentsToContainersExprs = components.map(function(c) {
 			var info = getComponentContainerInfo(c, pos);
 
-			return info.getAddExpr(macro __entity__, c);
+			return info.getAddExpr( macro __entity__, c);
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
 		});
 
 		var body = [].concat(addComponentsToContainersExprs).concat([
 			macro if (__entity__.isActive()) {
-				for (v in ecs.Workflow.views) {
+				for (v in __entity__.world().views) {
 					@:privateAccess v.addIfMatched(__entity__);
 				}
 			}
@@ -281,90 +303,6 @@ abstract Entity(Int) from Int to Int {
 		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
 	}
 
-	#if the_old_way_is_better
-	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var pos = Context.currentPos();
-		var errorStage = "";
-		if (types.length == 0) {
-			Context.error('Required one or more Component Types', pos);
-		}
-		errorStage = "starting";
-		var cts = types.map(function(type) {
-			return type.parseClassName().getType().follow().toComplexType();
-		});
-
-		errorStage = "found types";
-		var removeComponentsFromContainersExprs = cts.map(function(ct) {
-			var info = ct.getComponentContainerInfo(pos);
-			return info.getRemoveExpr(macro __entity__);
-		});
-		errorStage = "got remove expression";
-
-		var removeEntityFromRelatedViewsExprs = cts.map(function(ct) {
-			return ct.getViewsOfComponent(pos).followName(pos);
-		}).map(function(viewsOfComponentClassName) {
-			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
-			return macro @:privateAccess $x.inst().removeIfExists(__entity__);
-		});
-		errorStage = "got views of components";
-
-		var body = [].concat([
-			macro if (__entity__.isActive())
-				$b{removeEntityFromRelatedViewsExprs}
-		]).concat(removeComponentsFromContainersExprs).concat([macro return __entity__]);
-
-		errorStage = "made body";
-
-		var ret = macro inline(function(__entity__:ecs.Entity) $b{body})($self);
-
-		errorStage = "returning";
-
-		return ret;
-	}
-	#end
-
-	#if bored_and_want_to_fix
-	/**
-	 * Returns a component of this entity of specified type.  
-	 * If a component with specified type is not added to this entity, `null` will be returned 
-	 * @param type `Class<T:Any>` type of component
-	 * @return `T:Any` component instance
-	 */
-	macro public function getOrAdd<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo();
-		var exists = info.getExistsExpr(self);
-		var get = info.getGetExpr(self);
-
-		return macro if ($exists) {
-			return $get;
-		} else {
-			/*
-				var addComponentsToContainersExprs = components.map(function(c) {
-					var to = c.typeof();
-					if (!to.isSuccess()) {
-						Context.error('Can not find type for ${c}', Context.currentPos());
-					}
-					var info = (c.typeof().sure().follow().toComplexType()).getComponentContainerInfo();
-					return info.getAddExpr(macro __entity__, c);
-					// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
-					// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
-				});
-
-				var body = [].concat(addComponentsToContainersExprs).concat([
-					macro if (__entity__.isActive()) {
-						for (v in ecs.Workflow.views) {
-							@:privateAccess v.addIfMatched(__entity__);
-						}
-					}
-				]).concat([macro return __entity__]);
-
-				var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
-
-			 */
-		};
-	}
-	#end
-
 	/**
 	 * Returns a component of this entity of specified type.  
 	 * If a component with specified type is not added to this entity, `null` will be returned 
@@ -398,9 +336,13 @@ abstract Entity(Int) from Int to Int {
 
 	@:keep
     public function toString() {
-		var g = Workflow.getGeneration(this);
+		var g = world().getGeneration(this);
         return 'Entity(id:${this}, gen:${g})';
     }
+
+	private static inline function fromWorldAndId(world:Int, id:Int) : Entity {
+		return new Entity((world << WORLD_SHIFT) | id);
+	}
 }
 
 enum abstract Status(Int) {
@@ -414,17 +356,17 @@ enum abstract Status(Int) {
 	@:op(A < B) static function lt(a:Status, b:Status):Bool;
 }
 
-abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
-	public static var INVALID_ENTITY(get, never):EntityRef;
+abstract SafeEntity(haxe.Int64) from haxe.Int64 to haxe.Int64 {
+	public static var INVALID_ENTITY(get, never):SafeEntity;
 
-	inline static function get_INVALID_ENTITY() {
-		return haxe.Int64.make(Entity.INVALID_ENTITY, 0);
+	inline static function get_INVALID_ENTITY() : SafeEntity{
+		return haxe.Int64.make(ecs.Entity.INVALID_ID, 0);
 	}
 
 	public var entity(get, never):Entity;
 
 	inline function get_entity() {
-		return this.high;
+		return @:privateAccess new Entity(this.high);
 	}
 
 	public var generation(get, never):Int;
@@ -457,14 +399,14 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 		var same_generation = my_generation == stored_generation;
 		var e = this.high;
 
-		return same_generation  ? e : Entity.INVALID_ENTITY;
+		return same_generation  ? @:privateAccess new Entity(e) : Entity.INVALID_ENTITY;
 	}
 
 	public var entityEnsured(get,never):Entity;
 	inline function get_entityEnsured() {
 		var e = this.high;
 
-		if (e == Entity.INVALID_ENTITY) {
+		if (e == Entity.INVALID_ID) {
 			throw 'Entity is invalid';
 		}
 
@@ -476,7 +418,7 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 			throw 'Entity ${e} is stale ${my_generation} != ${stored_generation}';
 		}
 
-		return e;
+		return @:privateAccess new Entity(e);
 	}
 
 	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
@@ -531,7 +473,7 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 		var addComponentsToContainersExprs = components.map(function(c) {
 			var info = @:privateAccess Entity.getComponentContainerInfo(c, pos);
 
-			return info.getAddExpr(macro __entity__, c);
+			return info.getAddExpr( macro __entity__, c);
 		});
 
 		var body = [].concat(addComponentsToContainersExprs).concat([
@@ -572,11 +514,11 @@ abstract EntityRef(haxe.Int64) from haxe.Int64 to haxe.Int64 {
 	}
 
 	public inline function isActive():Bool {
-		return Workflow.status(entity) == Active;
+		return entity.isActive();
 	}
 
 	@:keep
     public function toString() {
-        return 'EntityRef(id:${entity}, generation:${generation})';
+        return 'SafeEntity(id:${entity}, generation:${generation})';
     }
 }

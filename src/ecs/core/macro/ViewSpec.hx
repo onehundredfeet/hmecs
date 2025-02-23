@@ -31,7 +31,7 @@ class ViewSpec {
 		return e != null;
 
 	public var name:String;
-	public var worlds:Int;
+//	public var worlds:Int;
 	public var includes:Array<ViewTypeRef> = [];
 	public var excludes:Array<ViewTypeRef> = [];
 	public var needsEntity:Bool;
@@ -44,7 +44,7 @@ class ViewSpec {
 	public function clone() {
 		var c = new ViewSpec();
 		c.name = name;
-		c.worlds = worlds;
+//		c.worlds = worlds;
 		c.needsDT = needsDT;
 		c.needsEntity = needsEntity;
 		c.includes = includes.copy();
@@ -121,7 +121,7 @@ class ViewSpec {
 
 		// Context.warning('from field ${field.name}', Context.currentPos());
 		var components = func.args.map((x) -> vi.addArg(x, field.pos)).filter(notNull);
-		vi.worlds = metaFieldToWorlds(field);
+//		vi.worlds = metaFieldToWorlds(field);
 
 		vi.includes.sort(compareViewTypes);
 		vi.excludes = getExcludesFromField(field);
@@ -133,7 +133,7 @@ class ViewSpec {
 	public static function fromVar(field:Field, ct:ComplexType):ViewSpec {
 		trace('attemping to resolve from var ${field.name} with ${ct.toString()}');
 		var vs = fromViewCT(ct, field.pos);
-		vs.worlds = metaFieldToWorlds(field);
+//		vs.worlds = metaFieldToWorlds(field);
 		vs.excludes = getExcludesFromField(field);
 		vs.generateName();
 		trace('From var ${vs.name}');
@@ -153,7 +153,7 @@ class ViewSpec {
 		});
 		vi.includes.sort(compareViewTypes);
 		vi.excludes = [];
-		vi.worlds = 0xffffffff;
+//		vi.worlds = 0xffffffff;
 		vi.needsEntity = false;
 		vi.needsDT = false;
 		vi.generateName();
@@ -193,7 +193,7 @@ class ViewSpec {
 				});
 				vi.includes.sort(compareViewTypes);
 				vi.excludes = [];
-				vi.worlds = 0xffffffff;
+//				vi.worlds = 0xffffffff;
 				vi.needsEntity = false;
 				vi.needsDT = false;
 				vi.generateName();
@@ -247,8 +247,8 @@ class ViewSpec {
 	public static function fromExplicit() {}
 
 	public function generateName() {
-		name = 'ViewOf_'
-			+ StringTools.hex(worlds, 8)
+		name = 'ViewOf'
+//			+ StringTools.hex(worlds, 8)
 			+ "_i_"
 			+ includes.map((x) -> x.name).join('_')
 			+ "_e_"

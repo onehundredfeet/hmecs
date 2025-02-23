@@ -142,6 +142,7 @@ class Global {
 			@:privateAccess Workflow.componentsToStrings = ecs.LateCalls.componentsToStrings;
 			@:privateAccess Workflow.componentsToDynamic = ecs.LateCalls.componentsToDynamic;
 			@:privateAccess Workflow.componentNameToString = ecs.LateCalls.componentNameToString;
+			@:privateAccess Workflow.initialize();
 		}
 		return x;
 	}

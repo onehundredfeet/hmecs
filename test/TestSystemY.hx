@@ -9,7 +9,6 @@ class TestSystemY extends ecs.System {
     public function ycount() {
         return viewY.entities.length;
     }
-    @:worlds(TestWorlds.TESTWORLDA) 
     @:u  function updateA(y:Y) { 
         trace("SystemY|update");    
         

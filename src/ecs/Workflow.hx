@@ -31,6 +31,79 @@ import ecs.core.Parameters;
 import ecs.core.Containers;
 
 class Workflow {
+	static var _worlds = new ecs.core.Containers.WorldVector(Parameters.MAX_WORLDS);
+
+	public static function initialize() {
+		for (i in 0...Parameters.MAX_WORLDS) {
+			_worlds[i] = new World(i);
+		}
+	}
+	
+	public inline static function world(idx:Int) {
+		return _worlds[idx];
+	}
+	
+	public inline function worldEntity(idx:Int) {
+		return _worlds[idx].self;
+	}
+
+
+	
+
+	public static dynamic function numComponentTypes() { return 0; }	
+	public static dynamic function componentNames()  : Array<String> {
+		return [];
+	}
+	public static dynamic function entityComponentNames(e : ecs.Entity) : Array<String> {
+		return [];
+	}
+	public static dynamic function componentsToStrings(e : ecs.Entity) : Array<String> {
+		return [];
+	}
+	public static dynamic function componentsToDynamic(e : ecs.Entity) : Array<Dynamic> {
+		return [];
+	}
+	public static dynamic function componentNameToString(e : ecs.Entity, name : String) : String {
+		return "";
+	}
+	
+	@:allow(ecs.World) static var removeAllFunction : (ecs.Entity) -> Void = null;
+
+	@:allow(ecs.World) macro static function removeAllComponents(e : Expr) : Expr {
+		return macro {
+			if (Workflow.removeAllFunction == null) {
+				var c = Type.resolveClass("LateCalls");
+				if (c == null) throw "Internal ecs Error - no LateCalls class available in reflection. Required compilation macro: --macro ecs.core.macro.Global.setup()";
+				var i = Type.createInstance(c,null);
+				if (i == null) throw "Internal ecs Error - could not instance LateCalls. Required compilation macro: --macro ecs.core.macro.Global.setup()";
+				Workflow.removeAllFunction = i.getRemoveFunc();
+			}
+			Workflow.removeAllFunction($e);			
+		}		
+	}
+
+	#if false
+
+
+	@:allow(ecs.Entity) static inline function removeAllComponentsOf(e:ecs.Entity) {
+		if (status(id) == Active) {
+			for (v in views) {
+				v.removeIfExists(id);
+			}
+		}
+		removeAllComponents(id);
+	}
+
+
+
+	@:allow(ecs.Entity) static inline function printAllComponentsOf(e:ecs.Entity):String {
+		var ret = '#$id:';
+
+		return ret.substr(0, ret.length - 1);
+	}
+
+
+
 
 	static inline final TAG_STRIDE : Int = Std.int(Parameters.MAX_TAGS / 32);
 	@:allow(ecs.Entity) static inline final INVALID_ID = 0;
@@ -62,6 +135,10 @@ class Workflow {
 	static var _singleton:Entity;
 
 	static var _worldSingletons:Array<Entity> = [];
+
+
+
+	
 
 	public static function singleton() {
 		if (_singleton.isValid()) {
@@ -245,12 +322,6 @@ class Workflow {
 		return id;
 	}
 
-	public inline static function world(id:Int) {
-		if (status(id) == Active) {
-			return _world[id];
-		}
-		return -1;
-	}
 
 	public inline static function worldEntity(idx:Int) {
 		if (!_worldSingletons[idx].isValid()) {
@@ -394,7 +465,7 @@ class Workflow {
 		}
 	}
 
-	@:allow(ecs.Entity) static inline function add(id:Int) {
+	@:allow(ecs.Entity) static inline function add(id:Entity) {
 		if (status(id) == Inactive) {
 			statuses[id] = Active;
 			_entities.add(id);
@@ -403,7 +474,7 @@ class Workflow {
 		}
 	}
 
-	@:allow(ecs.Entity) static inline function remove(id:Int) {
+	@:allow(ecs.Entity) static inline function remove(id:Entity) {
 		if (status(id) == Active) {
 			for (v in views)
 				v.removeIfExists(id);
@@ -413,7 +484,7 @@ class Workflow {
 	}
 
 	@:allow(ecs.Entity) static inline function status(id:Int):Status {
-		if (id <= Workflow.INVALID_ID)
+		if (id <= ecs.Entity.INVALID_ID)
 			return Status.Invalid;
 		return statuses[id];
 	}
@@ -452,69 +523,9 @@ class Workflow {
 		tags[id * TAG_STRIDE + offset] = tagField & ~(1 << bitOffset);
 	}
 
-	static var removeAllFunction : (ecs.Entity) -> Void = null;
-
-	public static dynamic function numComponentTypes() { return 0; }	
-	public static dynamic function componentNames()  : Array<String> {
-		return [];
-	}
-	public static dynamic function entityComponentNames(e : ecs.Entity) : Array<String> {
-		return [];
-	}
-	public static dynamic function componentsToStrings(e : ecs.Entity) : Array<String> {
-		return [];
-	}
-	public static dynamic function componentsToDynamic(e : ecs.Entity) : Array<Dynamic> {
-		return [];
-	}
-	public static dynamic function componentNameToString(e : ecs.Entity, name : String) : String {
-		return "";
-	}
-
-	macro static function removeAllComponents(e : Expr) : Expr {
-		return macro {
-			if (removeAllFunction == null) {
-				var c = Type.resolveClass("LateCalls");
-				if (c == null) throw "Internal ecs Error - no LateCalls class available in reflection. Required compilation macro: --macro ecs.core.macro.Global.setup()";
-				var i = Type.createInstance(c,null);
-				if (i == null) throw "Internal ecs Error - could not instance LateCalls. Required compilation macro: --macro ecs.core.macro.Global.setup()";
-				removeAllFunction = i.getRemoveFunc();
-			}
-			removeAllFunction($e);			
-		}		
-	}
-
-	@:allow(ecs.Entity) static inline function removeAllComponentsOf(id:Int) {
-		if (status(id) == Active) {
-			for (v in views) {
-				v.removeIfExists(id);
-			}
-		}
-		#if ecs_legacy_containers
-		for (c in definedContainers) {
-			c.remove(id);
-		}
-		#else
-		removeAllComponents(id);
-		#end
-	}
-
-
-
-	@:allow(ecs.Entity) static inline function printAllComponentsOf(id:Int):String {
-		var ret = '#$id:';
-		#if ecs_legacy_containers
-		for (c in definedContainers) {
-			if (c.exists(id)) {
-				ret += '${c.print(id)},';
-			}
-		}
-		#end
-
-		return ret.substr(0, ret.length - 1);
-	}
 
 	public inline static function getGeneration(id:Int):Int {
 		return _generations[id];
 	}
+	#end
 }
