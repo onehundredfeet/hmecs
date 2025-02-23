@@ -10,8 +10,8 @@ class TestSystemA extends ecs.System {
     var xy:View<X,Y,Z>;
 
     @:added
-    function addedF(f : F) {
-        trace("Added TestSystemA F");
+    function addedF(f : F, e : ecs.Entity) {
+        trace('Added TestSystemA F wid : ${e.worldId()}');
     }
 
     @:added
@@ -22,6 +22,10 @@ class TestSystemA extends ecs.System {
     @:removed
     function removed(ix:X) {
 
+    }
+
+    @:update function updateF(f: F ) {
+//        trace("SystemA|updateF");
     }
 
     @:not(Y)

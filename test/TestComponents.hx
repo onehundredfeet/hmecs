@@ -32,6 +32,7 @@ class Y {
     public var b : Float;
     public function new() { };
 }
+@:storage(COMPACT)
 class Z {
     public function new() { };
 }

@@ -209,7 +209,7 @@ class SystemBuilder {
 		fields.push(fvar([], [], '__world_id__', macro :Int, null, Context.currentPos()));
 
 		var initExpr = new Array<Expr>();
-		initExpr.push(macro trace('Initializing: ${this}'));
+//		initExpr.push(macro trace('Initializing: ${this}'));
 		var definedViews = new Array<{view:ViewRec, varname:String}>();
 		// find and init manually defined views
 		fields.filter(MetaTools.notSkipped).iter(function(field) {
@@ -414,7 +414,7 @@ class SystemBuilder {
 				definedViews.map(function(v) {
 //					trace('Activating: ${v.varname}');
 					return macro {
-						trace($v{v.varname});
+//						trace($v{v.varname});
 						$i{v.varname}.activate(__world_id__);
 					};
 				}))

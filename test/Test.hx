@@ -9,64 +9,122 @@ import test.TestWorlds;
 import test.TestSystemY;
 import test.TestSystemZ;
 import test.TestSystemA;
-
+import test.TestMacros;
 
 class Test {
-    public static final TESTWORLD = 0;
+	public static final TESTWORLD_A = 0;
+	public static final TESTWORLD_B = 1;
 
+	public static function main() {
+		#if !macro ecsSetup(); #end
+		var worldA = Workflow.world(TESTWORLD_A);
+		var worldB = Workflow.world(TESTWORLD_B);
 
-    public static function main() {
-        #if !macro ecsSetup(); #end
-        var world = Workflow.world(TESTWORLD);
-        var ysystem = new TestSystemY(world);
-        world.addSystem(ysystem);
-        world.addSystem(new TestSystemZ(world));
-        world.addSystem(new TestSystemA(world));
-  
-        var e = world.newEntity();
-        var e2 = world.newEntity();
-//        e.add( new K() );
-        e.add( new F() );
-        e.add( new FS() );
-        e.remove( K );
+		var ysystem = new TestSystemY(worldA);
+		worldA.addSystem(ysystem);
+		worldA.addSystem(new TestSystemZ(worldA));
+		worldA.addSystem(new TestSystemA(worldA));
 
-        var xxx = new X();
-        var fff = new F();
-                
-        e.add( TagA );
-        trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
-        e.add( TagB );
-        trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
-        e.remove(TagA);
-        trace( 'e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
-        e.add(TagA);
-//        e.remove(TagB);
-        e.add( xxx );
-        e.add( new Y() );
-        e2.add( new Y());
-        trace('y view count ${ysystem.ycount()}');
-        trace( 'e.TagA is ${e.get(TagA)}');
-        trace( 'e.TagA.test is ${e.get(TagA).test}');
-        e.get(TagA).test = 1;
-        trace( 'e.TagA.test is ${e.get(TagA).test}');
-        e2.add( TagA );
-        trace( 'e2.TagA.test is ${e.get(TagA).test}');
-        
-        trace ('E has tag a ${e.has(TagA)} b ${e.has(TagB)} a.test is ${e.get(TagA).test}');
-        trace ('E has tag Y ${e.has(Y)}');
-        trace('PRE SHELVE y view count ${ysystem.ycount()}');
-        e.shelve(Y);
-        trace('POST SHELVE y view count ${ysystem.ycount()}');
-        trace ('E has tag Y ${e.has(Y)}');
-        e.unshelve(Y);
-        trace('POST UNSHELVE y view count ${ysystem.ycount()}');
-        trace ('E has tag Y ${e.has(Y)}');
-        
-        world.update(1.);
- 
-          
-    }
-    static function ecsSetup() {
-        Global.setup();
-    }
-} 
+		worldB.addSystem(new TestSystemY(worldB));
+		worldB.addSystem(new TestSystemZ(worldB));
+		worldB.addSystem(new TestSystemA(worldB));
+
+		// var Inactive = 0;
+		// var Active = 1;
+		// var Cached = 2;
+		// var Invalid = 3;
+
+		// add many entities with a constant specifying the number of entities
+		final n = 1000;
+		var entities = new Array<Entity>();
+		for (i in 0...n) {
+			var e = i % 2 == 0 ? worldA.newEntity() : worldB.newEntity();
+			entities.push(e);
+			if (e.status() != Status.Active) {
+				trace('Failed to create entity');
+			}
+		}
+
+		// remove every third one
+		for (i in 0...n) {
+			if (i % 3 == 0) {
+				var e = entities[i];
+				e.destroy();
+				if (e.status() != Status.Cached) {
+					trace('Failed to destroy entity');
+				}
+			}
+		}
+
+        // replace every third one with new entities
+        for (i in 0...n) {
+            if (i % 3 == 0) {
+                var e = worldA.newEntity();
+                entities[i] = e;
+                if (e.status() != Status.Active) {
+                    trace('Failed to create entity');
+                }
+            }
+        }
+
+		for (i in 0...n) {
+			var e = entities[i];
+			e.add(new F());
+			if (i % 3 == 0) {
+				e.add(new FS());
+			}
+			if (i % 5 == 0) {
+				e.add(TagA);
+			}
+			if (i % 7 == 0) {
+				e.add(TagB);
+			}
+		}
+
+		var e = worldA.newEntity();
+		var e2 = worldA.newEntity();
+		//        e.add( new K() );
+		e.add(new F());
+		e.add(new FS());
+		e.remove(K);
+
+		var xxx = new X();
+		var fff = new F();
+
+		e.add(TagA);
+		trace('e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
+		e.add(TagB);
+		trace('e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
+		e.remove(TagA);
+		trace('e.TagA is ${e.get(TagA)} has ${e.has(TagA)}');
+		e.add(TagA);
+		//        e.remove(TagB);
+		e.add(xxx);
+		e.add(new Y());
+		e2.add(new Y());
+		trace('y view count ${ysystem.ycount()}');
+		trace('e.TagA is ${e.get(TagA)}');
+		trace('e.TagA.test is ${e.get(TagA).test}');
+		e.get(TagA).test = 1;
+		trace('e.TagA.test is ${e.get(TagA).test}');
+		e2.add(TagA);
+		trace('e2.TagA.test is ${e.get(TagA).test}');
+
+		trace('E has tag a ${e.has(TagA)} b ${e.has(TagB)} a.test is ${e.get(TagA).test}');
+		trace('E has tag Y ${e.has(Y)}');
+		trace('PRE SHELVE y view count ${ysystem.ycount()}');
+		e.shelve(Y);
+		trace('POST SHELVE y view count ${ysystem.ycount()}');
+		trace('E has tag Y ${e.has(Y)}');
+		e.unshelve(Y);
+		trace('POST UNSHELVE y view count ${ysystem.ycount()}');
+		trace('E has tag Y ${e.has(Y)}');
+
+		worldA.update(1.);
+		worldB.update(1.);
+	}
+
+	static function ecsSetup() {
+		Global.setup();
+	}
+}
