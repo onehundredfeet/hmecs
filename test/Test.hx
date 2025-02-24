@@ -43,7 +43,7 @@ class Test {
 
 		var ysystem = new TestSystemY(worldA);
 		worldA.addSystem(ysystem);
-		worldA.addSystem(new TestSystemZ(worldA));
+		var waz : TestSystemZ = worldA.addSystem();
 		worldA.addSystem(new TestSystemA(worldA));
 
 		worldB.addSystem(new TestSystemY(worldB));

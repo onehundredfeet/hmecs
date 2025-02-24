@@ -187,11 +187,18 @@ class World {
 	 * Adds the system to the workflow
 	 * @param s `System` instance
 	 */
-	public function addSystem(s:ISystem) {
+	 // IInterface & Constructible<SomeClass->Void>)
+	 @:generic
+	public function addSystem<TSystem:(ISystem & haxe.Constraints.Constructible<World->Void>)>(s:TSystem = null) {
+		if (s == null) {
+			s = new TSystem(this);
+		}
+
 		if (!hasSystem(s)) {
 			_systems.push(s);
 			s.__activate__();
 		}
+		return s;
 	}
 
 	/**
