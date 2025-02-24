@@ -172,7 +172,7 @@ class StorageInfo {
 	}
 	function clearTagExpr(entityVarExpr : Expr ) : Expr {
 		var te = tagExpr();	
-		return  macro @:privateAccess ecs.Workflow.world($entityVarExpr.worldId()).clearTag($entityVarExpr, $te);	
+		return  macro @:privateAccess ecs.Workflow.world($entityVarExpr.worldId).clearTag($entityVarExpr, $te);	
 	}
 
 	function setTagExpr(entityVarExpr : Expr ) : Expr {
@@ -182,9 +182,9 @@ class StorageInfo {
 	
 	public function getGetExprCached(entityExpr:Expr, cachedVarName:String):Expr {
 		return switch (storageType) {
-			case FAST: macro $i{cachedVarName}[$entityExpr.id()];
-			case FLAT: macro $i{cachedVarName}[$entityExpr.id()];
-			case COMPACT: macro $i{cachedVarName}.get($entityExpr.id());
+			case FAST: macro $i{cachedVarName}[$entityExpr.id];
+			case FLAT: macro $i{cachedVarName}[$entityExpr.id];
+			case COMPACT: macro $i{cachedVarName}.get($entityExpr.id);
 			case SINGLETON: macro $i{cachedVarName};
 			case TAG: macro @:privateAccess $i{cachedVarName};
 		};
@@ -192,31 +192,31 @@ class StorageInfo {
 
 	public function getGetExpr(entityExpr:Expr, sure:Bool = false):Expr {
 		return switch (storageType) {
-			case FAST: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage[$entityExpr.id()];
-			case FLAT: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage[$entityExpr.id()];
-			case COMPACT: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage.get($entityExpr.id());
-			case SINGLETON: macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage;
+			case FAST: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage[$entityExpr.id];
+			case FLAT: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage[$entityExpr.id];
+			case COMPACT: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage.get($entityExpr.id);
+			case SINGLETON: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage;
 			case TAG: var te = tagExpr();	
 			sure ? 
-				macro $containerFullNameExpr.worlds[$entityExpr.worldId()].storage :
-			  	macro @:privateAccess ecs.Workflow.world($entityExpr.worldId()).getTag($entityExpr, $te) ? $containerFullNameExpr.worlds[$entityExpr.worldId()].storage : null;
+				macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage :
+			  	macro @:privateAccess ecs.Workflow.world($entityExpr.worldId).getTag($entityExpr, $te) ? $containerFullNameExpr.worlds[$entityExpr.worldId].storage : null;
 		};
 	}
 
 	public function getExistsExpr(entityVar:Expr):Expr {
 		return switch (storageType) {
 			case FLAT: 
-				macro $containerFullNameExpr.worlds[$entityVar.worldId()]._existsStorage[$entityVar.id()];
+				macro $containerFullNameExpr.worlds[$entityVar.worldId]._existsStorage[$entityVar.id];
 			case FAST: 
 				isValueStruct ? 
-			macro $containerFullNameExpr.worlds[$entityVar.worldId()]._existsStorage[$entityVar.id()]
+			macro $containerFullNameExpr.worlds[$entityVar.worldId]._existsStorage[$entityVar.id]
 			:	
-			macro $containerFullNameExpr.worlds[$entityVar.worldId()].storage[$entityVar.id()] != $emptyExpr;
-			case COMPACT: macro $containerFullNameExpr.worlds[$entityVar.worldId()].storage.exists($entityVar.id());
-			case SINGLETON: macro $containerFullNameExpr.worlds[$entityVar.worldId()].owner == $entityVar.id();
+			macro $containerFullNameExpr.worlds[$entityVar.worldId].storage[$entityVar.id] != $emptyExpr;
+			case COMPACT: macro $containerFullNameExpr.worlds[$entityVar.worldId].storage.exists($entityVar.id);
+			case SINGLETON: macro $containerFullNameExpr.worlds[$entityVar.worldId].owner == $entityVar.id;
 			case TAG: 
 				var te = tagExpr();	
-				macro  @:privateAccess ecs.Workflow.world($entityVar.worldId()).getTag($entityVar, $te);
+				macro  @:privateAccess ecs.Workflow.world($entityVar.worldId).getTag($entityVar, $te);
 		};
 	}
 
@@ -228,27 +228,27 @@ class StorageInfo {
 		return switch (storageType) {
 			case FLAT: 
 				macro {
-					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()].copy($componentExpr);
-					$containerFullNameExpr.worlds[$entityVarExpr.worldId()]._existsStorage[$entityVarExpr.id()] = true;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId].storage[$entityVarExpr.id].copy($componentExpr);
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId]._existsStorage[$entityVarExpr.id] = true;
 				}
 			case FAST: 
 				isValueStruct ? 
 				macro {
-					$containerFullNameExpr.worlds[$entityVarExpr.worldId()]._existsStorage[$entityVarExpr.id()] = true;
-					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()] = $componentExpr;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId]._existsStorage[$entityVarExpr.id] = true;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId].storage[$entityVarExpr.id] = $componentExpr;
 				}
 				:
-			macro $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()] = $componentExpr;
+			macro $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage[$entityVarExpr.id] = $componentExpr;
 			
-			case COMPACT: macro $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage.set($entityVarExpr.id(), $componentExpr);
+			case COMPACT: macro $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage.set($entityVarExpr.id, $componentExpr);
 			case SINGLETON: macro {
-					if ($containerFullNameExpr.worlds[$entityVarExpr.worldId()].owner != 0)
+					if ($containerFullNameExpr.worlds[$entityVarExpr.worldId].owner != 0)
 						throw 'Singleton already has an owner';
-					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage = $componentExpr;
-					$containerFullNameExpr.worlds[$entityVarExpr.worldId()].owner = $entityVarExpr.id();
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId].storage = $componentExpr;
+					$containerFullNameExpr.worlds[$entityVarExpr.worldId].owner = $entityVarExpr.id;
 				};
 			case TAG:var te = tagExpr();	
-			macro @:privateAccess  ecs.Workflow.world($entityVarExpr.worldId()).setTag($entityVarExpr, $te);
+			macro @:privateAccess  ecs.Workflow.world($entityVarExpr.worldId).setTag($entityVarExpr, $te);
 		};
 	}
 
@@ -268,12 +268,12 @@ class StorageInfo {
 
 	public function getRetireExpr(entityVarExpr:Expr):Array<Expr> {
 		var accessExpr = switch (storageType) {
-			case FLAT: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()];
-			case FAST: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage[$entityVarExpr.id()];
-			case COMPACT: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage.get($entityVarExpr.id());
-			case SINGLETON: macro($containerFullNameExpr.worlds[$entityVarExpr.worldId()].owner == $entityVarExpr ? $containerFullNameExpr.worlds[$entityVarExpr.worldId()].storage : null);
+			case FLAT: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage[$entityVarExpr.id];
+			case FAST: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage[$entityVarExpr.id];
+			case COMPACT: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage.get($entityVarExpr.id);
+			case SINGLETON: macro($containerFullNameExpr.worlds[$entityVarExpr.worldId].owner == $entityVarExpr ? $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage : null);
 			case TAG: var te = tagExpr();	
-			@:privateAccess  macro ecs.Workflow.world($entityVarExpr.worldId()).getTag($te, $te);
+			@:privateAccess  macro ecs.Workflow.world($entityVarExpr.worldId).getTag($te, $te);
 		};
 
 		var retireExprs = new Array<Expr>();
@@ -322,7 +322,7 @@ class StorageInfo {
 	
 	function storageRemoveExpr(entityVarExpr:Expr):Expr {
 		return switch (storageType) {
-			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].remove($entityVarExpr.id());
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].remove($entityVarExpr.id);
 			case TAG: clearTagExpr(entityVarExpr);
 		}
 		/*
@@ -348,7 +348,7 @@ class StorageInfo {
 
 	public function getShelveExpr(entityVarExpr:Expr, pos:Position):Expr {
 		var shelfCall = switch (storageType) {
-			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].shelve($entityVarExpr.id());
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].shelve($entityVarExpr.id);
 			case TAG: Context.fatalError("Cannot shelve a tag",pos);
 		}
 
@@ -358,7 +358,7 @@ class StorageInfo {
 
 	public function getUnshelveExpr(entityVarExpr:Expr, pos:Position):Expr {
 		return switch (storageType) {
-			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId()].unshelve($entityVarExpr.id());
+			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].unshelve($entityVarExpr.id);
 			case TAG: Context.fatalError("Cannot unshelve a tag",pos);
 		}
 	}

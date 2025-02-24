@@ -11,12 +11,12 @@ class TestSystemA extends ecs.System {
 
     @:added
     function addedF(f : F, e : ecs.Entity) {
-        trace('Added TestSystemA F wid : ${e.worldId()}');
+  //      trace('Added TestSystemA F wid : ${e.worldId()}');
     }
 
     @:added
     function added(ix:X, e:ecs.Entity) {
-        trace ("Added TestSystemA X");
+//        trace ("Added TestSystemA X");
     }
 
     @:removed

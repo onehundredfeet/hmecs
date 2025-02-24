@@ -10,13 +10,34 @@ import test.TestSystemY;
 import test.TestSystemZ;
 import test.TestSystemA;
 import test.TestMacros;
+import ecs.core.Parameters;
 
 class Test {
 	public static final TESTWORLD_A = 0;
 	public static final TESTWORLD_B = 1;
 
+
+	static function intToBinary(value:Int, bits:Int = 32):String {
+        var result = "b";
+        for (i in 0...bits) {
+            // Extract the bit at position (bits - 1 - i)
+            var bit = (value >>> (bits - 1 - i)) & 1;
+            result += bit;
+        }
+        return result;
+    }
+
+	static function testPacking() {
+
+		trace('PACKING WORLD: wb ${Parameters.WORLD_BITS}[${@:privateAccess Entity.WORLD_COUNT}] ws ${@:privateAccess Entity.WORLD_SHIFT} wrm ${intToBinary(@:privateAccess  Entity.WORLD_RIGHT_MASK)} wlm ${intToBinary(@:privateAccess Entity.WORLD_LEFT_MASK)}');
+		trace('PACKING GENERATION: gb ${Parameters.GENERATION_BITS}[${@:privateAccess Entity.GENERATION_COUNT}] gs ${@:privateAccess Entity.GENERATION_SHIFT} grm ${intToBinary(@:privateAccess Entity.GENERATION_RIGHT_MASK)} glm ${intToBinary(@:privateAccess Entity.GENERATION_LEFT_MASK)}');
+		trace('PACKING ID: ib ${@:privateAccess Entity.ID_BITS}[${@:privateAccess Entity.ID_COUNT}] ${intToBinary(@:privateAccess Entity.ID_MASK)} ');	
+	}
 	public static function main() {
 		#if !macro ecsSetup(); #end
+
+		testPacking();
+
 		var worldA = Workflow.world(TESTWORLD_A);
 		var worldB = Workflow.world(TESTWORLD_B);
 
@@ -35,21 +56,34 @@ class Test {
 		// var Invalid = 3;
 
 		// add many entities with a constant specifying the number of entities
-		final n = 1000;
+		final n = 10000;
 		var entities = new Array<Entity>();
+		entities.resize(n);
+		entities.resize(0);
+		
+		var t0 = haxe.Timer.stamp();
 		for (i in 0...n) {
 			var e = i % 2 == 0 ? worldA.newEntity() : worldB.newEntity();
+			if (!e.valid) {
+				trace('Failed to create entity');
+			}
 			entities.push(e);
 			if (e.status() != Status.Active) {
 				trace('Failed to create entity');
 			}
 		}
 
+		var d0 = haxe.Timer.stamp() - t0;
+		trace('Create ${n} entities in ${d0 * 1000} ms (${d0 * 1000 * 1000 / n} us per entity)');
+
 		// remove every third one
 		for (i in 0...n) {
 			if (i % 3 == 0) {
 				var e = entities[i];
 				e.destroy();
+				if (e.valid) {
+					trace('Failed to destroy entity');
+				}
 				if (e.status() != Status.Cached) {
 					trace('Failed to destroy entity');
 				}

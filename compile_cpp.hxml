@@ -1,7 +1,7 @@
 --library buddy
 --class-path src
 --class-path test
--hl bin/test.hl
+--cpp cpp
 --main test.Test
 -D ecs_max_tags=64
 -D ecs_max_worlds=3

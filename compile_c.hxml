@@ -1,8 +1,12 @@
 --library buddy
 --class-path src
---class-path .
--D ecs_max_tags=64
-#-D ecs_max_entities=512
--hl bin/test/test.c
+--class-path test
+-hl hlc/test.c
 --main test.Test
+-D ecs_max_tags=64
+-D ecs_max_worlds=3
+-D ecs_world_bits=2
+-D ecs_generation_bits=6
+
+#-D ecs_max_entities=512
 #-D hl_ver=1.14.0

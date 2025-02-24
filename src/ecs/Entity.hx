@@ -1,5 +1,6 @@
 package ecs;
 
+import ecs.core.Parameters;
 #if macro
 import haxe.macro.Expr;
 
@@ -20,44 +21,83 @@ import haxe.CallStack;
  *  
  * @author https://github.com/deepcake
  */
-
+ @:allow(ecs.World) 
 abstract Entity(Int)  {
 	public static inline final INVALID_ID = 0;
 	public static inline var INVALID_ENTITY:Entity = new Entity(INVALID_ID);
 
-	/**
-	 * Creates a new Entity instance  
-	 * @param immediate immediately adds this entity to the workflow if `true`, otherwise `activate()` call is required
-	 */
+
 	private inline function new(i : Int) : Entity {
 		this = i;
 	}
+
+		/**
+	 * Creates a new Entity instance  
+	 * @param immediate immediately adds this entity to the workflow if `true`, otherwise `activate()` call is required
+	 */
+	public inline function make(world:Int, immediate:Bool = true) {
+		return Workflow.world(world).newEntity(immediate);
+	}
 	
-	static inline final WORLD_SHIFT = 24;
-	static inline final WORLD_MASK = 0xFF000000;
-	static inline final ID_MASK = 0x00FFFFFF;
+	static inline final WORLD_SHIFT = 32 - Parameters.WORLD_BITS; // defaults to 4
+	static inline final WORLD_COUNT = 1 << Parameters.WORLD_BITS;
+	static inline final WORLD_RIGHT_MASK = ((1 << (Parameters.WORLD_BITS)) - 1);
+	static inline final WORLD_LEFT_MASK =  ~((1 << (WORLD_SHIFT)) - 1);
 
-	public inline function worldIdx() {
-		return this >> WORLD_SHIFT;
+	static inline final GENERATION_SHIFT = WORLD_SHIFT - Parameters.GENERATION_BITS; // defaults to 4
+	static inline final GENERATION_COUNT = 1 << Parameters.GENERATION_BITS;
+	static inline final GENERATION_RIGHT_MASK = ((1 << (Parameters.GENERATION_BITS)) - 1);
+	static inline final GENERATION_LEFT_MASK = ~((1 << (GENERATION_SHIFT)) - 1) & ~WORLD_LEFT_MASK;
+
+	static inline final ID_MASK = ~(WORLD_LEFT_MASK | GENERATION_LEFT_MASK);
+	static inline final ID_BITS = 32 - Parameters.WORLD_BITS - Parameters.GENERATION_BITS;
+	static inline final ID_COUNT = 1 << ID_BITS;
+
+	private static inline function fromWorldAndId(world:Int, id:Int, gen:Int) : Entity {
+		return new Entity((world << WORLD_SHIFT) | (gen << GENERATION_SHIFT) | id);
 	}
 
-	public inline function world() {
-		return Workflow.world(this >> WORLD_SHIFT);
+	public var valid(get, never):Bool;
+	inline function get_valid() {
+		return this != INVALID_ID && world.getGeneration(id) == generation;
 	}
 
-	public inline function worldId() {
-		return this >> WORLD_SHIFT;
+	public var active(get, never):Bool;
+	inline function get_active(){
+		return this != INVALID_ID && world.getGeneration(id) == generation && status() == Status.Active;
 	}
 
-	public inline function id() {
+	public var world(get, never):World;
+	inline function get_world() {
+		return Workflow.world((this >>> WORLD_SHIFT) );
+	}
+
+	public var worldId(get, never):Int;
+	inline function get_worldId() {
+		return this >>> WORLD_SHIFT; // doesn't need a mask because it's on the left
+	}
+	
+	public var id(get, never):Int;
+	inline function get_id() {
 		return this & ID_MASK;
 	}
+
+	public var generation(get, never):Int;
+	inline function get_generation() {
+		return (this >>> GENERATION_SHIFT) & GENERATION_RIGHT_MASK;
+	}
+
+	// public var generation(get, never):Int;
+
+	// inline function get_generation() {
+	// 	return  world.getGeneration(this);
+	// }
 
 	/**
 	 * Adds this entity to the workflow, so it can be collected by views  
 	 */
 	public inline function activate() {
-		world().add(self());
+		world.add(self());
 	}
 
 	/**
@@ -65,21 +105,21 @@ abstract Entity(Int)  {
 	 * Entity can be added to the workflow again by `activate()` call
 	 */
 	public inline function deactivate() {
-		world().remove(self());
+		world.remove(self());
 	}
 
 	/**
 	 * Prevents any addition callbaks until resuming
 	 */
 	public inline function pauseAdding() {
-		world().pauseAdding(self());
+		world.pauseAdding(self());
 	}
 
 	/**
 	 * Calls any addition callbacks for new views
 	 */
 	public inline function resumeAdding() {
-		world().resumeAdding(self());
+		world.resumeAdding(self());
 	}
 
 	/**
@@ -87,7 +127,7 @@ abstract Entity(Int)  {
 	 * @return Status
 	 */
 	public inline function status():Status {
-		return world().status(self());
+		return world.status(self());
 	}
 
 	/**
@@ -116,7 +156,7 @@ abstract Entity(Int)  {
 	 * If entity is not required anymore - `destroy()` should be called 
 	 */
 	public inline function removeAll() {
-		world().removeAllComponentsOf(self());
+		world.removeAllComponentsOf(self());
 	}
 
 	/**
@@ -125,29 +165,17 @@ abstract Entity(Int)  {
 	 * __Note__ that using this entity after call this method is incorrect!
 	 */
 	public inline function destroy() {
-		world().cache(self());
+		world.cache(self());
 	}
 
-	public var generation(get, never):Int;
-
-	inline function get_generation() {
-		return  world().getGeneration(this);
-	}
-
-	public function toSafe():SafeEntity {
-		if (this == INVALID_ID) {
-			throw('Getting safe reference from invalid entity');
-		}
-		var gen = world().getGeneration(this);
-		return haxe.Int64.make(this, gen);
-	}
+	
 
 	/**
 	 * Returns list of all associated to this entity components.  
 	 * @return String
 	 */
 	public inline function print():String {
-		return world().printAllComponentsOf(this);
+		return world.printAllComponentsOf(this);
 	}
 
 	#if macro
@@ -200,7 +228,7 @@ abstract Entity(Int)  {
 
 		var body = [].concat(addComponentsToContainersExprs).concat([
 			macro if (__entity__.isActive()) {
-				for (v in __entity__.world().views) {
+				for (v in __entity__.world.views) {
 					@:privateAccess v.addIfMatched(__entity__);
 				}
 			}
@@ -336,13 +364,11 @@ abstract Entity(Int)  {
 
 	@:keep
     public function toString() {
-		var g = world().getGeneration(this);
+		var g = world.getGeneration(this);
         return 'Entity(id:${this}, gen:${g})';
     }
 
-	private static inline function fromWorldAndId(world:Int, id:Int) : Entity {
-		return new Entity((world << WORLD_SHIFT) | id);
-	}
+
 }
 
 enum abstract Status(Int) {
@@ -354,171 +380,4 @@ enum abstract Status(Int) {
 	@:op(A > B) static function gt(a:Status, b:Status):Bool;
 
 	@:op(A < B) static function lt(a:Status, b:Status):Bool;
-}
-
-abstract SafeEntity(haxe.Int64) from haxe.Int64 to haxe.Int64 {
-	public static var INVALID_ENTITY(get, never):SafeEntity;
-
-	inline static function get_INVALID_ENTITY() : SafeEntity{
-		return haxe.Int64.make(ecs.Entity.INVALID_ID, 0);
-	}
-
-	public var entity(get, never):Entity;
-
-	inline function get_entity() {
-		return @:privateAccess new Entity(this.high);
-	}
-
-	public var generation(get, never):Int;
-
-	inline function get_generation() {
-		return this.low;
-	}
-
-	public inline function isValid():Bool {
-		return entity.isValid() && generation == entity.generation;
-	}
-
-	// Assumes that the entity is valid
-	public inline function isFresh():Bool {
-		return generation == entity.generation;
-	}
-
-	public inline function isStale():Bool {
-		return generation != entity.generation;
-	}
-
-	public inline function entityIsValid():Bool {
-		return entity.isValid();
-	}
-
-	public var entitySafe(get,never):Entity;
-	inline function get_entitySafe() {
-		var my_generation = this.low;
-		var stored_generation = entity.generation;
-		var same_generation = my_generation == stored_generation;
-		var e = this.high;
-
-		return same_generation  ? @:privateAccess new Entity(e) : Entity.INVALID_ENTITY;
-	}
-
-	public var entityEnsured(get,never):Entity;
-	inline function get_entityEnsured() {
-		var e = this.high;
-
-		if (e == Entity.INVALID_ID) {
-			throw 'Entity is invalid';
-		}
-
-		var my_generation = this.low;
-		var stored_generation = entity.generation;
-		var same_generation = my_generation == stored_generation;
-
-		if (!same_generation) {
-			throw 'Entity ${e} is stale ${my_generation} != ${stored_generation}';
-		}
-
-		return @:privateAccess new Entity(e);
-	}
-
-	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
-		var pos = Context.currentPos();
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
-
-		var indirectExpr = macro $self.entity;
-
-		return info.getGetExpr(indirectExpr);
-	}
-
-	macro public function has(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-		var pos = Context.currentPos();
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
-
-		var indirectExpr = macro $self.entity;
-		return info.getExistsExpr(indirectExpr);
-	}
-
-	macro public function exists(self:Expr, type:ExprOf<Class<Any>>):ExprOf<Bool> {
-		var pos = Context.currentPos();
-		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
-		var indirectExpr = macro $self.entity;
-
-		return info.getExistsExpr(indirectExpr);
-	}
-
-	macro public function remove(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
-			return info.getRemoveExpr(entityExpr);
-		}
-		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
-			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
-		}
-		var indirectExpr = macro $self.entity;
-
-		return @:privateAccess Entity.ecsActionByClass(indirectExpr, types, Context.currentPos(), storageAction, viewAction);
-	}
-
-	@:to
-	public inline function toEntity():Entity {
-		return entity;
-	}
-
-	macro public function add(self:Expr, components:Array<Expr>):ExprOf<ecs.Entity> {
-		var pos = Context.currentPos();
-
-		if (components.length == 0) {
-			Context.error('Required one or more Components', pos);
-		}
-
-		var addComponentsToContainersExprs = components.map(function(c) {
-			var info = @:privateAccess Entity.getComponentContainerInfo(c, pos);
-
-			return info.getAddExpr( macro __entity__, c);
-		});
-
-		var body = [].concat(addComponentsToContainersExprs).concat([
-			macro if (__entity__.isActive()) {
-				for (v in ecs.Workflow.views) {
-					@:privateAccess v.addIfMatched(__entity__);
-				}
-			}
-		]).concat([macro return __entity__]);
-
-		var indirectExpr = macro $self.entity;
-
-		var ret = macro  inline (function(__entity__:ecs.Entity) $b{body})($indirectExpr);
-
-		return ret;
-	}
-
-	macro public function shelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
-			return info.getShelveExpr(entityExpr, pos);
-		}
-		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
-			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
-		}
-		var indirectExpr = macro $self.entity;
-		return @:privateAccess Entity.ecsActionByClass(indirectExpr, types, Context.currentPos(), storageAction, viewAction);
-	}
-
-	macro public function unshelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {
-		var storageAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
-			return info.getUnshelveExpr(entityExpr, pos);
-		}
-		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
-			return macro @:privateAccess ${viewExpr}.addIfMatched($entityExpr);
-		}
-		var indirectExpr = macro $self.entity;
-		return @:privateAccess Entity.ecsActionByClass(indirectExpr, types, Context.currentPos(), storageAction, viewAction);
-	}
-
-	public inline function isActive():Bool {
-		return entity.isActive();
-	}
-
-	@:keep
-    public function toString() {
-        return 'SafeEntity(id:${entity}, generation:${generation})';
-    }
 }

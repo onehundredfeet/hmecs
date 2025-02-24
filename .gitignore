@@ -6,3 +6,5 @@ dump
 out.txt
 .DS_Store
 .haxelib
+cpp
+hlc

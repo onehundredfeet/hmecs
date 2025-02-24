@@ -216,15 +216,13 @@ class World {
 
 	// Entity
 
-	public function newEntity(immediate:Bool = true):Entity {
+	public inline function newEntity(immediate:Bool = true):Entity {
 		var id = idPool.pop();
 
 		if (id == null) {
 			id = nextId++;
 			_generations[id] = 0;
-		} else {
-			_generations[id]++;
-		}
+		} 
 
 		#if ecs_max_entities
 		if (id >= Parameters.MAX_ENTITIES) {
@@ -232,7 +230,7 @@ class World {
 		}
 		#end
 
-        var e = @:privateAccess Entity.fromWorldAndId(_worldID, id);
+        var e = Entity.fromWorldAndId(_worldID, id, _generations[id]);
 		if (immediate) {
 			statuses[id] = Active;
 			_entities.add(e);
@@ -367,15 +365,16 @@ class World {
 
 			// TODO: somehow we managed to double-add an id to the pool by destroying an entity multiple times... !
 			// idPool.remove(id); Need to figure out a better way to do this [RC]
-			idPool.push(e.id());
-
-			statuses[e.id()] = Cached;
+			var id = e.id;
+			idPool.push(id);
+			_generations[id] = (_generations[id] + 1) % Entity.GENERATION_COUNT;
+			statuses[id] = Cached;
 		}
 	}
 
 	@:allow(ecs.Entity) inline function add(e:Entity) {
 		if (status(e) == Inactive) {
-			statuses[e.id()] = Active;
+			statuses[e.id] = Active;
 			_entities.add(e);
 			for (v in views)
 				v.addIfMatched(e);
@@ -387,14 +386,14 @@ class World {
 			for (v in views)
 				v.removeIfExists(e);
 			_entities.remove(e);
-			statuses[e.id()] = Inactive;
+			statuses[e.id] = Inactive;
 		}
 	}
 
 	@:allow(ecs.Entity) inline function status(e:Entity):Status {
-		if (e.id() <= ecs.Entity.INVALID_ID)
+		if (e.id <= ecs.Entity.INVALID_ID)
 			return Status.Invalid;
-		return statuses[e.id()];
+		return statuses[e.id];
 	}
 
 	@:allow(ecs.Entity) inline function pauseAdding(id:Entity) {}
@@ -404,12 +403,12 @@ class World {
 	@:allow(ecs.Entity) inline function getTag(e:Entity, tag:Int) {
 		final offset = tag >> 5;
 		final bitOffset = tag - (offset << 5);
-		final tagField = tags[e.id() * TAG_STRIDE + offset];
+		final tagField = tags[e.id * TAG_STRIDE + offset];
 		return tagField & (1 << bitOffset) != 0;
 	}
 
 	@:allow(ecs.Entity) inline function setTag(e:Entity, tag:Int) {
-        var id = e.id();
+        var id = e.id;
 		//		trace('Setting tag  ${tag} on ${id}');
 		final offset = tag >> 5;
 		final bitOffset = tag - (offset << 5);
@@ -419,7 +418,7 @@ class World {
 	}
 
 	@:allow(ecs.Entity) inline function clearTag(e:Entity, tag:Int) {
-        var id = e.id();
+        var id = e.id;
 		final offset = tag >> 5;
 		final bitOffset = tag - (offset << 5);
 		final idx = id * TAG_STRIDE + offset;
@@ -469,7 +468,7 @@ class World {
 	// }
 
 	@:allow(ecs.Entity) inline function removeAllComponentsOf(e:ecs.Entity) {
-//        var id = e.id();
+//        var id = e.id;
 		if (status(e) == Active) {
 			for (v in views) {
 				v.removeIfExists(e);
@@ -485,7 +484,7 @@ class World {
 		return ret.substr(0, ret.length - 1);
 	}
 
-	public inline function getGeneration(id:Int):Int {
+	@:allow(ecs.Entity) inline function getGeneration(id:Int):Int {
 		return _generations[id];
 	}
 }
