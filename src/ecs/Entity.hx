@@ -38,7 +38,6 @@ abstract Entity(Int)  {
 	public inline function make(world:Int, immediate:Bool = true) {
 		return Workflow.world(world).newEntity(immediate);
 	}
-	
 	static inline final WORLD_SHIFT = 32 - Parameters.WORLD_BITS; // defaults to 4
 	static inline final WORLD_COUNT = 1 << Parameters.WORLD_BITS;
 	static inline final WORLD_RIGHT_MASK = ((1 << (Parameters.WORLD_BITS)) - 1);
