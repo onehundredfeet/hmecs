@@ -363,8 +363,7 @@ abstract Entity(Int)  {
 
 	@:keep
     public function toString() {
-		var g = world.getGeneration(this);
-        return 'Entity(id:${this}, gen:${g})';
+        return 'Entity( world:${worldId}, id:${id}, gen:${generation}, status:${status()} )';
     }
 
 

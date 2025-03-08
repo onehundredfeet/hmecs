@@ -243,7 +243,7 @@ class StorageInfo {
 			case COMPACT: macro $containerFullNameExpr.worlds[$entityVarExpr.worldId].storage.set($entityVarExpr.id, $componentExpr);
 			case SINGLETON: macro {
 					if ($containerFullNameExpr.worlds[$entityVarExpr.worldId].owner != 0)
-						throw 'Singleton already has an owner';
+						throw 'Singleton already has an owner' + $v{name};
 					$containerFullNameExpr.worlds[$entityVarExpr.worldId].storage = $componentExpr;
 					$containerFullNameExpr.worlds[$entityVarExpr.worldId].owner = $entityVarExpr.id;
 				};
