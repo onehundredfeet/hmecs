@@ -1,7 +1,9 @@
 package ecs.core;
+import ecs.World;
 
 interface ISystem {
 
+    function __initialize__(world : World): Void;
 
     function __activate__():Void;
 

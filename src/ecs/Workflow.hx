@@ -169,11 +169,11 @@ class Workflow {
 	/**
 	 * All systems that will be called when `update()` is called
 	 */
-	public static var systems(get, null) : ReadOnlyArray<ISystem>;
-	static inline function get_systems() {
-		return _systems;
-	}
-	static var _systems(default, null) = new Array<ISystem>();
+	// public static var systems(get, null) : ReadOnlyArray<ISystem>;
+	// static inline function get_systems() {
+	// 	return _systems;
+	// }
+	// static var _systems(default, null) = new Array<ISystem>();
 
 	#if ecs_profiling
 	static var updateTime = .0;
@@ -266,32 +266,32 @@ class Workflow {
 	 * Adds the system to the workflow
 	 * @param s `System` instance
 	 */
-	public static function addSystem(s:ISystem) {
-		if (!hasSystem(s)) {
-			_systems.push(s);
-			s.__activate__();
-		}
-	}
+	// public static function addSystem(s:ISystem) {
+	// 	if (!hasSystem(s)) {
+	// 		_systems.push(s);
+	// 		s.__activate__();
+	// 	}
+	// }
 
 	/**
 	 * Removes the system from the workflow
 	 * @param s `System` instance
 	 */
-	public static function removeSystem(s:ISystem) {
-		if (hasSystem(s)) {
-			s.__deactivate__();
-			_systems.remove(s);
-		}
-	}
+	// public static function removeSystem(s:ISystem) {
+	// 	if (hasSystem(s)) {
+	// 		s.__deactivate__();
+	// 		_systems.remove(s);
+	// 	}
+	// }
 
 	/**
 	 * Returns `true` if the system is added to the workflow, otherwise returns `false`  
 	 * @param s `System` instance
 	 * @return `Bool`
 	 */
-	public static function hasSystem(s:ISystem):Bool {
-		return _systems.contains(s);
-	}
+	// public static function hasSystem(s:ISystem):Bool {
+	// 	return _systems.contains(s);
+	// }
 
 	// Entity
 

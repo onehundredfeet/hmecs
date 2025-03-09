@@ -340,7 +340,9 @@ abstract Entity(Int)  {
 		var pos = Context.currentPos();
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 
-		return info.getGetExpr(self);
+		var e = info.getGetExpr(self);
+		e.pos = Context.currentPos();
+		return e;
 	}
 
 	/**

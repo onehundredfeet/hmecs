@@ -40,6 +40,10 @@ class System implements ecs.core.ISystem {
 
     var activated = false;
 
+    @:noCompletion public function __initialize__(world : World) {
+        onInitialize();
+    }
+
 
     @:noCompletion public function __activate__() {
         onactivate();
@@ -72,6 +76,8 @@ class System implements ecs.core.ISystem {
      */
     public function onactivate() { }
 
+    public function onInitialize() { }
+    
     /**
      * Calls when system is removed from the workflow
      */

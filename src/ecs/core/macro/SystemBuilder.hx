@@ -166,9 +166,11 @@ class SystemBuilder {
 		var pos = Context.currentPos();
 		// trace('Building ${ct.toString()}');
 
+		
+
 		// define new() if not exists (just for comfort)
 		if (!fields.exists(function(f) return f.name == 'new')) {
-			fields.push(ffun([APublic], 'new', [arg("world", macro :ecs.World)], null, macro {__world__ = world; __world_id__ = world.worldID; __initialize__();},
+			fields.push(ffun([APublic], 'new', [], null, macro {},
 				Context.currentPos()));
 		} else {
 			Context.fatalError('Do not override the `new` function!', Context.currentPos());
@@ -209,6 +211,9 @@ class SystemBuilder {
 		fields.push(fvar([], [], '__world_id__', macro :Int, null, Context.currentPos()));
 
 		var initExpr = new Array<Expr>();
+		initExpr.push( macro __world__ = world );
+		initExpr.push( macro __world_id__ = world.worldID );
+
 //		initExpr.push(macro trace('Initializing: ${this}'));
 		var definedViews = new Array<{view:ViewRec, varname:String}>();
 		// find and init manually defined views
@@ -459,7 +464,7 @@ class SystemBuilder {
 		fields.push(ffun([APublic, AOverride], '__activate__', [], null, macro {$aexpr;}, Context.currentPos()));
 		fields.push(ffun([APublic, AOverride], '__deactivate__', [], null, macro {$dexpr;}, Context.currentPos()));
 
-		fields.push(ffun(null, [], '__initialize__', [], null, EBlock(initExpr).at(Context.currentPos()), Context.currentPos()));
+		fields.push(ffun(null, [AOverride, APublic], '__initialize__', [arg("world", macro :ecs.World)], null, EBlock(initExpr).at(Context.currentPos()), Context.currentPos()));
 		// toString
 		fields.push(ffun([AOverride, APublic], 'toString', null, macro :String, macro return $v{ct.followName(pos)}, Context.currentPos()));
 

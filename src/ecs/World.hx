@@ -189,16 +189,18 @@ class World {
 	 */
 	 // IInterface & Constructible<SomeClass->Void>)
 	 @:generic
-	public function addSystem<TSystem:(ISystem & haxe.Constraints.Constructible<World->Void>)>(s:TSystem = null) {
+	public function addSystem<TSystem:(ISystem & haxe.Constraints.Constructible<Void->Void>)>(s:TSystem = null) {
 		if (s == null) {
-			s = new TSystem(this);
+			s = new TSystem();
 		}
 
 		if (!hasSystem(s)) {
 			_systems.push(s);
+			s.__initialize__(this);
 			s.__activate__();
+			return s;
 		}
-		return s;
+		return null;
 	}
 
 	/**

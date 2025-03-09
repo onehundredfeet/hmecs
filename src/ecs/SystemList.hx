@@ -1,6 +1,7 @@
 package ecs;
 
 import ecs.core.ISystem;
+import ecs.World;
 
 /**
  * SystemList  
@@ -51,6 +52,12 @@ class SystemList implements ISystem {
             }
         }
     }
+
+    @:noCompletion final public function __initialize__(world:World) {
+        for (s in systems) {
+            s.__initialize__(world);
+        }
+}
 
     final  public function forceUpdate( dt : Float ) : Void {
         __update__(dt);

@@ -41,14 +41,14 @@ class Test {
 		var worldA = Workflow.world(TESTWORLD_A);
 		var worldB = Workflow.world(TESTWORLD_B);
 
-		var ysystem = new TestSystemY(worldA);
+		var ysystem = new TestSystemY();
 		worldA.addSystem(ysystem);
 		var waz : TestSystemZ = worldA.addSystem();
-		worldA.addSystem(new TestSystemA(worldA));
+		worldA.addSystem(new TestSystemA());
 
-		worldB.addSystem(new TestSystemY(worldB));
-		worldB.addSystem(new TestSystemZ(worldB));
-		worldB.addSystem(new TestSystemA(worldB));
+		worldB.addSystem(new TestSystemY());
+		worldB.addSystem(new TestSystemZ());
+		worldB.addSystem(new TestSystemA());
 
 		// var Inactive = 0;
 		// var Active = 1;
