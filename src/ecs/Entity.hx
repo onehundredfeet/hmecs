@@ -1,5 +1,6 @@
 package ecs;
 
+import haxe.macro.Printer;
 import ecs.core.Parameters;
 #if macro
 import haxe.macro.Expr;
@@ -343,6 +344,58 @@ abstract Entity(Int)  {
 		var e = info.getGetExpr(self);
 		e.pos = Context.currentPos();
 		return e;
+	}
+
+	macro public function getOrAdd<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
+		var tp = type.parseClassName().asTypePath();
+//		var cp = type.parseClassName().asComplexType();
+
+		var hasExpr = info.getExistsExpr(self);
+		var getExpr = info.getGetExpr(self);
+		var addExpr = info.getAddExpr(self, type);
+		
+		return macro ($hasExpr) ? $getExpr : new $tp();
+	}
+
+	macro public function fill( self:Expr, components:Array<ExprOf<Class<Any>>>) 
+	{
+		var pos = Context.currentPos();
+
+		if (components.length == 0) {
+			Context.error('Required one or more Components', pos);
+		}
+
+		var addComponentsToContainersExprs = components.map(function(ctype) {
+			var self = macro __entity__;
+			var info = (ctype.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
+			var hasExpr = info.getExistsExpr(self);
+			var tp = ctype.parseClassName().asTypePath();
+			var ne = macro new $tp();
+			var addExpr = info.getAddExpr(self, ne);
+			
+			return macro if (!($hasExpr)) { changed = true; $addExpr;};
+			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
+			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+		});
+
+		var body = [macro var changed = false].concat(addComponentsToContainersExprs).concat([
+			macro if (changed && __entity__.isActive()) {
+				for (v in __entity__.world.views) {
+					@:privateAccess v.addIfMatched(__entity__);
+				}
+			}
+		]).concat([macro return __entity__]);
+
+		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
+
+		var p = new Printer();
+
+		trace( p.printExpr(ret) );
+
+//		throw 'stop';
+		return ret;
 	}
 
 	/**

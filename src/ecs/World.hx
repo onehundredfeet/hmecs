@@ -1,5 +1,6 @@
 package ecs;
 
+import haxe.macro.Printer;
 import ecs.Entity.Entity;
 
 #if macro
@@ -201,6 +202,56 @@ class World {
 			return s;
 		}
 		return null;
+	}
+
+	function _getSystemOfType(sysType:Class<ISystem>) {
+		for (s in _systems) {
+			if (Std.isOfType(s, sysType)) {
+				return s;
+			}
+		}
+		return null;
+	}
+	
+	function _addSystem( sys : ISystem) {
+//		trace('Initializing ${sys}');
+		sys.__initialize__(this);
+//		trace('Activating ${sys}');
+		sys.__activate__();
+		this._systems.push(sys);
+		return sys;
+	}
+
+	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
+		var pos = Context.currentPos();
+		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
+
+		var e = info.getGetExpr(self);
+		e.pos = Context.currentPos();
+		return e;
+	}
+
+
+	macro public function getOrAddSystem<T>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>) : ExprOf<T> {
+		// trace('eThis : ${eThis}');
+		// trace('type : ${sysType}');
+		
+		var tp = sysType.parseClassName().asTypePath();
+		var cp = sysType.parseClassName().asComplexType();
+//		trace(tp);
+
+		var r = macro {
+			var _st_ = @:privateAccess ($eThis)._getSystemOfType($sysType);
+			_st_ != null ? 
+				cast(_st_, $cp)
+				:
+				cast(@:privateAccess ($eThis)._addSystem(new $tp()), $cp);
+		};
+
+		// var p = new Printer();
+		// trace(p.printExpr(r));
+		//throw ('bla');
+		return r;
 	}
 
 	/**

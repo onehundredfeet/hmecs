@@ -39,14 +39,18 @@ class System implements ecs.core.ISystem {
 
 
     var activated = false;
+    var __world__:World;
+    var __world_id__:Int;
 
     @:noCompletion public function __initialize__(world : World) {
-        onInitialize();
+        addDependencies(__world__);
+        onInitialize(world);
     }
 
-
+    // will get replaced by the macro
     @:noCompletion public function __activate__() {
         onactivate();
+        fillSingletons(__world__.self);
     }
 
     @:noCompletion public function __deactivate__() {
@@ -75,8 +79,10 @@ class System implements ecs.core.ISystem {
      * Calls when system is added to the workflow
      */
     public function onactivate() { }
+    public function fillSingletons(self:Entity) { }
+    public function addDependencies(world : World) { }
 
-    public function onInitialize() { }
+    public function onInitialize(world : World) { }
     
     /**
      * Calls when system is removed from the workflow

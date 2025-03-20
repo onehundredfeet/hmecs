@@ -35,10 +35,12 @@ class AbstractView {
 
 
     public function activate(world:Int) {
+        //trace('Activating world ${world}, ${Workflow.world(world)}');
         activations++;
         if (activations == 1) {
             Workflow.world(world)._views.push(this);
             for (e in Workflow.world(world).entities) {
+          //      trace('Checking $e');
                 addIfMatched(e);
             }
         }
@@ -89,9 +91,9 @@ class AbstractView {
 
 
     @:allow(ecs.Workflow, ecs.World) function addIfMatched(id:Entity) {
-        // trace(this);
+//        trace(this);
         if (isMatched(id) && !_entities.exists(id)) {
-            // trace('ADDING $id');
+  //          trace('ADDING $id');
             _entities.add(id);
             dispatchAddedCallback(id);
         }
