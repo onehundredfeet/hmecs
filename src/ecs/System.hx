@@ -50,7 +50,6 @@ class System implements ecs.core.ISystem {
     // will get replaced by the macro
     @:noCompletion public function __activate__() {
         onactivate();
-        fillSingletons(__world__.self);
     }
 
     @:noCompletion public function __deactivate__() {
@@ -79,7 +78,7 @@ class System implements ecs.core.ISystem {
      * Calls when system is added to the workflow
      */
     public function onactivate() { }
-    public function fillSingletons(self:Entity) { }
+    public function prime(world : World) { }
     public function addDependencies(world : World) { }
 
     public function onInitialize(world : World) { }

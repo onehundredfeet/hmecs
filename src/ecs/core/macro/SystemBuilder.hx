@@ -211,6 +211,7 @@ class SystemBuilder {
 		// fields.push(fvar([], [], '__world_id__', macro :Int, null, Context.currentPos()));
 
 		var initExpr = new Array<Expr>();
+		initExpr.push( macro addDependencies(world) );
 		initExpr.push( macro __world__ = world );
 		initExpr.push( macro __world_id__ = world.worldID );
 
@@ -419,9 +420,9 @@ class SystemBuilder {
 				definedViews.map(function(v) {
 //					trace('Activating: ${v.varname}');
 					return macro {
-						trace($v{v.varname});
+//						trace($v{v.varname});
 						$i{v.varname}.activate(__world_id__);
-						trace('Done');
+//						trace('Done');
 					};
 				}))
 			.concat( // add added-listeners
@@ -436,7 +437,7 @@ class SystemBuilder {
 				afuncs.map(function(f) {
 					return macro $i{f.view.name}.iter($i{'__${f.name}_listener__'});
 				}))
-			.concat([macro onactivate(), macro fillSingletons(__world__.self)])};
+			.concat([macro onactivate()])};
 
 		var dexpr = macro if (activated) $b{
 			[].concat([macro activated = false])
@@ -462,7 +463,7 @@ class SystemBuilder {
 			fields.push(ffun([APublic, AOverride], '__update__', [arg('__dt__', macro :Float)], null, macro $b{uexprs}, Context.currentPos()));
 		}
 
-		trace(_printer.printExpr(aexpr));
+//		trace(_printer.printExpr(aexpr));
 		fields.push(ffun([APublic, AOverride], '__activate__', [], null, macro {$aexpr;}, Context.currentPos()));
 		fields.push(ffun([APublic, AOverride], '__deactivate__', [], null, macro {$dexpr;}, Context.currentPos()));
 

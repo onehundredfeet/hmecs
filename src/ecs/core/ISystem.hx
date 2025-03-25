@@ -11,6 +11,7 @@ interface ISystem {
 
     function __update__(dt:Float):Void;
 
+    function prime(world : World):Void;
 
     function isActive():Bool;
 

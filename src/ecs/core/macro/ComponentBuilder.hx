@@ -366,6 +366,7 @@ class StorageInfo {
 	function getMacroType(ct : ComplexType) {
 		var followedT = ct.toTypeOrNull(Context.currentPos());
 		if (followedT == null) {
+			trace(haxe.CallStack.callStack());
 			Context.error('Could not find type for ${ct}', Context.currentPos());
 		}
 		return followedT;

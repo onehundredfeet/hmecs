@@ -133,6 +133,11 @@ class SystemList implements ISystem {
         return systems.contains(s);
     }
 
+    public function prime(world:World):Void {
+        for (s in systems) {
+            s.prime(world);
+        }
+    }
     @:generic
     public function getOp<T>(c : Class<T>) : T {
         for (x in systems) {

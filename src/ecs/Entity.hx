@@ -390,9 +390,9 @@ abstract Entity(Int)  {
 
 		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
 
-		var p = new Printer();
+		//var p = new Printer();
 
-		trace( p.printExpr(ret) );
+		//trace( p.printExpr(ret) );
 
 //		throw 'stop';
 		return ret;

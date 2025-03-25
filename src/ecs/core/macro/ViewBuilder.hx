@@ -256,7 +256,7 @@ class ViewBuilder {
 			//}
 			var p = new Printer();
 	
-			trace('isMatched: ${p.printExpr(body)}');
+			//trace('isMatched: ${p.printExpr(body)}');
 			def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:ecs.Entity)], macro:Bool, body, Context.currentPos()));
 		}
 

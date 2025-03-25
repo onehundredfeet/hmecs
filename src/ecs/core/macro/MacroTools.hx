@@ -188,6 +188,8 @@ class MacroTools {
 	public static function followComplexType(ct:ComplexType, pos):ComplexType {
 		var x = toTypeOrNull(ct, true, pos);
 		if (x == null) {
+			var cs : haxe.CallStack = haxe.CallStack.callStack();
+			trace(cs.toString());
 			Context.fatalError('Could not find type: ${ct.toString()}', pos);
 		}
 		return x.toComplexType();

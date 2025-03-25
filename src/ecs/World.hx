@@ -190,7 +190,7 @@ class World {
 	 */
 	 // IInterface & Constructible<SomeClass->Void>)
 	 @:generic
-	public function addSystem<TSystem:(ISystem & haxe.Constraints.Constructible<Void->Void>)>(s:TSystem = null) {
+	public function addSystem<TSystem:(ISystem & haxe.Constraints.Constructible<Void->Void>)>(s:TSystem = null, prime = true) {
 		if (s == null) {
 			s = new TSystem();
 		}
@@ -199,6 +199,8 @@ class World {
 			_systems.push(s);
 			s.__initialize__(this);
 			s.__activate__();
+			if (prime) s.prime(this);
+
 			return s;
 		}
 		return null;
@@ -213,13 +215,20 @@ class World {
 		return null;
 	}
 	
-	function _addSystem( sys : ISystem) {
+	function _addSystem( sys : ISystem, prime = true) {
 //		trace('Initializing ${sys}');
 		sys.__initialize__(this);
 //		trace('Activating ${sys}');
 		sys.__activate__();
+		if (prime) sys.prime(this);
 		this._systems.push(sys);
 		return sys;
+	}
+
+	public function prime() {
+		for (s in _systems) {
+			s.prime(this);
+		}
 	}
 
 	macro public function get<T>(self:Expr, type:ExprOf<Class<T>>):ExprOf<T> {
@@ -232,20 +241,35 @@ class World {
 	}
 
 
-	macro public function getOrAddSystem<T>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>) : ExprOf<T> {
+	macro public function prepareSystem<T>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>) : ExprOf<T> {
 		// trace('eThis : ${eThis}');
 		// trace('type : ${sysType}');
 		
 		var tp = sysType.parseClassName().asTypePath();
 		var cp = sysType.parseClassName().asComplexType();
-//		trace(tp);
+//		trace(activateExpr);
+
+		// var activate = switch(activateExpr.expr) {
+		// 	case EConst(c): switch(c) {
+		// 		case CIdent(s): switch(s) {
+		// 			case "true": macro true;
+		// 			case "false": macro false;
+		// 			case "null": macro true;
+		// 			default: throw 'Invalid value for activate';
+		// 		}
+		// 		default: throw 'Invalid value for activate';
+		// 	}
+		// 	default: macro true;
+		// }
+
+		// trace('activate : ${activate}');
 
 		var r = macro {
 			var _st_ = @:privateAccess ($eThis)._getSystemOfType($sysType);
 			_st_ != null ? 
 				cast(_st_, $cp)
 				:
-				cast(@:privateAccess ($eThis)._addSystem(new $tp()), $cp);
+				cast(@:privateAccess ($eThis)._addSystem(new $tp(), false), $cp);
 		};
 
 		// var p = new Printer();
