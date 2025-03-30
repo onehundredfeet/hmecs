@@ -10,6 +10,7 @@ using haxe.macro.Context;
 using Lambda;
 using haxe.ds.ArraySort;
 using ecs.core.macro.Extensions;
+using ecs.core.macro.MetaTools;
 
 typedef ViewTypeRef = {
 	ct:ComplexType,
@@ -70,8 +71,7 @@ class ViewSpec {
 			:needsEntity = true;
 			null;
 			default:
-				var localA = mm.get(":local");
-				if (localA == null) {
+				if (!mm.isSpecialParameter()) {
 					var vt = {
 						ct: ct,
 						ex: false,

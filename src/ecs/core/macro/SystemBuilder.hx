@@ -14,6 +14,8 @@ using haxe.macro.ComplexTypeTools;
 using haxe.macro.TypeTools;
 using haxe.macro.Context;
 using ecs.core.macro.MacroTools;
+using ecs.core.macro.MetaTools;
+
 using StringTools;
 using Lambda;
 
@@ -24,7 +26,8 @@ typedef UpdateRec = {
 	args:Array<Expr>,
 	view:ViewRec,
 	viewargs:Array<FunctionArg>,
-	type:MetaFuncType
+	type:MetaFuncType,
+	pos:Position
 };
 
 enum ParallelType {
@@ -46,14 +49,14 @@ class SystemBuilder {
 
 	static var _printer = new Printer();
 
+
 	static function metaFuncArgToComponentDef(a:FunctionArg, pos) {
 		return switch (a.type.followComplexType(pos)) {
 			case macro :StdTypes.Float: null;
 			case macro :StdTypes.Int: null;
 			case macro :ecs.Entity: null;
 			default:
-				var mm = a.meta.toMap();
-				mm.exists(":local") ? null : {cls: a.type.followComplexType(pos)};
+				a.meta.toMap().isSpecialParameter() ? null : {cls: a.type.followComplexType(pos)};
 		}
 	}
 
@@ -123,7 +126,8 @@ class SystemBuilder {
 							args: funcCallArgs,
 							view: vr,
 							viewargs: viewArgs,
-							type: VIEW_ITER
+							type: VIEW_ITER,
+							pos: field.pos
 						};
 					} else {
 						// Context.warning('No components', field.pos);
@@ -139,7 +143,8 @@ class SystemBuilder {
 								args: funcCallArgs,
 								view: null,
 								viewargs: null,
-								type: ENTITY_ITER
+								type: ENTITY_ITER,
+								pos: field.pos
 							};
 						} else {
 							// single call
@@ -150,7 +155,8 @@ class SystemBuilder {
 								args: funcCallArgs,
 								view: null,
 								viewargs: null,
-								type: SINGLE_CALL
+								type: SINGLE_CALL,
+								pos: field.pos
 							};
 						}
 					}
@@ -371,10 +377,19 @@ class SystemBuilder {
 
 						for (a in f.rawargs) {
 							var am = a.meta.toMap();
-							var local = am.get(":local");
-							if (local != null && local.length > 0 && local[0].length > 0) {
+							
+							if (am.isLocal()) {
 								callNameMap[a.name] = macro $i{"__l_" + a.name};
-								cache.push(("__l_" + a.name).define(local[0][0]));
+								cache.push(("__l_" + a.name).define(am.getLocalAttrExpr()));
+							} else if (am.isWorld()) {
+								callNameMap[a.name] = macro $i{"__w_" + a.name};
+								var info = getComponentContainerInfo(a.type, pos);
+								if (info.storageType != ecs.core.macro.ComponentBuilder.StorageType.SINGLETON){
+									Context.fatalError('World attribute can only be used with singleton components', f.pos);
+								}
+								var getExpr = info.getGetExpr(macro __world__.self);
+								cache.push(("__w_" + a.name).define(getExpr));
+
 							}
 						}
 
