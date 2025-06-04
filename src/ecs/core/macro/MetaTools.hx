@@ -10,7 +10,7 @@ using Lambda;
 class MetaTools {
 	public static final SKIP_META = ['skip'];
 	public static final PRINT_META = ['print', ':print'];
-	public static final AD_META = ['added', 'ad', 'a', ':added', ':ad', ':a'];
+	public static final ADD_META = ['added', 'ad', 'a', ':added', ':ad', ':a'];
 	public static final RM_META = ['removed', 'rm', 'r', ':removed', ':rm', ':r'];
 	public static final UPD_META = ['update', 'up', 'u', ':update', ':up', ':u'];
 	public static final PARALLEL_META = [':parallel', 'parallel', 'p', ':p'];
@@ -18,7 +18,7 @@ class MetaTools {
 	public static final JOIN_META = [':join', 'join', 'j', ":j"];
 	public static final LOCAL_META = [':local', 'local', 'l', ":l"];
 	public static final WORLD_META = [':world', 'world', 'w', ":w"];
-	public static final VIEW_FUNC_META = UPD_META.concat(AD_META).concat(RM_META);
+	public static final VIEW_FUNC_META = UPD_META.concat(ADD_META).concat(RM_META);
 
 	public static function containsMeta(field:Field, metas:Array<String>) {
 		var metaData = field.meta;

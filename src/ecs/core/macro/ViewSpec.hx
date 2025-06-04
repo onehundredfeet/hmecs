@@ -12,11 +12,19 @@ using haxe.ds.ArraySort;
 using ecs.core.macro.Extensions;
 using ecs.core.macro.MetaTools;
 
+enum ViewTypeCondition {
+	None;
+	Include;
+	Exclude;
+	IsA;
+}
+
 typedef ViewTypeRef = {
 	ct:ComplexType,
 	ex:Bool,
 	name:String,
-	lcname:String
+	lcname:String,
+	condition:ViewTypeCondition,
 }
 
 class ViewSpec {
@@ -32,7 +40,7 @@ class ViewSpec {
 		return e != null;
 
 	public var name:String;
-//	public var worlds:Int;
+	//	public var worlds:Int;
 	public var includes:Array<ViewTypeRef> = [];
 	public var excludes:Array<ViewTypeRef> = [];
 	public var needsEntity:Bool;
@@ -45,7 +53,7 @@ class ViewSpec {
 	public function clone() {
 		var c = new ViewSpec();
 		c.name = name;
-//		c.worlds = worlds;
+		//		c.worlds = worlds;
 		c.needsDT = needsDT;
 		c.needsEntity = needsEntity;
 		c.includes = includes.copy();
@@ -58,25 +66,31 @@ class ViewSpec {
 		var ct = a.type.followComplexType(pos);
 
 		if (ct == null) {
-			Context.error('Can not find type ${a.type.toString()} for argument ${a.name} ',pos);
+			Context.error('Can not find type ${a.type.toString()} for argument ${a.name} ', pos);
 		}
 
 		var x:ViewTypeRef = switch (ct) {
-			case macro: StdTypes.Float
-			:needsDT = true;
-			null;
-			case macro: StdTypes.Int
-			:null;
-			case macro: ecs.Entity
-			:needsEntity = true;
-			null;
+			case macro :StdTypes.Float:
+				needsDT = true;
+				null;
+			case macro :StdTypes.Int: null;
+			case macro :ecs.Entity:
+				needsEntity = true;
+				null;
 			default:
 				if (!mm.isSpecialParameter()) {
+					var condition = ViewTypeCondition.Include;
+					if (mm.exists(":not")) {
+						condition = ViewTypeCondition.Exclude;
+					} else if (mm.exists(":is")) {
+						condition = ViewTypeCondition.IsA;
+					}
 					var vt = {
 						ct: ct,
 						ex: false,
 						name: ct.typeFullName(pos),
-						lcname: ct.typeFullName(pos).toLowerCase()
+						lcname: ct.typeFullName(pos).toLowerCase(),
+						condition: condition,
 					};
 					includes.push(vt);
 
@@ -105,7 +119,8 @@ class ViewSpec {
 						name: ct.typeFullName(field.pos),
 						lcname: ct.typeFullName(field.pos).toLowerCase(),
 						fun: null,
-						local: null
+						local: null,
+						condition: ViewTypeCondition.Exclude,
 					};
 					excludes.push(vt);
 				}
@@ -121,7 +136,7 @@ class ViewSpec {
 
 		// Context.warning('from field ${field.name}', Context.currentPos());
 		var components = func.args.map((x) -> vi.addArg(x, field.pos)).filter(notNull);
-//		vi.worlds = metaFieldToWorlds(field);
+		//		vi.worlds = metaFieldToWorlds(field);
 
 		vi.includes.sort(compareViewTypes);
 		vi.excludes = getExcludesFromField(field);
@@ -133,7 +148,7 @@ class ViewSpec {
 	public static function fromVar(field:Field, ct:ComplexType):ViewSpec {
 		trace('attemping to resolve from var ${field.name} with ${ct.toString()}');
 		var vs = fromViewCT(ct, field.pos);
-//		vs.worlds = metaFieldToWorlds(field);
+		//		vs.worlds = metaFieldToWorlds(field);
 		vs.excludes = getExcludesFromField(field);
 		vs.generateName();
 		trace('From var ${vs.name}');
@@ -147,13 +162,14 @@ class ViewSpec {
 				ct: ct,
 				ex: false,
 				name: ct.typeFullName(pos),
-				lcname: ct.typeFullName(pos).toLowerCase()
+				lcname: ct.typeFullName(pos).toLowerCase(),
+				condition: ViewTypeCondition.Include,
 			};
 			return vt;
 		});
 		vi.includes.sort(compareViewTypes);
 		vi.excludes = [];
-//		vi.worlds = 0xffffffff;
+		//		vi.worlds = 0xffffffff;
 		vi.needsEntity = false;
 		vi.needsDT = false;
 		vi.generateName();
@@ -187,13 +203,14 @@ class ViewSpec {
 						ct: ct,
 						ex: false,
 						name: ct.typeFullName(pos),
-						lcname: ct.typeFullName(pos).toLowerCase()
+						lcname: ct.typeFullName(pos).toLowerCase(),
+						condition:ViewTypeCondition.Include,
 					};
 					return vt;
 				});
 				vi.includes.sort(compareViewTypes);
 				vi.excludes = [];
-//				vi.worlds = 0xffffffff;
+				//				vi.worlds = 0xffffffff;
 				vi.needsEntity = false;
 				vi.needsDT = false;
 				vi.generateName();
@@ -247,8 +264,7 @@ class ViewSpec {
 	public static function fromExplicit() {}
 
 	public function generateName() {
-		name = 'ViewOf'
-//			+ StringTools.hex(worlds, 8)
+		name = 'ViewOf' //			+ StringTools.hex(worlds, 8)
 			+ "_i_"
 			+ includes.map((x) -> x.name).join('_')
 			+ "_e_"

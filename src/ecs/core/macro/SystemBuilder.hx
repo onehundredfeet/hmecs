@@ -316,7 +316,7 @@ class SystemBuilder {
 			.map(procMetaFunc)
 			.filter(notNull);
 		var afuncs = fields.filter(MetaTools.notSkipped)
-			.filter(MetaTools.containsMeta.bind(_, MetaTools.AD_META))
+			.filter(MetaTools.containsMeta.bind(_, MetaTools.ADD_META))
 			.map(procMetaFunc)
 			.filter(notNull);
 		var rfuncs = fields.filter(MetaTools.notSkipped)

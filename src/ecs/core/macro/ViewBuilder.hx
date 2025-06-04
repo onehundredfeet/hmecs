@@ -27,47 +27,47 @@ class ViewBuilder {
 	@:persistent static var _typeDefs = new Map<String, TypeDefinition>();
 	static var _callback = false;
 
-	static var _resolving : String = null;
+	static var _resolving:String = null;
 
 	/*
-	public static function createAllViewType() {
-		trace('building types');
-		for(vsi in _views.keyValueIterator()) {
-			try {
-				var x = Context.getType(vsi.key);
-			}
-			catch(e:Dynamic) {
-				trace('could not find type ${vsi.key}');
-				if (Std.isOfType(e,String)) {
-					var x = createViewTypeDef(vsi.value, Context.currentPos());
+		public static function createAllViewType() {
+			trace('building types');
+			for(vsi in _views.keyValueIterator()) {
+				try {
+					var x = Context.getType(vsi.key);
+				}
+				catch(e:Dynamic) {
+					trace('could not find type ${vsi.key}');
+					if (Std.isOfType(e,String)) {
+						var x = createViewTypeDef(vsi.value, Context.currentPos());
+					}
 				}
 			}
 		}
-	}
-	
 
-	static function generateViewTypes(name:String):TypeDefinition {
 
-		return null;
-		// createViewType(vs, pos);
-		if (name.indexOf("ecs.view.") == 0) {
+		static function generateViewTypes(name:String):TypeDefinition {
 
-			if (_views.exists( name)) {
-				var vi = _views.get(name);
-				trace('Looking for type ${name}');
+			return null;
+			// createViewType(vs, pos);
+			if (name.indexOf("ecs.view.") == 0) {
 
-				var x = createViewTypeDef(vi, Context.currentPos());
+				if (_views.exists( name)) {
+					var vi = _views.get(name);
+					trace('Looking for type ${name}');
 
-				//Context.defineType(x);
+					var x = createViewTypeDef(vi, Context.currentPos());
 
-				_typeDefs.set(name, x);
-				return x;
+					//Context.defineType(x);
+
+					_typeDefs.set(name, x);
+					return x;
+				}
 			}
+			
+			return null;
 		}
-		
-		return null;
-	}
-*/
+	 */
 	public static function getViewRec(vs:ViewSpec, pos:Position):ViewRec {
 		if (vs == null) {
 			Context.error('View spec is null', pos);
@@ -75,12 +75,12 @@ class ViewBuilder {
 		}
 
 		if (_callback == false) {
-			//Context.onTypeNotFound(generateViewTypes);
+			// Context.onTypeNotFound(generateViewTypes);
 
 			_callback = true;
 		}
 
-		_views.set( vs.typePath(), vs );
+		_views.set(vs.typePath(), vs);
 		createViewType(vs, Context.currentPos());
 		return {name: vs.name.toLowerCase(), ct: vs.typePath().asComplexType(), spec: vs};
 	}
@@ -114,14 +114,13 @@ class ViewBuilder {
 		return createViewType(vs, Context.currentPos());
 	}
 
-
 	public static function createViewTypeDef(vi:ViewSpec, pos:Position):TypeDefinition {
 		if (vi == null) {
 			Context.error("View spec can not be null", pos);
 			return null;
 		}
 		var viewClsName = vi.name;
-		//var worlds = vi.worlds;
+		// var worlds = vi.worlds;
 		var components = vi.includes;
 		var ct = vi.typePath().asComplexType();
 
@@ -136,10 +135,10 @@ class ViewBuilder {
 		// var viewComplexType = TPath(viewTypePath);
 
 		// signals
-		var signalTypeParamComplexType = TFunction([macro:ecs.Entity].concat(components.map(function(c) return c.ct)), macro:Void);
+		var signalTypeParamComplexType = TFunction([macro :ecs.Entity].concat(components.map(function(c) return c.ct)), macro :Void);
 		var signalTypePath = tpath(['ecs', 'utils'], 'Signal', [TPType(signalTypeParamComplexType)]);
-    
-		//trace( 'path ${signalTypePath}');
+
+		// trace( 'path ${signalTypePath}');
 
 		// signal args for dispatch() call
 		var signalArgs = [macro id].concat(components.map(function(c) return getLookup(c.ct, macro id, pos)));
@@ -156,7 +155,7 @@ class ViewBuilder {
 			return macro @:privateAccess $typeIdent.inst().addRelatedView(this);
 		});
 
-		//Context.warning('Defining view type ${vi.typePath()}', pos);
+		// Context.warning('Defining view type ${vi.typePath()}', pos);
 		// type def
 		var def:TypeDefinition = macro class $viewClsName extends ecs.core.AbstractView {
 			static var instances = new ecs.core.Containers.GenericVector<$viewTypeCT>(ecs.core.Parameters.MAX_WORLDS);
@@ -170,23 +169,26 @@ class ViewBuilder {
 
 			// instance
 
-			public function observeAdd(x : $signalTypeParamComplexType) {
+			public function observeAdd(x:$signalTypeParamComplexType) {
 				_onAdded.push(x);
 			}
-			public function observeRemove(x : $signalTypeParamComplexType) {
+
+			public function observeRemove(x:$signalTypeParamComplexType) {
 				_onRemoved.push(x);
 			}
 
-			public function ignoreAdd(x : $signalTypeParamComplexType) {
+			public function ignoreAdd(x:$signalTypeParamComplexType) {
 				_onAdded.remove(x);
 			}
-			public function ignoreRemove(x : $signalTypeParamComplexType) {
+
+			public function ignoreRemove(x:$signalTypeParamComplexType) {
 				_onRemoved.remove(x);
 			}
 
 			var _onAdded = new Array<$signalTypeParamComplexType>();
 			var _onRemoved = new Array<$signalTypeParamComplexType>();
-			var _worldId : Int;
+			var _worldId:Int;
+
 			function new(world:Int) {
 				_worldId = world;
 				if (instances[world] != null) {
@@ -203,20 +205,20 @@ class ViewBuilder {
 				for (x in _onAdded) {
 					x($a{signalArgs});
 				}
-				//_onAdded.dispatch($a{signalArgs});
+				// _onAdded.dispatch($a{signalArgs});
 			}
 
 			override function dispatchRemovedCallback(id:ecs.Entity) {
 				for (x in _onRemoved) {
 					x($a{signalArgs});
 				}
-				//_onRemoved.dispatch($a{signalArgs});
+				// _onRemoved.dispatch($a{signalArgs});
 			}
 
 			override function reset(_) {
 				super.reset(_worldId);
-				//_onAdded.removeAll();
-				//_onRemoved.removeAll();
+				// _onAdded.removeAll();
+				// _onRemoved.removeAll();
 			}
 		}
 
@@ -225,19 +227,31 @@ class ViewBuilder {
 
 		// iter
 		{
-			var funcComplexType = TFunction([macro:ecs.Entity].concat(components.map(function(c) return c.ct)), macro:Void);
-			var funcCallArgs = [macro __entity__].concat(components.map(function(c) return getComponentContainerInfo(c.ct, pos).getGetExpr(macro __entity__, true)));
+			var funcComplexType = TFunction([macro :ecs.Entity].concat(components.map(function(c) return c.ct)), macro :Void);
+			var funcCallArgs = [macro __entity__].concat(components.map(function(c) return getComponentContainerInfo(c.ct,
+				pos).getGetExpr(macro __entity__, true)));
 			var body = macro {
 				for (__entity__ in entities) {
 					f($a{funcCallArgs});
 				}
 			}
-			def.fields.push(ffun([APublic, AInline], 'iter', [arg('f', funcComplexType)], macro:Void, macro $body, Context.currentPos()));
+			def.fields.push(ffun([APublic, AInline], 'iter', [arg('f', funcComplexType)], macro :Void, macro $body, Context.currentPos()));
 		}
 
 		// isMatched
 		{
-			var checksIncludes = components.map(function(c) return getComponentContainerInfo(c.ct, pos).getExistsExpr(macro id));
+			var checksIncludes = components.map(function(c) {
+				switch (c.condition) {
+					case Include:
+						return getComponentContainerInfo(c.ct, pos).getExistsExpr(macro id);
+					case Exclude:
+						return macro !${getComponentContainerInfo(c.ct, pos).getExistsExpr(macro id)};
+					case IsA:
+						return getComponentContainerInfo(c.ct, pos).getIsExpr(macro id);
+					case None:
+						throw 'Condition not set for component ${c.ct.typeValidShortName(pos)} in view ${vi.name}';
+				}
+			});
 			var checksExcludes = vi.excludes.map(function(c) return macro !${getComponentContainerInfo(c.ct, pos).getExistsExpr(macro id)});
 			var totalChecks = checksIncludes.concat(checksExcludes);
 
@@ -250,14 +264,14 @@ class ViewBuilder {
 			// 		return (((1 << $entityWorld) & $worldVal) == 0) ? false : $cond;
 			// 	};
 			// } else {
-				body = macro {
-					return $cond;
-				}
-			//}
+			body = macro {
+				return $cond;
+			}
+			// }
 			var p = new Printer();
-	
-			//trace('isMatched: ${p.printExpr(body)}');
-			def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro:ecs.Entity)], macro:Bool, body, Context.currentPos()));
+
+			trace('isMatched: ${p.printExpr(body)}');
+			def.fields.push(ffun([AOverride], 'isMatched', [arg('id', macro :ecs.Entity)], macro :Bool, body, Context.currentPos()));
 		}
 
 		// isMatchedByTypes
@@ -273,13 +287,13 @@ class ViewBuilder {
 			// 	var entityWorld = macro world;
 			// 	body = macro return (($entityWorld & $worldVal) == 0) ? false : $cond;
 			// } else {
-				body = macro return $cond;
-//			}
+			body = macro return $cond;
+			//			}
 			var show = macro trace("names " + names);
 			body = {expr: EBlock([body]), pos: Context.currentPos()};
-			def.fields.push(ffun([AOverride, APublic], 'isMatchedByTypes', [arg('world', macro:Int), arg('names', macro:Array<String>)], macro:Bool, body,
+			def.fields.push(ffun([AOverride, APublic], 'isMatchedByTypes', [arg('world', macro :Int), arg('names', macro :Array<String>)], macro :Bool, body,
 				Context.currentPos()));
-			var xx = ffun([AOverride, APublic], 'isMatchedByTypes', [arg('world', macro:Int), arg('names', macro:Array<String>)], macro:Bool, body,
+			var xx = ffun([AOverride, APublic], 'isMatchedByTypes', [arg('world', macro :Int), arg('names', macro :Array<String>)], macro :Bool, body,
 				Context.currentPos());
 
 			// var pp = new Printer();
@@ -290,7 +304,7 @@ class ViewBuilder {
 		{
 			var componentNames = components.map(function(c) return c.ct.typeValidShortName(pos)).join(', ');
 			var body = macro return $v{componentNames};
-			def.fields.push(ffun([AOverride, APublic], 'toString', null, macro:String, body, Context.currentPos()));
+			def.fields.push(ffun([AOverride, APublic], 'toString', null, macro :String, body, Context.currentPos()));
 		}
 
 		def.meta.push({name: ":ecs_view", pos: Context.currentPos()});
@@ -311,7 +325,7 @@ class ViewBuilder {
 			return null;
 		}
 		var viewClsName = vi.name;
-//		var worlds = vi.worlds;
+		//		var worlds = vi.worlds;
 		var components = vi.includes;
 		var ct = vi.typePath().asComplexType();
 
