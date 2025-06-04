@@ -217,6 +217,41 @@ class StorageInfo {
 		};
 	}
 
+	public function getComponentAddedExpr(entityVar:Expr, componentExpr:Expr = null):Expr {
+		if (componentExpr == null) {
+			componentExpr = getGetExpr(entityVar, true);
+		}
+
+		var parentExpr:Expr = null;
+		if (this.followedClass.superClass != null) {
+			var sc = this.followedClass.superClass.t.get();
+			var scn = sc.pack.join('.') + '.' + sc.name;
+			var sci = ComponentBuilder.containerInfo(scn);
+			if (sci != null) {
+				parentExpr = sci.getComponentAddedExpr(entityVar, componentExpr);
+			}
+		}
+		var myExpr = macro if ($containerFullNameExpr.worlds[$entityVar.worldId]._onAdded != null) {
+			var __hmecs_component = $componentExpr;
+			for (c in $containerFullNameExpr.worlds[$entityVar.worldId]._onAdded) {
+				c(__hmecs_component, $entityVar);
+			}
+		};
+
+		return parentExpr == null ? myExpr : macro {
+			$parentExpr;
+			$myExpr;
+		};
+	}
+
+	public function getAddAddComponentListenerExpr(worldIdVar:Expr, functionId:Expr):Expr {
+		return macro {
+			if ($containerFullNameExpr.worlds[$worldIdVar]._onAdded == null)
+				$containerFullNameExpr.worlds[$worldIdVar]._onAdded = [];
+			$containerFullNameExpr.worlds[$worldIdVar]._onAdded.push($functionId);
+		};
+	}
+
 	public function getIsExpr(entityVar):Expr {
 		var t_type = followedCT.toTypeOrNull(Context.currentPos());
 
@@ -233,7 +268,7 @@ class StorageInfo {
 		var orExpr = macro false;
 		for (e in existsExpr) {
 			orExpr = EBinop(OpBoolOr, orExpr, e).at(Context.currentPos());
-	  	}
+		}
 
 		return orExpr;
 	}
@@ -493,6 +528,7 @@ class StorageInfo {
 							public inline function new() {}
 
 							public var storage:$storageCT = @:privateAccess new $tp();
+							public var _onAdded:Array<($followedCT, Entity) -> Void>;
 						}
 					case SINGLETON: macro class $worldContainerTypeName {
 							public inline function new() {}
@@ -500,6 +536,7 @@ class StorageInfo {
 							public var storage:$storageCT;
 							public var owner:Int = 0;
 							public var _shelved:$storageCT = $emptyExpr;
+							public var _onAdded:Array<($followedCT, Entity) -> Void>;
 
 							public inline function shelved(id:Int) {
 								return _shelved != $emptyExpr;
@@ -547,6 +584,7 @@ class StorageInfo {
 							public var storage = hl.CArray.alloc($p{x}, ecs.core.Parameters.MAX_ENTITIES);
 							public var _shelved = new Map<Int, $followedCT>();
 							public var _existsStorage = new ecs.core.Containers.EntityVector<Bool>(ecs.core.Parameters.MAX_ENTITIES);
+							public var _onAdded:Array<($followedCT, Entity) -> Void>;
 
 							public inline function exists(id:Int) {
 								return _existsStorage[id];
@@ -599,6 +637,7 @@ class StorageInfo {
 							#end
 							public var _shelved = new Map<Int, $followedCT>();
 							public var _existsStorage = $existsStorage;
+							public var _onAdded:Array<($followedCT, Entity) -> Void>;
 
 							public inline function exists(id:Int) {
 								// return storage[id] != $emptyExpr;
@@ -640,6 +679,7 @@ class StorageInfo {
 							// public static var storage:$storageCT = @:privateAccess new $tp();
 							public var storage = new Map<Int, $followedCT>();
 							public var _shelved = new Map<Int, $followedCT>();
+							public var _onAdded:Array<($followedCT, Entity) -> Void>;
 
 							public inline function exists(id:Int) {
 								return storage.exists(id);

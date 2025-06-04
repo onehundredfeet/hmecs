@@ -15,7 +15,6 @@ using haxe.macro.TypeTools;
 using haxe.macro.Context;
 using ecs.core.macro.MacroTools;
 using ecs.core.macro.MetaTools;
-
 using StringTools;
 using Lambda;
 
@@ -48,7 +47,6 @@ class SystemBuilder {
 	public static var systemIndex = -1;
 
 	static var _printer = new Printer();
-
 
 	static function metaFuncArgToComponentDef(a:FunctionArg, pos) {
 		return switch (a.type.followComplexType(pos)) {
@@ -172,12 +170,9 @@ class SystemBuilder {
 		var pos = Context.currentPos();
 		// trace('Building ${ct.toString()}');
 
-		
-
 		// define new() if not exists (just for comfort)
 		if (!fields.exists(function(f) return f.name == 'new')) {
-			fields.push(ffun([APublic], 'new', [], null, macro {},
-				Context.currentPos()));
+			fields.push(ffun([APublic], 'new', [], null, macro {}, Context.currentPos()));
 		} else {
 			Context.fatalError('Do not override the `new` function!', Context.currentPos());
 		}
@@ -217,12 +212,12 @@ class SystemBuilder {
 		// fields.push(fvar([], [], '__world_id__', macro :Int, null, Context.currentPos()));
 
 		var initExpr = new Array<Expr>();
-		initExpr.push( macro __world__ = world );
-		initExpr.push( macro __world_id__ = world.worldID );
-//		initExpr.push( macro trace('adding dependencies:' + this) );
-		initExpr.push( macro addDependencies(world) );
+		initExpr.push(macro __world__ = world);
+		initExpr.push(macro __world_id__ = world.worldID);
+		//		initExpr.push( macro trace('adding dependencies:' + this) );
+		initExpr.push(macro addDependencies(world));
 
-//		initExpr.push(macro trace('Initializing: ${this}'));
+		//		initExpr.push(macro trace('Initializing: ${this}'));
 		var definedViews = new Array<{view:ViewRec, varname:String}>();
 		// find and init manually defined views
 		fields.filter(MetaTools.notSkipped).iter(function(field) {
@@ -266,8 +261,6 @@ class SystemBuilder {
 				default:
 			}
 		});
-
-		
 
 		// find and init meta defined views
 		fields.filter(MetaTools.notSkipped).filter((x) -> MetaTools.containsMeta(x, MetaTools.VIEW_FUNC_META)).iter(function(field) {
@@ -317,6 +310,10 @@ class SystemBuilder {
 			.filter(notNull);
 		var afuncs = fields.filter(MetaTools.notSkipped)
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.ADD_META))
+			.map(procMetaFunc)
+			.filter(notNull);
+		var acfuncs = fields.filter(MetaTools.notSkipped)
+			.filter(MetaTools.containsMeta.bind(_, MetaTools.ADD_COMPONENT_META))
 			.map(procMetaFunc)
 			.filter(notNull);
 		var rfuncs = fields.filter(MetaTools.notSkipped)
@@ -378,7 +375,7 @@ class SystemBuilder {
 
 						for (a in f.rawargs) {
 							var am = a.meta.toMap();
-							
+
 							if (am.isLocal()) {
 								callNameMap[a.name] = macro $i{"__l_" + a.name};
 								cache.push(("__l_" + a.name).define(am.getLocalAttrExpr()));
@@ -390,7 +387,6 @@ class SystemBuilder {
 								// }
 								var getExpr = info.getGetExpr(macro __world__.self);
 								cache.push(("__w_" + a.name).define(getExpr));
-
 							}
 						}
 
@@ -434,11 +430,11 @@ class SystemBuilder {
 				}))
 			.concat( // activate views
 				definedViews.map(function(v) {
-//					trace('Activating: ${v.varname}');
+					//					trace('Activating: ${v.varname}');
 					return macro {
-//						trace($v{v.varname});
+						//						trace($v{v.varname});
 						$i{v.varname}.activate(__world_id__);
-//						trace('Done');
+						//						trace('Done');
 					};
 				}))
 			.concat( // add added-listeners
@@ -453,6 +449,14 @@ class SystemBuilder {
 				afuncs.map(function(f) {
 					return macro $i{f.view.name}.iter($i{'__${f.name}_listener__'});
 				}))
+			.concat(acfuncs.map(function(f) {
+				if (f.rawargs.length != 2) {
+					Context.error('Add component listener must have exactly 2 arguments', f.pos);
+				}
+				var a = f.rawargs[0];
+				var info = getComponentContainerInfo(a.type, pos);
+				return info.getAddAddComponentListenerExpr(macro __world_id__, macro $i{f.name});
+			}))
 			.concat([macro onactivate()])};
 
 		var dexpr = macro if (activated) $b{
@@ -479,11 +483,12 @@ class SystemBuilder {
 			fields.push(ffun([APublic, AOverride], '__update__', [arg('__dt__', macro :Float)], null, macro $b{uexprs}, Context.currentPos()));
 		}
 
-//		trace(_printer.printExpr(aexpr));
+		//		trace(_printer.printExpr(aexpr));
 		fields.push(ffun([APublic, AOverride], '__activate__', [], null, macro {$aexpr;}, Context.currentPos()));
 		fields.push(ffun([APublic, AOverride], '__deactivate__', [], null, macro {$dexpr;}, Context.currentPos()));
 
-		fields.push(ffun(null, [AOverride, APublic], '__initialize__', [arg("world", macro :ecs.World)], null, EBlock(initExpr).at(Context.currentPos()), Context.currentPos()));
+		fields.push(ffun(null, [AOverride, APublic], '__initialize__', [arg("world", macro :ecs.World)], null, EBlock(initExpr).at(Context.currentPos()),
+			Context.currentPos()));
 		// toString
 		fields.push(ffun([AOverride, APublic], 'toString', null, macro :String, macro return $v{ct.followName(pos)}, Context.currentPos()));
 
@@ -510,12 +515,12 @@ class SystemBuilder {
 		}
 
 		#if false
-//		if (Context.getLocalType().toComplex().toString() == "TestSystemA") {
-			trace('Type: ${Context.getLocalType().toString()}');
-			for (f in fields) {
-				trace(_printer.printField(f));
-			}
-//		}
+		//		if (Context.getLocalType().toComplex().toString() == "TestSystemA") {
+		trace('Type: ${Context.getLocalType().toString()}');
+		for (f in fields) {
+			trace(_printer.printField(f));
+		}
+		//		}
 		#end
 
 		return fields;

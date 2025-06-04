@@ -12,7 +12,6 @@ using haxe.macro.Context;
 using Lambda;
 using StringTools;
 #else
-
 import haxe.CallStack;
 #end
 
@@ -22,27 +21,27 @@ import haxe.CallStack;
  *  
  * @author https://github.com/deepcake
  */
- @:allow(ecs.World) 
-abstract Entity(Int)  {
+@:allow(ecs.World)
+abstract Entity(Int) {
 	public static inline final INVALID_ID = 0;
 	public static inline var INVALID_ENTITY:Entity = new Entity(INVALID_ID);
 
-
-	private inline function new(i : Int) : Entity {
+	private inline function new(i:Int):Entity {
 		this = i;
 	}
 
-		/**
+	/**
 	 * Creates a new Entity instance  
 	 * @param immediate immediately adds this entity to the workflow if `true`, otherwise `activate()` call is required
 	 */
 	public inline function make(world:Int, immediate:Bool = true) {
 		return Workflow.world(world).newEntity(immediate);
 	}
+
 	static inline final WORLD_SHIFT = 32 - Parameters.WORLD_BITS; // defaults to 4
 	static inline final WORLD_COUNT = 1 << Parameters.WORLD_BITS;
 	static inline final WORLD_RIGHT_MASK = ((1 << (Parameters.WORLD_BITS)) - 1);
-	static inline final WORLD_LEFT_MASK =  ~((1 << (WORLD_SHIFT)) - 1);
+	static inline final WORLD_LEFT_MASK = ~((1 << (WORLD_SHIFT)) - 1);
 
 	static inline final GENERATION_SHIFT = WORLD_SHIFT - Parameters.GENERATION_BITS; // defaults to 4
 	static inline final GENERATION_COUNT = 1 << Parameters.GENERATION_BITS;
@@ -53,42 +52,47 @@ abstract Entity(Int)  {
 	static inline final ID_BITS = 32 - Parameters.WORLD_BITS - Parameters.GENERATION_BITS;
 	static inline final ID_COUNT = 1 << ID_BITS;
 
-	private static inline function fromWorldAndId(world:Int, id:Int, gen:Int) : Entity {
+	private static inline function fromWorldAndId(world:Int, id:Int, gen:Int):Entity {
 		return new Entity((world << WORLD_SHIFT) | (gen << GENERATION_SHIFT) | id);
 	}
 
 	public var valid(get, never):Bool;
+
 	inline function get_valid() {
 		return this != INVALID_ID && world.getGeneration(id) == generation;
 	}
 
 	public var active(get, never):Bool;
-	inline function get_active(){
+
+	inline function get_active() {
 		return this != INVALID_ID && world.getGeneration(id) == generation && status() == Status.Active;
 	}
 
 	public var world(get, never):World;
+
 	inline function get_world() {
-		return Workflow.world((this >>> WORLD_SHIFT) );
+		return Workflow.world((this >>> WORLD_SHIFT));
 	}
 
 	public var worldId(get, never):Int;
+
 	inline function get_worldId() {
 		return this >>> WORLD_SHIFT; // doesn't need a mask because it's on the left
 	}
-	
+
 	public var id(get, never):Int;
+
 	inline function get_id() {
 		return this & ID_MASK;
 	}
 
 	public var generation(get, never):Int;
+
 	inline function get_generation() {
 		return (this >>> GENERATION_SHIFT) & GENERATION_RIGHT_MASK;
 	}
 
 	// public var generation(get, never):Int;
-
 	// inline function get_generation() {
 	// 	return  world.getGeneration(this);
 	// }
@@ -168,8 +172,6 @@ abstract Entity(Int)  {
 		world.cache(self());
 	}
 
-	
-
 	/**
 	 * Returns list of all associated to this entity components.  
 	 * @return String
@@ -221,9 +223,14 @@ abstract Entity(Int)  {
 		var addComponentsToContainersExprs = components.map(function(c) {
 			var info = getComponentContainerInfo(c, pos);
 
-			return info.getAddExpr( macro __entity__, c);
+			return info.getAddExpr(macro __entity__, c);
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
+		});
+
+		var addCallbackComponents = components.map(function(c) {
+			var info = getComponentContainerInfo(c, pos);
+			return info.getComponentAddedExpr(macro __entity__);
 		});
 
 		var body = [].concat(addComponentsToContainersExprs).concat([
@@ -232,10 +239,9 @@ abstract Entity(Int)  {
 					@:privateAccess v.addIfMatched(__entity__);
 				}
 			}
-		]).concat([macro return __entity__]);
+		]).concat(addCallbackComponents).concat([macro return __entity__]);
 
 		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
-
 		return ret;
 	}
 
@@ -268,10 +274,7 @@ abstract Entity(Int)  {
 		errorStage = "got views of components";
 
 		var body = [
-			[
-				macro if (__entity__.isActive())
-					$b{viewActionExpr}
-			],
+			[macro if (__entity__.isActive()) $b{viewActionExpr}],
 			actionExprs,
 			[macro return __entity__]
 		].flatten();
@@ -350,17 +353,16 @@ abstract Entity(Int)  {
 		var pos = Context.currentPos();
 		var info = (type.parseClassName().getType().follow().toComplexType()).getComponentContainerInfo(pos);
 		var tp = type.parseClassName().asTypePath();
-//		var cp = type.parseClassName().asComplexType();
+		//		var cp = type.parseClassName().asComplexType();
 
 		var hasExpr = info.getExistsExpr(self);
 		var getExpr = info.getGetExpr(self);
 		var addExpr = info.getAddExpr(self, type);
-		
-		return macro ($hasExpr) ? $getExpr : new $tp();
+
+		return macro($hasExpr) ? $getExpr : new $tp();
 	}
 
-	macro public function fill( self:Expr, components:Array<ExprOf<Class<Any>>>) 
-	{
+	macro public function fill(self:Expr, components:Array<ExprOf<Class<Any>>>) {
 		var pos = Context.currentPos();
 
 		if (components.length == 0) {
@@ -374,8 +376,11 @@ abstract Entity(Int)  {
 			var tp = ctype.parseClassName().asTypePath();
 			var ne = macro new $tp();
 			var addExpr = info.getAddExpr(self, ne);
-			
-			return macro if (!($hasExpr)) { changed = true; $addExpr;};
+
+			return macro if (!($hasExpr)) {
+				changed = true;
+				$addExpr;
+			};
 			// var containerName = (c.typeof().follow().toComplexType()).getComponentContainerInfo().fullName;
 			// return macro @:privateAccess $i{ containerName }.inst().add(__entity__, $c);
 		});
@@ -390,11 +395,11 @@ abstract Entity(Int)  {
 
 		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
 
-		//var p = new Printer();
+		// var p = new Printer();
 
-		//trace( p.printExpr(ret) );
+		// trace( p.printExpr(ret) );
 
-//		throw 'stop';
+		//		throw 'stop';
 		return ret;
 	}
 
@@ -417,11 +422,9 @@ abstract Entity(Int)  {
 	}
 
 	@:keep
-    public function toString() {
-        return 'Entity( world:${worldId}, id:${id}, gen:${generation}, status:${status()} )';
-    }
-
-
+	public function toString() {
+		return 'Entity( world:${worldId}, id:${id}, gen:${generation}, status:${status()} )';
+	}
 }
 
 enum abstract Status(Int) {
