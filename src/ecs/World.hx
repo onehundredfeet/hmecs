@@ -1,5 +1,6 @@
 package ecs;
 
+import haxe.ds.BalancedTree;
 import haxe.macro.Printer;
 import ecs.Entity.Entity;
 
@@ -24,6 +25,12 @@ import haxe.ds.ReadOnlyArray;
 import ecs.core.Parameters;
 import ecs.core.Containers;
 
+enum  UpdatePreference{
+	Agnostic; // order independent
+	First; // Will throw if more than one system is marked as first
+	Last; // Will throw if more than one system is marked as last
+}
+
 class World {
 	public function new(worldid:Int) {
 		_worldID = worldid;
@@ -39,16 +46,19 @@ class World {
 		return _self;
 	}
 
-    public var worldID(get, never):Int;
-    inline function get_worldID() {
-        return _worldID;
-    }
-    
+	public var worldID(get, never):Int;
+
+	inline function get_worldID() {
+		return _worldID;
+	}
+
 	var nextId = Entity.INVALID_ID + 1;
 	var _self:Entity;
 	var idPool = new Array<Int>();
 	var worldBits = 0;
 	var _worldID = 0;
+
+	@:allow(ecs.System) var orderDirty = true;
 
 	// Per entity
 	#if ecs_max_entities
@@ -135,6 +145,153 @@ class World {
 		}
 	}
 
+	public function sortSystems() {
+		if (orderDirty) {
+			// translate to systems
+			var sysObjects = new Array<ecs.System>();
+			
+
+			for (i in 0..._systems.length) {
+				var s = _systems[i];
+				if (s is ecs.System) {
+					sysObjects.push(cast(s, ecs.System));
+				}
+			}
+
+			// sort systems
+			var allChildren = new Array<Array<Int>>();
+			for (i in 0...sysObjects.length) {
+				allChildren[i] = [];
+			}
+
+			
+			var map = new Map<String, Int>();
+	
+			// make name map
+			for (i in 0...sysObjects.length) {
+				var sys = sysObjects[i];
+				var name = Type.getClassName(Type.getClass(sys));
+				if (name == null) {
+					throw 'System type name is null for ${sys}';
+				}
+				if (map.exists(name)) {
+					throw 'System type name collision: $name';
+				}
+				map.set(name, i);
+			}
+
+			// unify all depdencies into all afters
+			for (i in 0...sysObjects.length) {
+				var s = sysObjects[i];
+				
+				var sname = Type.getClassName(Type.getClass(s));
+
+				for (before in s._updateBefore) {
+					var beforeName = Type.getClassName(before);
+					if (map.exists(beforeName)) {
+						var beforeIndex = map.get(beforeName);
+						allChildren[i].push(beforeIndex);
+					} 
+				}
+
+				for (after in s._updateAfter) {
+					var afterName = Type.getClassName(after);
+					trace('Adding wtf? ${afterName} to ${sname}');
+					if (map.exists(afterName)) {
+						var afterIndex = map.get(afterName);
+						allChildren[afterIndex].push(i);
+					} 
+				}
+			}
+
+			// add dependencies to first and last if they exist
+
+			if (_firstSystem != null) {
+				var firstIndex = map.get(Type.getClassName(Type.getClass(_firstSystem)));
+				for (s in sysObjects) {
+					if (s == _firstSystem) continue;
+					//first must go before everything else
+					allChildren[firstIndex].push(map.get(Type.getClassName(Type.getClass(s))));
+				}
+			}
+
+			if (_lastSystem != null) {
+				var lastIndex = map.get(Type.getClassName(Type.getClass(_lastSystem)));
+				for (s in sysObjects) {
+					if (s == _lastSystem) continue;
+					// last must go after everything else
+					allChildren[map.get(Type.getClassName(Type.getClass(s)))].push(lastIndex);
+				}
+			}
+
+			var incoming = new Array<Int>();
+			for (i in 0...allChildren.length) {
+				for (j in allChildren[i]) {
+					incoming[j]++;
+				}
+			}
+
+			var scores = new Array<Int>();
+
+			function traverse(i:Int, score:Int) {
+				if (score > scores[i]) {
+					scores[i] = score;
+					for (j in allChildren[i]) {
+						traverse(j, score + 1);
+					}
+				}
+			}
+
+			// calculate score
+			for (i in 0...sysObjects.length) {
+				if (incoming[i] == 0) {
+					traverse(i, 1);
+				} 
+			}
+
+			trace('Scores:');
+			for (i in 0...sysObjects.length) {
+				var s = sysObjects[i];
+				var n = Type.getClassName(Type.getClass(s));
+				trace('System ${i} ${n}:score ${scores[i]} : incoming ${incoming[i]} : children ${allChildren[i]}');
+			}
+
+			_systems.sort((a, b) -> {
+				var idx = map.get(Type.getClassName(Type.getClass(a)));
+				var jdx = map.get(Type.getClassName(Type.getClass(b)));
+				if (idx == null || jdx == null) {
+					if (idx == null && jdx == null) return 0;
+					if (idx == null) return -1; // first one is not a system
+					if (jdx == null) return 1; // second one is not a system
+				}
+
+				if (scores[idx] > scores[jdx]) {
+					return 1;
+				} else if (scores[idx] < scores[jdx]) {
+					return -1;
+				}
+				return 0;
+			});
+
+			trace('---Sorted:');
+			for (i in 0..._systems.length) {
+				var si = _systems[i];
+				var idx = map.get(Type.getClassName(Type.getClass(si)));
+				if (idx == null) {
+					trace('System ${i} ${si} is not a system');
+					continue;
+				}
+				var s = cast(si, ecs.System);
+				var n = Type.getClassName(Type.getClass(s));
+				trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
+			}
+
+			orderDirty = false;
+		}
+	}
+
+
+
 	/**
 	 * Update 
 	 * @param dt deltatime
@@ -172,7 +329,6 @@ class World {
 		}
 		#end
 
-		// [RC] why splice and not resize?
 		idPool.resize(0);
 		#if !ecs_max_entities
 		statuses.resize(0);
@@ -188,22 +344,28 @@ class World {
 	 * Adds the system to the workflow
 	 * @param s `System` instance
 	 */
-	 // IInterface & Constructible<SomeClass->Void>)
-	 @:generic
-	public function addSystem<TSystem:(ISystem & haxe.Constraints.Constructible<Void->Void>)>(s:TSystem = null, prime = true) {
-		if (s == null) {
-			s = new TSystem();
-		}
 
-		if (!hasSystem(s)) {
-			_systems.push(s);
-			s.__initialize__(this);
-			s.__activate__();
-			if (prime) s.prime(this);
 
-			return s;
-		}
-		return null;
+	function addSystem(sys:ISystem, prime = true, updatePref:UpdatePreference = UpdatePreference.Agnostic) {
+		//		trace('Initializing ${sys}');
+		sys.__initialize__(this);
+		//		trace('Activating ${sys}');
+		sys.__activate__();
+		if (prime)
+			sys.prime(this);
+		this._systems.push(sys);
+		switch (updatePref) {
+			case UpdatePreference.First:
+				if (_firstSystem != null) throw 'Only one system can be marked as first';
+				_firstSystem = sys;
+			case UpdatePreference.Last:
+				if (_lastSystem != null) throw 'Only one system can be marked as last';
+				_lastSystem = sys;
+			default:
+		};
+
+		orderDirty = true;
+		return sys;
 	}
 
 	function _getSystemOfType(sysType:Class<ISystem>) {
@@ -214,16 +376,8 @@ class World {
 		}
 		return null;
 	}
+
 	
-	function _addSystem( sys : ISystem, prime = true) {
-//		trace('Initializing ${sys}');
-		sys.__initialize__(this);
-//		trace('Activating ${sys}');
-		sys.__activate__();
-		if (prime) sys.prime(this);
-		this._systems.push(sys);
-		return sys;
-	}
 
 	public function prime() {
 		for (s in _systems) {
@@ -240,43 +394,45 @@ class World {
 		return e;
 	}
 
+	#if macro
+	@:allow(ecs.System) static function _prepareSystem<T:ecs.System>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>,
+			?updatePref:ExprOf<UpdatePreference>):ExprOf<T> {
 
-	macro public function prepareSystem<T>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>) : ExprOf<T> {
-		// trace('eThis : ${eThis}');
-		// trace('type : ${sysType}');
-		
 		var tp = sysType.parseClassName().asTypePath();
 		var cp = sysType.parseClassName().asComplexType();
-//		trace(activateExpr);
 
-		// var activate = switch(activateExpr.expr) {
-		// 	case EConst(c): switch(c) {
-		// 		case CIdent(s): switch(s) {
-		// 			case "true": macro true;
-		// 			case "false": macro false;
-		// 			case "null": macro true;
-		// 			default: throw 'Invalid value for activate';
-		// 		}
-		// 		default: throw 'Invalid value for activate';
-		// 	}
-		// 	default: macro true;
-		// }
+		if (updatePref == null) {
+			updatePref = macro ecs.World.UpdatePreference.Agnostic;
+		}
 
-		// trace('activate : ${activate}');
-
+		var tpn = '$tp';
+		var thisN = new Printer().printExpr(eThis);
 		var r = macro {
 			var _st_ = @:privateAccess ($eThis)._getSystemOfType($sysType);
-			_st_ != null ? 
-				cast(_st_, $cp)
-				:
-				cast(@:privateAccess ($eThis)._addSystem(new $tp(), false), $cp);
+			_st_ != null ? cast(_st_, $cp) : cast(@:privateAccess ($eThis).addSystem(new $tp(), false, $updatePref), $cp);
 		};
 
 		// var p = new Printer();
 		// trace(p.printExpr(r));
-		//throw ('bla');
 		return r;
+
 	}
+	#end
+
+	macro public function prepareSystem<T:ISystem>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>,
+			?updatePref:ExprOf<UpdatePreference>):ExprOf<T> {
+		
+		var x= _prepareSystem(eThis, sysType, updatePref);
+
+		return macro {
+			trace('prepareSystem() system ' + $sysType);
+			$x;
+
+		};
+	}
+
+	var _firstSystem:ISystem;
+	var _lastSystem:ISystem;
 
 	/**
 	 * Removes the system from the workflow
@@ -306,7 +462,7 @@ class World {
 		if (id == null) {
 			id = nextId++;
 			_generations[id] = 0;
-		} 
+		}
 
 		#if ecs_max_entities
 		if (id >= Parameters.MAX_ENTITIES) {
@@ -314,7 +470,7 @@ class World {
 		}
 		#end
 
-        var e = Entity.fromWorldAndId(_worldID, id, _generations[id]);
+		var e = Entity.fromWorldAndId(_worldID, id, _generations[id]);
 		if (immediate) {
 			statuses[id] = Active;
 			_entities.add(e);
@@ -371,28 +527,21 @@ class World {
 	// macro public function createFactory(worlds:ExprOf<Any>, components:Array<ExprOf<Class<Any>>>) { // :ExprOf<ecs.Factory> {
 	// 	#if macro
 	// 	var pos = Context.currentPos();
-
 	// 	if (components.length == 0) {
 	// 		Context.error('Required one or more Components', Context.currentPos());
 	// 	}
-
 	// 	// var pp = new haxe.macro.Printer();
 	// 	var classNames = components.map(function(c) return {expr: c.exprOfClassToFullTypeName(null, pos).asTypeIdent(pos).expr, pos: pos});
 	// 	var allocation = components.map(function(c) return {expr: ENew(c.exprOfClassToTypePath(null, pos), []), pos: pos});
-
 	// 	var addComponentsToContainersExprs = components.map((c) -> {
 	// 		// trace("parsetname|" + c.parseClassName().getType().toComplexType());
 	// 		var ct = c.parseClassName().getType().follow().toComplexType();
 	// 		var info = ct.getComponentContainerInfo(pos);
-
 	// 		// trace('add and alloc ${c}');
 	// 		var alloc = {expr: ENew(ct.toString().asTypePath(), []), pos: Context.currentPos()};
-
 	// 		return info.getAddExpr(macro __entity__, alloc);
 	// 	});
-
 	// 	// trace(pp.printExprs(allocation, "\n"));
-
 	// 	var body = [].concat([macro var _views:Array<ecs.core.AbstractView> = []])
 	// 		.concat([
 	// 			// macro trace("Tracing against " + ecs.Workflow.views.length)
@@ -409,7 +558,6 @@ class World {
 	// 				var __entity__ = new ecs.Entity($worlds);
 	// 				//                ecs.Workflow.addNoViews(e, $a{allocation});
 	// 				$b{addComponentsToContainersExprs};
-
 	// 				// trace("adding to views " + _views.length);
 	// 				for (v in _views) {
 	// 					// trace("adding to view ");
@@ -418,27 +566,21 @@ class World {
 	// 				return __entity__;
 	// 			}
 	// 		]);
-
 	// 	var ret = macro inline(function() $b{body})();
-
 	// 	// trace(pp.printExpr(ret));
 	// 	return ret;
 	// 	#else
 	// 	return macro "";
 	// 	#end
-
 	// 	#if false.concat
 	// 	(addComponentsToContainersExprs) var addComponentsToContainersExprs = components.map(function(c) {
 	// 		var info = (c.typeof().follow().toComplexType()).getComponentContainerInfo();
-
 	// 		var containerName = (c.typeof().follow().toComplexType()).getComponentContainer().followName();
 	// 		return macro @:privateAccess $i{containerName}.inst();
 	// 	});
-
 	// 	return macro "";
 	// 	#end
 	// }
-
 	#if factories
 	#end
 	@:allow(ecs.Entity) inline function cache(e:Entity) {
@@ -492,7 +634,7 @@ class World {
 	}
 
 	@:allow(ecs.Entity) inline function setTag(e:Entity, tag:Int) {
-        var id = e.id;
+		var id = e.id;
 		//		trace('Setting tag  ${tag} on ${id}');
 		final offset = tag >> 5;
 		final bitOffset = tag - (offset << 5);
@@ -502,7 +644,7 @@ class World {
 	}
 
 	@:allow(ecs.Entity) inline function clearTag(e:Entity, tag:Int) {
-        var id = e.id;
+		var id = e.id;
 		final offset = tag >> 5;
 		final bitOffset = tag - (offset << 5);
 		final idx = id * TAG_STRIDE + offset;
@@ -511,31 +653,24 @@ class World {
 	}
 
 	// var removeAllFunction:(ecs.Entity) -> Void = null;
-
 	// public dynamic function numComponentTypes() {
 	// 	return 0;
 	// }
-
 	// public dynamic function componentNames():Array<String> {
 	// 	return [];
 	// }
-
 	// public dynamic function entityComponentNames(e:ecs.Entity):Array<String> {
 	// 	return [];
 	// }
-
 	// public dynamic function componentsToStrings(e:ecs.Entity):Array<String> {
 	// 	return [];
 	// }
-
 	// public dynamic function componentsToDynamic(e:ecs.Entity):Array<Dynamic> {
 	// 	return [];
 	// }
-
 	// public dynamic function componentNameToString(e:ecs.Entity, name:String):String {
 	// 	return "";
 	// }
-
 	// macro function removeAllComponents(e:Expr):Expr {
 	// 	return macro {
 	// 		if (removeAllFunction == null) {
@@ -552,7 +687,7 @@ class World {
 	// }
 
 	@:allow(ecs.Entity) inline function removeAllComponentsOf(e:ecs.Entity) {
-//        var id = e.id;
+		//        var id = e.id;
 		if (status(e) == Active) {
 			for (v in views) {
 				v.removeIfExists(e);

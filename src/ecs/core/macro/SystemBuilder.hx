@@ -217,9 +217,10 @@ class SystemBuilder {
 		// fields.push(fvar([], [], '__world_id__', macro :Int, null, Context.currentPos()));
 
 		var initExpr = new Array<Expr>();
-		initExpr.push( macro addDependencies(world) );
 		initExpr.push( macro __world__ = world );
 		initExpr.push( macro __world_id__ = world.worldID );
+//		initExpr.push( macro trace('adding dependencies:' + this) );
+		initExpr.push( macro addDependencies(world) );
 
 //		initExpr.push(macro trace('Initializing: ${this}'));
 		var definedViews = new Array<{view:ViewRec, varname:String}>();
@@ -384,9 +385,9 @@ class SystemBuilder {
 							} else if (am.isWorld()) {
 								callNameMap[a.name] = macro $i{"__w_" + a.name};
 								var info = getComponentContainerInfo(a.type, pos);
-								if (info.storageType != ecs.core.macro.ComponentBuilder.StorageType.SINGLETON){
-									Context.fatalError('World attribute can only be used with singleton components', f.pos);
-								}
+								// if (info.storageType != ecs.core.macro.ComponentBuilder.StorageType.SINGLETON){
+								// 	Context.fatalError('World attribute can only be used with singleton components', f.pos);
+								// }
 								var getExpr = info.getGetExpr(macro __world__.self);
 								cache.push(("__w_" + a.name).define(getExpr));
 
