@@ -223,13 +223,16 @@ class StorageInfo {
 		}
 
 		var parentExpr:Expr = null;
-		if (this.followedClass.superClass != null) {
-			var sc = this.followedClass.superClass.t.get();
+		var nextSuperClass = followedClass.superClass;
+		while (nextSuperClass != null) {
+			var sc = nextSuperClass.t.get();
 			var scn = sc.pack.join('.') + '.' + sc.name;
 			var sci = ComponentBuilder.containerInfo(scn);
 			if (sci != null) {
 				parentExpr = sci.getComponentAddedExpr(entityVar, componentExpr);
+				break;
 			}
+			nextSuperClass = sc.superClass;
 		}
 		var myExpr = macro if ($containerFullNameExpr.worlds[$entityVar.worldId]._onAdded != null) {
 			var __hmecs_component = $componentExpr;
