@@ -120,10 +120,8 @@ class System implements ecs.core.ISystem {
     function addUpdateDependency(sysType:Class<ecs.System>, updateType:RelativeUpdate) {
         switch (updateType) {
 			case RelativeUpdate.Before:
-                trace('Adding before (the current on is after the specified one)');
 				updateAfter(sysType);
 			case RelativeUpdate.After:
-                trace('Adding after (the current on is before the specified one)');
 				updateBefore(sysType);
 			case RelativeUpdate.First:
 				updateAfter(sysType);
@@ -170,7 +168,7 @@ class System implements ecs.core.ISystem {
 
 	function updateAfter(type:Class<ecs.System>) {
 		if (_updateAfter.indexOf(type) == -1) {
-            trace('Adding $type to _updateAfter');
+//            trace('Adding $type to _updateAfter');
 			_updateAfter.push(type);
             __world__.orderDirty = true;
 		}

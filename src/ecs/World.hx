@@ -196,7 +196,7 @@ class World {
 
 				for (after in s._updateAfter) {
 					var afterName = Type.getClassName(after);
-					trace('Adding wtf? ${afterName} to ${sname}');
+//					trace('Adding  ${afterName} to ${sname}');
 					if (map.exists(afterName)) {
 						var afterIndex = map.get(afterName);
 						allChildren[afterIndex].push(i);
@@ -249,11 +249,11 @@ class World {
 				} 
 			}
 
-			trace('Scores:');
+//			trace('Scores:');
 			for (i in 0...sysObjects.length) {
 				var s = sysObjects[i];
 				var n = Type.getClassName(Type.getClass(s));
-				trace('System ${i} ${n}:score ${scores[i]} : incoming ${incoming[i]} : children ${allChildren[i]}');
+//				trace('System ${i} ${n}:score ${scores[i]} : incoming ${incoming[i]} : children ${allChildren[i]}');
 			}
 
 			_systems.sort((a, b) -> {
@@ -273,17 +273,17 @@ class World {
 				return 0;
 			});
 
-			trace('---Sorted:');
+//			trace('---Sorted:');
 			for (i in 0..._systems.length) {
 				var si = _systems[i];
 				var idx = map.get(Type.getClassName(Type.getClass(si)));
 				if (idx == null) {
-					trace('System ${i} ${si} is not a system');
+//					trace('System ${i} ${si} is not a system');
 					continue;
 				}
 				var s = cast(si, ecs.System);
 				var n = Type.getClassName(Type.getClass(s));
-				trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
+//				trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
 			}
 
 			orderDirty = false;
