@@ -12,6 +12,7 @@ class MetaTools {
 	public static final PRINT_META = ['print', ':print'];
 	public static final ADD_META = ['added', 'ad', 'a', ':added', ':ad', ':a'];
 	public static final ADD_COMPONENT_META = ['added_component', ':added_component'];
+	public static final REMOVED_COMPONENT_META = ['removed_component', ':removed_component'];
 	public static final RM_META = ['removed', 'rm', 'r', ':removed', ':rm', ':r'];
 	public static final UPD_META = ['update', 'up', 'u', ':update', ':up', ':u'];
 	public static final PARALLEL_META = [':parallel', 'parallel', 'p', ':p'];

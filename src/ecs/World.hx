@@ -25,7 +25,7 @@ import haxe.ds.ReadOnlyArray;
 import ecs.core.Parameters;
 import ecs.core.Containers;
 
-enum  UpdatePreference{
+enum UpdatePreference {
 	Agnostic; // order independent
 	First; // Will throw if more than one system is marked as first
 	Last; // Will throw if more than one system is marked as last
@@ -149,7 +149,6 @@ class World {
 		if (orderDirty) {
 			// translate to systems
 			var sysObjects = new Array<ecs.System>();
-			
 
 			for (i in 0..._systems.length) {
 				var s = _systems[i];
@@ -164,9 +163,8 @@ class World {
 				allChildren[i] = [];
 			}
 
-			
 			var map = new Map<String, Int>();
-	
+
 			// make name map
 			for (i in 0...sysObjects.length) {
 				var sys = sysObjects[i];
@@ -183,7 +181,7 @@ class World {
 			// unify all depdencies into all afters
 			for (i in 0...sysObjects.length) {
 				var s = sysObjects[i];
-				
+
 				var sname = Type.getClassName(Type.getClass(s));
 
 				for (before in s._updateBefore) {
@@ -191,16 +189,16 @@ class World {
 					if (map.exists(beforeName)) {
 						var beforeIndex = map.get(beforeName);
 						allChildren[i].push(beforeIndex);
-					} 
+					}
 				}
 
 				for (after in s._updateAfter) {
 					var afterName = Type.getClassName(after);
-//					trace('Adding  ${afterName} to ${sname}');
+					//					trace('Adding  ${afterName} to ${sname}');
 					if (map.exists(afterName)) {
 						var afterIndex = map.get(afterName);
 						allChildren[afterIndex].push(i);
-					} 
+					}
 				}
 			}
 
@@ -209,8 +207,9 @@ class World {
 			if (_firstSystem != null) {
 				var firstIndex = map.get(Type.getClassName(Type.getClass(_firstSystem)));
 				for (s in sysObjects) {
-					if (s == _firstSystem) continue;
-					//first must go before everything else
+					if (s == _firstSystem)
+						continue;
+					// first must go before everything else
 					allChildren[firstIndex].push(map.get(Type.getClassName(Type.getClass(s))));
 				}
 			}
@@ -218,7 +217,8 @@ class World {
 			if (_lastSystem != null) {
 				var lastIndex = map.get(Type.getClassName(Type.getClass(_lastSystem)));
 				for (s in sysObjects) {
-					if (s == _lastSystem) continue;
+					if (s == _lastSystem)
+						continue;
 					// last must go after everything else
 					allChildren[map.get(Type.getClassName(Type.getClass(s)))].push(lastIndex);
 				}
@@ -246,23 +246,26 @@ class World {
 			for (i in 0...sysObjects.length) {
 				if (incoming[i] == 0) {
 					traverse(i, 1);
-				} 
+				}
 			}
 
-//			trace('Scores:');
+			//			trace('Scores:');
 			for (i in 0...sysObjects.length) {
 				var s = sysObjects[i];
 				var n = Type.getClassName(Type.getClass(s));
-//				trace('System ${i} ${n}:score ${scores[i]} : incoming ${incoming[i]} : children ${allChildren[i]}');
+				//				trace('System ${i} ${n}:score ${scores[i]} : incoming ${incoming[i]} : children ${allChildren[i]}');
 			}
 
 			_systems.sort((a, b) -> {
 				var idx = map.get(Type.getClassName(Type.getClass(a)));
 				var jdx = map.get(Type.getClassName(Type.getClass(b)));
 				if (idx == null || jdx == null) {
-					if (idx == null && jdx == null) return 0;
-					if (idx == null) return -1; // first one is not a system
-					if (jdx == null) return 1; // second one is not a system
+					if (idx == null && jdx == null)
+						return 0;
+					if (idx == null)
+						return -1; // first one is not a system
+					if (jdx == null)
+						return 1; // second one is not a system
 				}
 
 				if (scores[idx] > scores[jdx]) {
@@ -273,24 +276,22 @@ class World {
 				return 0;
 			});
 
-//			trace('---Sorted:');
+			//			trace('---Sorted:');
 			for (i in 0..._systems.length) {
 				var si = _systems[i];
 				var idx = map.get(Type.getClassName(Type.getClass(si)));
 				if (idx == null) {
-//					trace('System ${i} ${si} is not a system');
+					//					trace('System ${i} ${si} is not a system');
 					continue;
 				}
 				var s = cast(si, ecs.System);
 				var n = Type.getClassName(Type.getClass(s));
-//				trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
+				//				trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
 			}
 
 			orderDirty = false;
 		}
 	}
-
-
 
 	/**
 	 * Update 
@@ -344,8 +345,6 @@ class World {
 	 * Adds the system to the workflow
 	 * @param s `System` instance
 	 */
-
-
 	function addSystem(sys:ISystem, prime = true, updatePref:UpdatePreference = UpdatePreference.Agnostic) {
 		//		trace('Initializing ${sys}');
 		sys.__initialize__(this);
@@ -356,10 +355,12 @@ class World {
 		this._systems.push(sys);
 		switch (updatePref) {
 			case UpdatePreference.First:
-				if (_firstSystem != null) throw 'Only one system can be marked as first';
+				if (_firstSystem != null)
+					throw 'Only one system can be marked as first';
 				_firstSystem = sys;
 			case UpdatePreference.Last:
-				if (_lastSystem != null) throw 'Only one system can be marked as last';
+				if (_lastSystem != null)
+					throw 'Only one system can be marked as last';
 				_lastSystem = sys;
 			default:
 		};
@@ -376,8 +377,6 @@ class World {
 		}
 		return null;
 	}
-
-	
 
 	public function prime() {
 		for (s in _systems) {
@@ -397,7 +396,6 @@ class World {
 	#if macro
 	@:allow(ecs.System) static function _prepareSystem<T:ecs.System>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>,
 			?updatePref:ExprOf<UpdatePreference>):ExprOf<T> {
-
 		var tp = sysType.parseClassName().asTypePath();
 		var cp = sysType.parseClassName().asComplexType();
 
@@ -415,19 +413,15 @@ class World {
 		// var p = new Printer();
 		// trace(p.printExpr(r));
 		return r;
-
 	}
 	#end
 
-	macro public function prepareSystem<T:ISystem>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>,
-			?updatePref:ExprOf<UpdatePreference>):ExprOf<T> {
-		
-		var x= _prepareSystem(eThis, sysType, updatePref);
+	macro public function prepareSystem<T:ISystem>(eThis:ExprOf<World>, sysType:ExprOf<Class<T>>, ?updatePref:ExprOf<UpdatePreference>):ExprOf<T> {
+		var x = _prepareSystem(eThis, sysType, updatePref);
 
 		return macro {
 			trace('prepareSystem() system ' + $sysType);
 			$x;
-
 		};
 	}
 
@@ -607,12 +601,14 @@ class World {
 		}
 	}
 
-	@:allow(ecs.Entity) inline function remove(e:Entity) {
+	@:allow(ecs.Entity) inline function deactivate(e:Entity) {
 		if (status(e) == Active) {
 			for (v in views)
 				v.removeIfExists(e);
+
 			_entities.remove(e);
-			statuses[e.id] = Inactive;
+			var id = e.id;
+			statuses[id] = Inactive;
 		}
 	}
 

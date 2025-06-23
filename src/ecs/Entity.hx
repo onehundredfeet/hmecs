@@ -109,7 +109,7 @@ abstract Entity(Int) {
 	 * Entity can be added to the workflow again by `activate()` call
 	 */
 	public inline function deactivate() {
-		world.remove(self());
+		world.deactivate(self());
 	}
 
 	/**
@@ -233,13 +233,16 @@ abstract Entity(Int) {
 			return info.getComponentAddedExpr(macro __entity__);
 		});
 
-		var body = [].concat(addComponentsToContainersExprs).concat([
-			macro if (__entity__.isActive()) {
-				for (v in __entity__.world.views) {
-					@:privateAccess v.addIfMatched(__entity__);
+		var body = [].concat(addComponentsToContainersExprs)
+			.concat([
+				macro if (__entity__.isActive()) {
+					for (v in __entity__.world.views) {
+						@:privateAccess v.addIfMatched(__entity__);
+					}
 				}
-			}
-		]).concat(addCallbackComponents).concat([macro return __entity__]);
+			])
+			.concat(addCallbackComponents)
+			.concat([macro return __entity__]);
 
 		var ret = macro #if (haxe_ver >= 4) inline #end (function(__entity__:ecs.Entity) $b{body})($self);
 		return ret;
@@ -247,8 +250,8 @@ abstract Entity(Int) {
 
 	#if macro
 	static function ecsActionByClass(self:Expr, types:Array<ExprOf<Class<Any>>>, pos:Position,
-			storageAction:(info:StorageInfo, entityExpr:Expr, pos:Position) -> Expr,
-			viewAction:(viewExpr:Expr, entityExpr:Expr, pos:Position) -> Expr):ExprOf<ecs.Entity> {
+			storageAction:(info:StorageInfo, entityExpr:Expr, pos:Position) -> Expr, viewAction:(viewExpr:Expr, entityExpr:Expr, pos:Position) -> Expr,
+			callbackAction:(info:StorageInfo, entityExpr:Expr, pos:Position) -> Expr = null):ExprOf<ecs.Entity> {
 		var errorStage = "";
 		if (types.length == 0) {
 			Context.error('Required one or more Component Types', pos);
@@ -271,6 +274,15 @@ abstract Entity(Int) {
 			var x = viewsOfComponentClassName.asTypeIdent(Context.currentPos());
 			return viewAction(macro $x.inst(), macro __entity__, pos);
 		});
+
+		if (callbackAction != null) {
+			var callbackExprs = cts.map(function(ct) {
+				var info = ct.getComponentContainerInfo(pos);
+				return callbackAction(info, macro __entity__, pos);
+			});
+			actionExprs = callbackExprs.concat(actionExprs);
+		}
+
 		errorStage = "got views of components";
 
 		var body = [
@@ -311,7 +323,12 @@ abstract Entity(Int) {
 		var viewAction = (viewExpr:Expr, entityExpr:Expr, pos:Position) -> {
 			return macro @:privateAccess ${viewExpr}.removeIfExists($entityExpr);
 		}
-		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction);
+
+		var callbackAction = (info:StorageInfo, entityExpr:Expr, pos:Position) -> {
+			return info.getComponentRemovedExpr(entityExpr);
+		}
+
+		return ecsActionByClass(self, types, Context.currentPos(), storageAction, viewAction, callbackAction);
 	}
 
 	macro public function shelve(self:Expr, types:Array<ExprOf<Class<Any>>>):ExprOf<ecs.Entity> {

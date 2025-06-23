@@ -316,6 +316,10 @@ class SystemBuilder {
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.ADD_COMPONENT_META))
 			.map(procMetaFunc)
 			.filter(notNull);
+		var rcfuncs = fields.filter(MetaTools.notSkipped)
+			.filter(MetaTools.containsMeta.bind(_, MetaTools.REMOVED_COMPONENT_META))
+			.map(procMetaFunc)
+			.filter(notNull);
 		var rfuncs = fields.filter(MetaTools.notSkipped)
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.RM_META))
 			.map(procMetaFunc)
@@ -456,6 +460,14 @@ class SystemBuilder {
 				var a = f.rawargs[0];
 				var info = getComponentContainerInfo(a.type, pos);
 				return info.getAddAddComponentListenerExpr(macro __world_id__, macro $i{f.name});
+			}))
+			.concat(rcfuncs.map(function(f) {
+				if (f.rawargs.length != 2) {
+					Context.error('Remove component listener must have exactly 2 arguments', f.pos);
+				}
+				var a = f.rawargs[0];
+				var info = getComponentContainerInfo(a.type, pos);
+				return info.getAddRemoveComponentListenerExpr(macro __world_id__, macro $i{f.name});
 			}))
 			.concat([macro onactivate()])};
 
