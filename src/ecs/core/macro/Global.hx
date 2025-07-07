@@ -34,7 +34,8 @@ class Global {
 		}
 		#end
 
-		var infos = containerNames.map((x) -> ComponentBuilder.containerInfo(x));
+		// Only add remove expressions for non-signal components
+		var infos = containerNames.map((x) -> ComponentBuilder.containerInfo(x)).filter((x) -> x.storageType != SIGNAL);
 
 		for (info in infos) {
 //			removeExprs.push(info.getComponentRemovedExpr(macro e));

@@ -14,6 +14,19 @@ static inline function getMaxEntities() : Int {
 public static inline final MAX_ENTITIES = getMaxEntities();
 #end
 
+#if ecs_max_components
+static macro function getMaxComponentsExpr() {
+    var x= Std.parseInt(haxe.macro.Context.definedValue("ecs_max_components"));
+    return macro $v{x};
+}
+
+static inline function getMaxComponents() : Int {
+    #if macro return 0; #else return getMaxComponentsExpr(); #end
+}
+
+public static inline final MAX_COMPONENTS = getMaxComponents();
+#end
+
 
 #if ecs_max_worlds
 static macro function getMaxWorldsExpr() {

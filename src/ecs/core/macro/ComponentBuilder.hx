@@ -45,6 +45,7 @@ enum abstract StorageType(Int) from Int to Int {
 	var SINGLETON = 2; // A single reference with a known entity owner
 	var TAG = 3; // An bitfield the length of all entities, with ON | OFF meaning membership
 	var FLAT = 4; // A pre-allocated array with values for all entities
+	var SIGNAL = 5; // not stored
 
 	//  var GLOBAL = 4;     // Exists on every entity
 	//  var TRANSIENT = 5;  // Automatically removed every tick
@@ -78,6 +79,7 @@ enum abstract StorageType(Int) from Int to Int {
 							#else
 							FAST;
 							#end
+						case "SIGNAL": SIGNAL;
 						default:
 							Context.warning('Unknown storage type ${s}', Context.currentPos());
 							FAST;
@@ -104,6 +106,25 @@ function getModulePath():String {
 
 class StorageInfo {
 	public static final STORAGE_NAMESPACE = "ecs.storage";
+	public var name:String;
+	public var givenCT:ComplexType;
+	public var followedCT:ComplexType;
+	public var followedMeta:MetaMap;
+	public var followedClass:ClassType;
+	public var storageType:StorageType;
+	public var storageCT:ComplexType;
+	public var componentIndex:Int;
+	public var fullName:String;
+	public var containerCT:ComplexType;
+	public var containerTypeName:String;
+	public var worldContainerTypeName:String;
+	public var worldContainerFullName:String;
+	public var containerFullName:String;
+	public var containerFullNameExpr:Expr;
+	public var emptyExpr:Expr;
+	public var isPooled:Bool;
+	public var isImmutable:Bool;
+	public var isValueStruct:Bool;
 
 	static function getPooled(mm:MetaMap) {
 		var bb = mm.get(":build");
@@ -187,6 +208,7 @@ class StorageInfo {
 			case COMPACT: macro $i{cachedVarName}.get($entityExpr.id);
 			case SINGLETON: macro $i{cachedVarName};
 			case TAG: macro @:privateAccess $i{cachedVarName};
+			case SIGNAL:Context.fatalError("Cannot get a signal component", Context.currentPos());
 		};
 	}
 
@@ -196,6 +218,8 @@ class StorageInfo {
 			case FLAT: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage[$entityExpr.id];
 			case COMPACT: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage.get($entityExpr.id);
 			case SINGLETON: macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage;
+			case SIGNAL:
+				Context.fatalError("Cannot get a signal component", Context.currentPos());
 			case TAG:
 				var te = tagExpr();
 				sure ? macro $containerFullNameExpr.worlds[$entityExpr.worldId].storage : macro @:privateAccess ecs.Workflow.world($entityExpr.worldId)
@@ -211,10 +235,27 @@ class StorageInfo {
 				isValueStruct ? macro $containerFullNameExpr.worlds[$entityVar.worldId]._existsStorage[$entityVar.id] : macro $containerFullNameExpr.worlds[$entityVar.worldId].storage[$entityVar.id] != $emptyExpr;
 			case COMPACT: macro $containerFullNameExpr.worlds[$entityVar.worldId].storage.exists($entityVar.id);
 			case SINGLETON: macro $containerFullNameExpr.worlds[$entityVar.worldId].owner == $entityVar.id;
+			case SIGNAL:
+				Context.fatalError("Cannot check existence of a signal component", Context.currentPos());
 			case TAG:
 				var te = tagExpr();
 				macro @:privateAccess ecs.Workflow.world($entityVar.worldId).getTag($entityVar, $te);
 		};
+	}
+
+	public function getSendSignalExpr(signalExpr:Expr, entityVar:Expr):Expr {
+
+		return switch(storageType) {
+			case SIGNAL:
+				return macro {					
+					var __hmecs_signal = $signalExpr;
+					for (c in $containerFullNameExpr.worlds[$entityVar.worldId]._listeners) {
+						c(__hmecs_signal, $entityVar);
+					}
+				}
+			default:
+				Context.fatalError("Cannot send a signal on a non-signal component", Context.currentPos());
+		}
 	}
 
 	public function getComponentAddedExpr(entityVar:Expr, componentExpr:Expr = null):Expr {
@@ -285,6 +326,14 @@ class StorageInfo {
 		};
 	}
 
+	public function getAddSignalListenerExpr(worldIdVar:Expr, functionId:Expr):Expr {
+		return macro {
+			if ($containerFullNameExpr.worlds[$worldIdVar]._listeners == null)
+				$containerFullNameExpr.worlds[$worldIdVar]._listeners = [];
+			$containerFullNameExpr.worlds[$worldIdVar]._listeners.push($functionId);
+		};
+	}
+
 	public function getAddRemoveComponentListenerExpr(worldIdVar:Expr, functionId:Expr):Expr {
 		return macro {
 			if ($containerFullNameExpr.worlds[$worldIdVar]._onRemoved == null)
@@ -341,6 +390,8 @@ class StorageInfo {
 			case TAG:
 				var te = tagExpr();
 				macro @:privateAccess ecs.Workflow.world($entityVarExpr.worldId).setTag($entityVarExpr, $te);
+			case SIGNAL:
+				Context.fatalError("Cannot add a signal component", Context.currentPos());
 		};
 	}
 
@@ -370,6 +421,8 @@ class StorageInfo {
 			case TAG:
 				var te = tagExpr();
 				@:privateAccess macro ecs.Workflow.world($entityVarExpr.worldId).getTag($te, $te);
+			case SIGNAL:
+				Context.fatalError("Cannot retire a signal component", Context.currentPos());
 		};
 
 		var retireExprs = new Array<Expr>();
@@ -420,6 +473,8 @@ class StorageInfo {
 		return switch (storageType) {
 			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].remove($entityVarExpr.id);
 			case TAG: clearTagExpr(entityVarExpr);
+			case SIGNAL:
+				Context.fatalError("Cannot remove a signal component", Context.currentPos());
 		}
 		/*
 			var hasExpr = getExistsExpr(entityVarExpr);
@@ -448,6 +503,8 @@ class StorageInfo {
 		var shelfCall = switch (storageType) {
 			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].shelve($entityVarExpr.id);
 			case TAG: Context.fatalError("Cannot shelve a tag", pos);
+			case SIGNAL:
+				Context.fatalError("Cannot shelve a signal component", Context.currentPos());
 		}
 
 		shelfCall.pos = pos;
@@ -458,6 +515,8 @@ class StorageInfo {
 		return switch (storageType) {
 			case FLAT, FAST, COMPACT, SINGLETON: macro @:privateAccess $containerFullNameExpr.worlds[$entityVarExpr.worldId].unshelve($entityVarExpr.id);
 			case TAG: Context.fatalError("Cannot unshelve a tag", pos);
+			case SIGNAL:
+				Context.fatalError("Cannot unshelve a signal component", Context.currentPos());
 		}
 	}
 
@@ -547,6 +606,8 @@ class StorageInfo {
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
 			case TAG: followedCT.toString().asTypePath();
 			case SINGLETON: followedCT.toString().asTypePath();
+			case SIGNAL:followedCT.toString().asTypePath();
+				
 			default: null;
 		});
 
@@ -564,8 +625,8 @@ class StorageInfo {
 			var containerType = containerCT.toTypeOrNull(Context.currentPos());
 
 			if (containerType == null) {
-				var existsExpr = getExistsExpr(macro id);
-				var removeExpr = getRemoveExpr(macro id);
+				var existsExpr = storageType == SIGNAL ? null : getExistsExpr(macro id);
+				var removeExpr = storageType == SIGNAL ? null : getRemoveExpr(macro id);
 
 				var defWorld = switch (storageType) {
 					case TAG: macro class $worldContainerTypeName {
@@ -760,6 +821,11 @@ class StorageInfo {
 								storage.set(id, item);
 							}
 						}
+					case SIGNAL:
+						macro class $worldContainerTypeName {
+								public inline function new() {}
+								public var _listeners: Array<($followedCT, Entity) -> Void>;
+						}
 				}
 
 				// trace(_printer.printTypeDefinition(def));
@@ -797,25 +863,7 @@ class StorageInfo {
 		}
 	}
 
-	public var name:String;
-	public var givenCT:ComplexType;
-	public var followedCT:ComplexType;
-	public var followedMeta:MetaMap;
-	public var followedClass:ClassType;
-	public var storageType:StorageType;
-	public var storageCT:ComplexType;
-	public var componentIndex:Int;
-	public var fullName:String;
-	public var containerCT:ComplexType;
-	public var containerTypeName:String;
-	public var worldContainerTypeName:String;
-	public var worldContainerFullName:String;
-	public var containerFullName:String;
-	public var containerFullNameExpr:Expr;
-	public var emptyExpr:Expr;
-	public var isPooled:Bool;
-	public var isImmutable:Bool;
-	public var isValueStruct:Bool;
+
 }
 
 class ComponentBuilder {

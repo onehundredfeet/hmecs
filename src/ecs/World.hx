@@ -38,8 +38,10 @@ class World {
 		_self = newEntity();
 	}
 
-	inline static final TAG_STRIDE:Int = Std.int(Parameters.MAX_TAGS / 32);
-
+	inline static final TAG_STRIDE:Int = Std.int((Parameters.MAX_TAGS + 31) / 32);
+	#if ecs_max_components
+	inline static final PRESENCE_STRIDE:Int = Std.int((Parameters.MAX_COMPONENTS + 31) / 32);
+	#end
 	public var self(get, never):Entity;
 
 	inline function get_self() {
@@ -65,10 +67,16 @@ class World {
 	var statuses = new EntityVector<Status>(Parameters.MAX_ENTITIES);
 	var tags = new EntityVector<Int>(Parameters.MAX_ENTITIES * TAG_STRIDE);
 	var _generations = new EntityVector<Int>(Parameters.MAX_ENTITIES);
+	#if ecs_max_components
+	var _presence = new EntityVector<Int>(Parameters.MAX_ENTITIES * PRESENCE_STRIDE);
+	#end
 	#else
 	var statuses = new Array<Status>();
 	var tags = new Array<Int>();
 	var _generations = new Array<Int>();
+	#if ecs_max_components
+	var _presence = new EntityVector<Int>();
+	#end
 	#end
 
 	// all of every defined component container
@@ -276,7 +284,7 @@ class World {
 				return 0;
 			});
 
-			//			trace('---Sorted:');
+						trace('---Sorted:');
 			for (i in 0..._systems.length) {
 				var si = _systems[i];
 				var idx = map.get(Type.getClassName(Type.getClass(si)));
@@ -286,7 +294,7 @@ class World {
 				}
 				var s = cast(si, ecs.System);
 				var n = Type.getClassName(Type.getClass(s));
-				//				trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
+								trace('System ${i} ${n}:score ${scores[idx]} : incoming ${incoming[idx]} : children ${allChildren[idx]}');
 			}
 
 			orderDirty = false;

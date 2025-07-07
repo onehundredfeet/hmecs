@@ -248,6 +248,11 @@ abstract Entity(Int) {
 		return ret;
 	}
 
+	macro public function dispatch(self:Expr, signal:Expr):ExprOf<ecs.Entity> {
+		var pos = Context.currentPos();
+		var info = getComponentContainerInfo(signal, pos);
+		return info.getSendSignalExpr(signal, self);
+	}
 	#if macro
 	static function ecsActionByClass(self:Expr, types:Array<ExprOf<Class<Any>>>, pos:Position,
 			storageAction:(info:StorageInfo, entityExpr:Expr, pos:Position) -> Expr, viewAction:(viewExpr:Expr, entityExpr:Expr, pos:Position) -> Expr,

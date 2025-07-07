@@ -41,6 +41,7 @@ enum abstract MetaFuncType(Int) {
 	var SINGLE_CALL = 1;
 	var VIEW_ITER = 2;
 	var ENTITY_ITER = 3;
+	var SIGNAL_LISTENER = 4;
 }
 
 class SystemBuilder {
@@ -89,7 +90,7 @@ class SystemBuilder {
 		}
 	}
 
-	static function procMetaFunc(field:Field):UpdateRec {
+	static function procMetaFunc(field:Field, fType = VIEW_ITER):UpdateRec {
 		// Context.warning('processing meta for ${field.name}', field.pos);
 		return switch (field.kind) {
 			case FFun(func): {
@@ -104,29 +105,36 @@ class SystemBuilder {
 
 						// view iterate
 
-						var vi = ViewSpec.fromField(field, func);
-						// Context.warning('View Spec from field ${vi.name}', field.pos);
-						var vr = ViewBuilder.getViewRec(vi, field.pos);
-						if (vr == null) {
-							Context.warning('View Rec is null', field.pos);
-							return null;
-						}
-						// Context.warning('View Rec from field ${vr.name}', field.pos);
-
-						var viewArgs = [arg('__entity__',
-							macro :ecs.Entity)].concat(vi.includes.map((x) -> refComponentDefToFuncArg(x.ct, func.args, field.pos)));
-
-						// Context.warning('View args from field ${viewArgs}', field.pos);
+						var ur = 						// Context.warning('View args from field ${viewArgs}', field.pos);
 						{
 							name: funcName,
 							rawargs: func.args,
 							meta: field.meta.toMap(),
 							args: funcCallArgs,
-							view: vr,
-							viewargs: viewArgs,
-							type: VIEW_ITER,
+							view: null,
+							viewargs: null,
+							type: fType,
 							pos: field.pos
 						};
+						
+						if (fType == VIEW_ITER) {
+							var vi = ViewSpec.fromField(field, func);
+							// Context.warning('View Spec from field ${vi.name}', field.pos);
+							ur.view = ViewBuilder.getViewRec(vi, field.pos);
+							if (ur.view == null) {
+								Context.warning('View Rec is null', field.pos);
+								return null;
+							}
+							// Context.warning('View Rec from field ${vr.name}', field.pos);
+
+							ur.viewargs = [arg('__entity__',
+								macro :ecs.Entity)].concat(vi.includes.map((x) -> refComponentDefToFuncArg(x.ct, func.args, field.pos)));
+						}
+						else if (fType == SIGNAL_LISTENER) {
+							// Context.warning('Signal listener from field ${funcName}', field.pos);
+							ur.viewargs = [arg('__entity__', macro :ecs.Entity)].concat(components.map((x) -> refComponentDefToFuncArg(x.cls, func.args, field.pos)));
+						}
+						ur;
 					} else {
 						// Context.warning('No components', field.pos);
 						if (func.args.exists((x) -> metaFuncArgIsEntity(x, field.pos))) {
@@ -262,8 +270,10 @@ class SystemBuilder {
 			}
 		});
 
+		var notSkippedFields = fields.filter(MetaTools.notSkipped);
+
 		// find and init meta defined views
-		fields.filter(MetaTools.notSkipped).filter((x) -> MetaTools.containsMeta(x, MetaTools.VIEW_FUNC_META)).iter(function(field) {
+		notSkippedFields.filter((x) -> MetaTools.containsMeta(x, MetaTools.VIEW_FUNC_META)).iter(function(field) {
 			switch (field.kind) {
 				case FFun(func):
 					{
@@ -304,26 +314,34 @@ class SystemBuilder {
 			}
 		});
 
-		var ufuncs = fields.filter(MetaTools.notSkipped)
+		
+
+		var ufuncs = notSkippedFields
 			.filter((x) -> return MetaTools.containsMeta(x, MetaTools.UPD_META))
-			.map(procMetaFunc)
+			.map(procMetaFunc.bind(_, VIEW_ITER))
 			.filter(notNull);
-		var afuncs = fields.filter(MetaTools.notSkipped)
+		var afuncs = notSkippedFields
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.ADD_META))
-			.map(procMetaFunc)
+			.map(procMetaFunc.bind(_, VIEW_ITER))
 			.filter(notNull);
-		var acfuncs = fields.filter(MetaTools.notSkipped)
+		var acfuncs = notSkippedFields
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.ADD_COMPONENT_META))
-			.map(procMetaFunc)
+			.map(procMetaFunc.bind(_, VIEW_ITER))
 			.filter(notNull);
-		var rcfuncs = fields.filter(MetaTools.notSkipped)
+		var rcfuncs = notSkippedFields
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.REMOVED_COMPONENT_META))
-			.map(procMetaFunc)
+			.map(procMetaFunc.bind(_, VIEW_ITER))
 			.filter(notNull);
-		var rfuncs = fields.filter(MetaTools.notSkipped)
+		var rfuncs = notSkippedFields
 			.filter(MetaTools.containsMeta.bind(_, MetaTools.RM_META))
-			.map(procMetaFunc)
+			.map(procMetaFunc.bind(_, VIEW_ITER))
 			.filter(notNull);
+
+		var sigListeners = notSkippedFields
+			.filter(MetaTools.containsMeta.bind(_, MetaTools.LISTEN_META))
+			.map(procMetaFunc.bind(_, SIGNAL_LISTENER) )
+			.filter(notNull);
+
 		var listeners = afuncs.concat(rfuncs);
 
 		// define signal listener wrappers
@@ -417,6 +435,8 @@ class SystemBuilder {
 							$i{f.name}($a{f.args});
 						}
 					}
+				case SIGNAL_LISTENER:
+					Context.error('Signal listener is not view based, this should not happen, internal error', f.pos);
 			}
 		})) #if ecs_profiling.concat([macro this.__updateTime__ = (haxe.Timer.stamp() - __timestamp__) * 1000.]) #end;
 
@@ -452,6 +472,15 @@ class SystemBuilder {
 			.concat( // call added-listeners
 				afuncs.map(function(f) {
 					return macro $i{f.view.name}.iter($i{'__${f.name}_listener__'});
+				}))
+			.concat( // add signal listerns
+				sigListeners.map(function(f) {
+					if (f.rawargs.length != 2) {
+						Context.error('Signal listener must have exactly 2 arguments, the signal type and the entity', f.pos);
+					}
+					var a = f.rawargs[0];
+					var info = getComponentContainerInfo(a.type, pos);
+					return info.getAddSignalListenerExpr(macro __world_id__, macro $i{f.name});
 				}))
 			.concat(acfuncs.map(function(f) {
 				if (f.rawargs.length != 2) {

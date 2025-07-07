@@ -15,6 +15,7 @@ class MetaTools {
 	public static final REMOVED_COMPONENT_META = ['removed_component', ':removed_component'];
 	public static final RM_META = ['removed', 'rm', 'r', ':removed', ':rm', ':r'];
 	public static final UPD_META = ['update', 'up', 'u', ':update', ':up', ':u'];
+	public static final LISTEN_META = ['listen', ':listen'];
 	public static final PARALLEL_META = [':parallel', 'parallel', 'p', ':p'];
 	public static final FORK_META = [':fork', 'fork', 'f', ':f'];
 	public static final JOIN_META = [':join', 'join', 'j', ":j"];
