@@ -106,6 +106,7 @@ function getModulePath():String {
 
 class StorageInfo {
 	public static final STORAGE_NAMESPACE = "ecs.storage";
+
 	public var name:String;
 	public var givenCT:ComplexType;
 	public var followedCT:ComplexType;
@@ -208,7 +209,7 @@ class StorageInfo {
 			case COMPACT: macro $i{cachedVarName}.get($entityExpr.id);
 			case SINGLETON: macro $i{cachedVarName};
 			case TAG: macro @:privateAccess $i{cachedVarName};
-			case SIGNAL:Context.fatalError("Cannot get a signal component", Context.currentPos());
+			case SIGNAL: Context.fatalError("Cannot get a signal component", Context.currentPos());
 		};
 	}
 
@@ -244,13 +245,14 @@ class StorageInfo {
 	}
 
 	public function getSendSignalExpr(signalExpr:Expr, entityVar:Expr):Expr {
-
-		return switch(storageType) {
+		return switch (storageType) {
 			case SIGNAL:
-				return macro {					
+				return macro {
 					var __hmecs_signal = $signalExpr;
-					for (c in $containerFullNameExpr.worlds[$entityVar.worldId]._listeners) {
-						c(__hmecs_signal, $entityVar);
+					if ($containerFullNameExpr.worlds != null && $containerFullNameExpr.worlds[$entityVar.worldId]._listeners != null) {
+						for (c in $containerFullNameExpr.worlds[$entityVar.worldId]._listeners) {
+							c(__hmecs_signal, $entityVar);
+						}
 					}
 				}
 			default:
@@ -305,9 +307,9 @@ class StorageInfo {
 			}
 			nextSuperClass = sc.superClass;
 		};
-		
+
 		var myExpr = macro if ($containerFullNameExpr.worlds[$entityVar.worldId]._onRemoved != null) {
-			var __hmecs_component : $followedCT = $componentExpr;
+			var __hmecs_component:$followedCT = $componentExpr;
 			for (c in $containerFullNameExpr.worlds[$entityVar.worldId]._onRemoved) {
 				c(__hmecs_component, $entityVar);
 			}
@@ -318,6 +320,7 @@ class StorageInfo {
 			$myExpr;
 		};
 	}
+
 	public function getAddAddComponentListenerExpr(worldIdVar:Expr, functionId:Expr):Expr {
 		return macro {
 			if ($containerFullNameExpr.worlds[$worldIdVar]._onAdded == null)
@@ -606,8 +609,8 @@ class StorageInfo {
 			case COMPACT: tpath(["haxe", "ds"], "IntMap", [TPType(followedCT)]);
 			case TAG: followedCT.toString().asTypePath();
 			case SINGLETON: followedCT.toString().asTypePath();
-			case SIGNAL:followedCT.toString().asTypePath();
-				
+			case SIGNAL: followedCT.toString().asTypePath();
+
 			default: null;
 		});
 
@@ -823,8 +826,9 @@ class StorageInfo {
 						}
 					case SIGNAL:
 						macro class $worldContainerTypeName {
-								public inline function new() {}
-								public var _listeners: Array<($followedCT, Entity) -> Void>;
+							public inline function new() {}
+
+							public var _listeners:Array<($followedCT, Entity) -> Void>;
 						}
 				}
 
@@ -862,8 +866,6 @@ class StorageInfo {
 			containerFullNameExpr = null;
 		}
 	}
-
-
 }
 
 class ComponentBuilder {
